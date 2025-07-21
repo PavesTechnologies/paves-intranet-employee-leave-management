@@ -1,5 +1,7 @@
 package com.paves.employee_leave_management.controller;
 
-public class LeaveTypeController
-{
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class LeaveTypeController {
 }
