@@ -85,6 +85,7 @@ public class LeaveType {
     @OneToMany(mappedBy = "leaveType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<LeaveBalance> leaveBalances;
 
+
     // Custom constructor for essential fields
     public LeaveType(String leaveName, String description) {
         this.leaveName = leaveName;
