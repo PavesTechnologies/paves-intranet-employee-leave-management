@@ -4,6 +4,7 @@ import com.paves.employee_leave_management.daoInterface.EmployeeDAO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import org.hibernate.PropertyValueException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,11 +17,15 @@ public class EmployeeServiceImple implements EmployeeServiceInterface {
     @Autowired
     EmployeeDAO employeeDAO;
 
+    @Autowired
+    LeaveBalanceServiceInterface leaveBalanceService;
+
 
     @Override
     public ResponseEntity<Employee> saveEmployee(Employee employee) {
         Employee emp = employeeDAO.saveEmployee(employee);
         if(emp != null) {
+            leaveBalanceService.createLeaveBalanceForNewEmployee(employee);
             return new ResponseEntity<Employee>(emp, HttpStatus.ACCEPTED);
         } else {
             throw new EmployeeExceptionHandler("Unable to save employee");

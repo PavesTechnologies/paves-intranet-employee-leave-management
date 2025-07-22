@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.controller;
 
 
+import com.paves.employee_leave_management.dto.EmployeeRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,4 +22,5 @@ public class EmployeeController
     @PutMapping("/update/{employeeId}")
     public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId,@RequestBody Employee employee)
     { return serviceInterface.updateEmployee(employeeId, employee); }
+
 }
