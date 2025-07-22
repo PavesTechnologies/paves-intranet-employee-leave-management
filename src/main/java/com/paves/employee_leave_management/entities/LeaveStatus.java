@@ -11,6 +11,5 @@ public enum LeaveStatus {
     APPROVED("Approved"),
     REJECTED("Rejected"),
     CANCELLED("Cancelled");
-
     private final String displayName;
 }
