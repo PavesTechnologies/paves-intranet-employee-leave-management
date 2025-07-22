@@ -10,4 +10,5 @@ public class EmployeeLeaveManagementApplication {
 		SpringApplication.run(EmployeeLeaveManagementApplication.class, args);
 	}
 
+
 }
