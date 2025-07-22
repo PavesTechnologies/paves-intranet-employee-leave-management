@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.Optional;
+
 
 @Repository
 public class EmployeeDAOImple implements EmployeeDAO {
@@ -37,5 +40,15 @@ public class EmployeeDAOImple implements EmployeeDAO {
             }).orElseThrow(() -> new EmployeeExceptionHandler("Employee not found with ID: " + employeeId));
         }
 
+    @Override
+    public Optional<Employee> findByEmployeeId(String employeeId) {
+        return repo.findByEmployeeId(employeeId);
     }
+
+    @Override
+    public List<Employee> findAll() {
+        return repo.findAll();
+    }
+
+}
 

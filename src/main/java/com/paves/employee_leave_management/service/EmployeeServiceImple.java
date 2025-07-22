@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class EmployeeServiceImple implements EmployeeServiceInterface {
 
@@ -37,5 +39,20 @@ public class EmployeeServiceImple implements EmployeeServiceInterface {
                 throw new EmployeeExceptionHandler("Employee not found with id: " + employeeId);
             }
 
+    }
+
+    @Override
+    public ResponseEntity<Employee> getByEmployeeId(String employeeId) {
+        return employeeDAO.findByEmployeeId(employeeId).map(emp -> new ResponseEntity<Employee>(emp, HttpStatus.ACCEPTED)).orElseThrow(() -> new EmployeeExceptionHandler("Employee not found with id: " + employeeId));
+    }
+
+    @Override
+    public ResponseEntity<List<Employee>> getAllEmployees() {
+        List<Employee> emps = employeeDAO.findAll();
+        if (emps != null) {
+            return new ResponseEntity<List<Employee>>(emps, HttpStatus.ACCEPTED);
+        } else {
+            throw new EmployeeExceptionHandler("No employees found");
+        }
     }
 }
