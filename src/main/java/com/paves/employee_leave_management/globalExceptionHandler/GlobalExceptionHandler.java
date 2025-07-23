@@ -13,4 +13,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleException(EmployeeExceptionHandler employeeExceptionHandler) {
         return ResponseEntity.status(400).body(employeeExceptionHandler.getExMSg());
     }
+
+    @ExceptionHandler(LeaveBalanceExceptionHandler.class)
+    public ResponseEntity<String> handleException(LeaveBalanceExceptionHandler leaveBalanceExceptionHandler) {
+        return ResponseEntity.status(400).body(leaveBalanceExceptionHandler.getExMsg());
+    }
 }

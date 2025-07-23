@@ -11,6 +11,6 @@ public interface LeaveBalanceDAO {
     LeaveBalance findById(String balanceId);
     List<LeaveBalance> findAll();
     List<LeaveBalance> findByEmployeeId(String employeeId);
-    List<LeaveBalance> findByLeaveName(String leaveName);
+    List<LeaveBalance> findByLeaveId(String leaveId);
 }
 
