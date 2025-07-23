@@ -45,4 +45,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         else
             return new ResponseEntity<>(repo.save(leaveType), HttpStatus.ACCEPTED);
     }
+
+    @Override
+    public ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId) {
+        Optional<LeaveType> optionalLeaveType = repo.findById(leaveTypeId);
+
+        return optionalLeaveType.map(leaveType -> new ResponseEntity<>(leaveType, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+
 }

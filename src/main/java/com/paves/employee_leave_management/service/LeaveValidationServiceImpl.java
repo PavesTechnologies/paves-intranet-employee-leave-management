@@ -4,6 +4,7 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveValidationServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,8 +15,18 @@ import java.util.List;
 @Service
 public class LeaveValidationServiceImpl implements LeaveValidationServiceInterface {
 
-    @Autowired
-    private MockDataService mockDataService;
+//    @Autowired
+//    private MockDataService mockDataService;
+      @Autowired
+      private EmployeeServiceImple employeeService;
+      @Autowired
+      private LeaveTypeServiceImple leaveTypeService;
+      @Autowired
+      private LeaveBalanceServiceInterfaceImple leaveBalanceSerivce;
+      @Autowired
+      private LeaveRequestRepo leaveRequestRepo;
+//      @Autowired
+//      private LeaveValidationServiceInterface leaveValidationService;
 
     @Override
     public ValidationResultDTO validateLeaveRequest(LeaveRequestValidationDTO request) {
@@ -26,8 +37,8 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
                 .build();
 
         // Get employee and leave type info
-        Employee employee = mockDataService.getEmployeeById(request.getEmployeeId());
-        LeaveType leaveType = mockDataService.getLeaveTypeById(request.getLeaveTypeId());
+        Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
+        LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
 
         if (employee == null) {
             result.addError("Employee not found");
@@ -112,7 +123,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
     private void validateBalance(LeaveRequestValidationDTO request, ValidationResultDTO result,
                                  Employee employee, LeaveType leaveType) {
         Integer currentYear = LocalDate.now().getYear();
-        LeaveBalanceDTO balance = mockDataService.getLeaveBalance(
+        LeaveBalanceDTO balance = leaveBalanceSerivce.getLeaveBalance(
                 request.getEmployeeId(), request.getLeaveTypeId(), currentYear);
 
         if (balance == null) {
@@ -142,7 +153,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
     }
 
     private void validateOverlaps(LeaveRequestValidationDTO request, ValidationResultDTO result) {
-        List<LeaveRequest> overlappingRequests = mockDataService.getOverlappingRequests(
+        List<LeaveRequest> overlappingRequests = getOverlappingRequests(
                 request.getEmployeeId(), request.getStartDate(), request.getEndDate());
 
         for (LeaveRequest existing : overlappingRequests) {
@@ -175,17 +186,26 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
 
     @Override
     public LeaveBalanceDTO getEmployeeLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
-        return mockDataService.getLeaveBalance(employeeId, leaveTypeId, year);
+        return leaveBalanceSerivce.getLeaveBalance(employeeId, leaveTypeId, year);
     }
 
     @Override
-    public List<LeaveRequest> getOverlappingRequests(String employeeId, String leaveTypeId,
-                                                     LocalDate startDate, LocalDate endDate) {
-        return mockDataService.getOverlappingRequests(employeeId, startDate, endDate);
+    public List<LeaveRequest> getOverlappingRequests(String employeeId, LocalDate startDate, LocalDate endDate) {
+        return leaveRequestRepo.findOverlappingLeaves(employeeId, startDate, endDate);
     }
 
-    @Override
-    public boolean hasManagerApprovalRights(String managerId, String employeeId) {
-        return mockDataService.isManager(managerId, employeeId);
-    }
+//    @Override
+//    public boolean hasManagerApprovalRights(String managerId, String employeeId) {
+//        return false;
+//    }
+//    @Override
+//    public List<LeaveRequest> getOverlappingRequests(String employeeId, String leaveTypeId,
+//                                                     LocalDate startDate, LocalDate endDate) {
+//        return leaveRequestRepo.findOverlappingLeaves(employeeId, startDate, endDate);
+//    }
+
+//    @Override
+//    public boolean hasManagerApprovalRights(String managerId, String employeeId) {
+//        return mockDataService.isManager(managerId, employeeId);
+//    }
 }

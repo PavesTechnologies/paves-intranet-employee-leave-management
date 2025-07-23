@@ -3,9 +3,9 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
-//import com.paves.employee_leave_management.repo.EmployeeRepository;
-import com.paves.employee_leave_management.repo.LeaveRequestRepository;
-//import com.paves.employee_leave_management.repository.LeaveTypeRepository;
+import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.LeaveRequestRepo;
+import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.dto.LeaveRequestValidationDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,13 +20,13 @@ import java.time.temporal.ChronoUnit;
 public class LeaveApplicationService {
 
     @Autowired
-    private LeaveRequestRepository leaveRequestRepository;
+    private LeaveRequestRepo leaveRequestRepository;
 
     @Autowired
-    private EmployeeRepository employeeRepository;
+    private EmployeeRepo employeeRepository;
 
     @Autowired
-    private LeaveTypeRepository leaveTypeRepository;
+    private LeaveTypeRepo leaveTypeRepository;
 
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
         // Fetch employee and leave type entities

@@ -1,9 +1,11 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
+import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,9 @@ public class LeaveBalanceServiceInterfaceImple implements LeaveBalanceServiceInt
 
     @Autowired
     LeaveTypeRepo leaveTypeRepo;
+
+    @Autowired
+    LeaveBalanceRepo leaveBalanceRepo;
 
     @Override
     public void createLeaveBalanceForNewEmployee(Employee emp) {
@@ -92,4 +97,30 @@ public class LeaveBalanceServiceInterfaceImple implements LeaveBalanceServiceInt
     private int calculateAccruedLeaves(LeaveType leaveType, int monthsEligible) {
         return calculateTotalLeaves(leaveType, monthsEligible);
     }
+
+    @Override
+    public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
+        LeaveBalance balance = leaveBalanceRepo
+                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+
+        if (balance == null) {
+            return null;
+        }
+
+        return LeaveBalanceDTO.builder()
+                .balanceId(balance.getBalanceId())
+                .employeeId(balance.getEmployee().getEmployeeId())
+                .employeeName(balance.getEmployee().getFullName())
+                .leaveTypeId(balance.getLeaveType().getLeaveTypeId())
+                .leaveTypeName(balance.getLeaveType().getLeaveName())
+                .totalLeaves(balance.getTotalLeaves())
+                .accruedLeaves(balance.getAccruedLeaves())
+                .usedLeaves(balance.getUsedLeaves())
+                .remainingLeaves(balance.getRemainingLeaves())
+                .carriedForward(balance.getCarriedForward())
+                .availableBalance(balance.getAvailableBalance())
+                .year(balance.getYear())
+                .build();
+    }
+
 }

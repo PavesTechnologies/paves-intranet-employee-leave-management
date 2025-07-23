@@ -22,5 +22,8 @@ public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
         return false;
     }
 
-
+    @Override
+    public LeaveBalance findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId,String leaveTypeId, int year) {
+        return leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+    }
 }

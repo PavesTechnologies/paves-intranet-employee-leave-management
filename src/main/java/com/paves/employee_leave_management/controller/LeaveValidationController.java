@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/leave/validation")
-@CrossOrigin(origins = "*")
+@CrossOrigin
 public class LeaveValidationController {
 
     @Autowired
@@ -50,7 +50,7 @@ public class LeaveValidationController {
     public ResponseEntity<Boolean> checkOverlappingRequests(@RequestBody LeaveRequestValidationDTO request) {
         try {
             var overlappingRequests = leaveValidationService.getOverlappingRequests(
-                    request.getEmployeeId(), request.getLeaveTypeId(), request.getStartDate(), request.getEndDate());
+                    request.getEmployeeId(), request.getStartDate(), request.getEndDate());
             return ResponseEntity.ok(!overlappingRequests.isEmpty());
         } catch (Exception e) {
             return ResponseEntity.status(500).body(false);

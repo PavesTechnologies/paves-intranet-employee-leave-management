@@ -2,6 +2,8 @@ package com.paves.employee_leave_management;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
 public class EmployeeLeaveManagementApplication {
@@ -10,5 +12,8 @@ public class EmployeeLeaveManagementApplication {
 		SpringApplication.run(EmployeeLeaveManagementApplication.class, args);
 	}
 
-
+	@Bean
+	public RestTemplate restTemplate() {
+		return new RestTemplate();
+	}
 }
