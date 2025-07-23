@@ -132,4 +132,24 @@ public class LeaveBalanceServiceImpl implements LeaveBalanceServiceInterface {
             leaveBalanceDao.save(balance);
         }
     }
+    @Override
+    public LeaveBalance findByBalanceId(String balanceId) {
+        return leaveBalanceDao.findById(balanceId);
+    }
+
+    @Override
+    public List<LeaveBalance> getAllLeaveBalances() {
+        return leaveBalanceDao.findAll();
+    }
+
+    @Override
+    public List<LeaveBalance> findByEmployeeId(String employeeId) {
+        return leaveBalanceDao.findByEmployeeId(employeeId);
+    }
+
+    @Override
+    public List<LeaveBalance> findByLeaveName(String leaveName) {
+        return leaveBalanceDao.findByLeaveName(leaveName);
+    }
+
 }
