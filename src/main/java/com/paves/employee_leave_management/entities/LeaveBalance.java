@@ -38,26 +38,26 @@ public class LeaveBalance {
     private LeaveType leaveType;
 
     @Column(name = "total_leaves", nullable = false)
-    private Integer totalLeaves;
+    private double totalLeaves;
 
     @Builder.Default
     @Column(name = "accrued_leaves", columnDefinition = "INT DEFAULT 0")
-    private Integer accruedLeaves = 0;
+    private double accruedLeaves = 0;
 
     @Builder.Default
     @Column(name = "used_leaves", columnDefinition = "INT DEFAULT 0")
-    private Integer usedLeaves = 0;
+    private double usedLeaves = 0;
 
     @Column(name = "remaining_leaves", nullable = false)
-    private Integer remainingLeaves;
+    private double remainingLeaves;
 
     @Builder.Default
     @Column(name = "carried_forward", columnDefinition = "INT DEFAULT 0")
-    private Integer carriedForward = 0;
+    private double carriedForward = 0;
 
     @Builder.Default
     @Column(name = "expired_leaves", columnDefinition = "INT DEFAULT 0")
-    private Integer expiredLeaves = 0;
+    private double expiredLeaves = 0;
 
     @Builder.Default
     @Column(name = "encashed_leaves", columnDefinition = "INT DEFAULT 0")
@@ -84,7 +84,7 @@ public class LeaveBalance {
     }
 
     // Business logic methods
-    public Integer getAvailableBalance() {
+    public double getAvailableBalance() {
         return accruedLeaves + carriedForward - usedLeaves - expiredLeaves;
     }
 
