@@ -1,6 +1,6 @@
 package com.paves.employee_leave_management.entities;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,11 +31,13 @@ public class LeaveBalance {
     }
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
     @JsonManagedReference
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "leave_type_id", nullable = false)
     private LeaveType leaveType;
 
@@ -43,26 +45,26 @@ public class LeaveBalance {
     private double totalLeaves;
 
     @Builder.Default
-    @Column(name = "accrued_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "accrued_leaves")
     private double accruedLeaves = 0;
 
     @Builder.Default
-    @Column(name = "used_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "used_leaves")
     private double usedLeaves = 0;
 
     @Column(name = "remaining_leaves", nullable = false)
     private double remainingLeaves;
 
     @Builder.Default
-    @Column(name = "carried_forward", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "carried_forward")
     private double carriedForward = 0;
 
     @Builder.Default
-    @Column(name = "expired_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "expired_leaves")
     private double expiredLeaves = 0;
 
     @Builder.Default
-    @Column(name = "encashed_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "encashed_leaves")
     private Integer encashedLeaves = 0;
 
     @Column(name = "year", nullable = false)

@@ -10,6 +10,7 @@ import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -53,6 +54,13 @@ public class LeaveBalanceServiceImpl implements LeaveBalanceServiceInterface {
             int monthsEligible = getEligibleMonths(emp.getHireDate(), currentYear);
             double totalLeaves = calculateTotalLeaves(lt, monthsEligible);
             double accruedLeaves = 0;
+            if (emp.getHireDate().getDayOfMonth() <= 15)
+            {
+                if(lt.getLeaveName().equalsIgnoreCase("Sick Leave"))
+                    accruedLeaves = 1;
+                if(lt.getLeaveName().equalsIgnoreCase("Earned Leave"))
+                    accruedLeaves = 1.25;
+            }
 
             LeaveBalance balance = LeaveBalance.builder()
                     .employee(emp)
@@ -127,9 +135,9 @@ public class LeaveBalanceServiceImpl implements LeaveBalanceServiceInterface {
                     balance.setCarriedForward(0);
                     balance.setExpiredLeaves(unused);
             }
-
+            balance.setYear(balance.getYear() + 1);
             balance.updateRemainingLeaves();
             leaveBalanceDao.save(balance);
         }
     }
-}
+  
