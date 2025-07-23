@@ -140,46 +140,4 @@ public class LeaveBalanceServiceImpl implements LeaveBalanceServiceInterface {
             leaveBalanceDao.save(balance);
         }
     }
-
-    @Scheduled(cron = "0 0 0 1 1 *")
-    public void scheduleYearEndProcessing() {
-        System.out.println("Running year-end carry forward...");
-        processYearEndCarryForward();
-    }
-
-    @Scheduled(cron = "0 0 0 1 * *")
-    public void triggerMonthlyLeaveAccrual() {
-        List<LeaveBalance> balances = leaveBalanceRepo.findAll();
-        LocalDate now = LocalDate.of(2025,9,1);
-        for (LeaveBalance balance : balances) {
-            Employee emp = balance.getEmployee();
-            LeaveType type = balance.getLeaveType();
-            LocalDate hireDate = emp.getHireDate();
-            LocalDate accrualDate = balance.getLastAccrualDate();
-
-            if (hireDate.isAfter(now.withDayOfMonth(1))) continue;
-
-            if (accrualDate != null &&
-                    accrualDate.getMonth() == now.getMonth() &&
-                    accrualDate.getYear() == now.getYear()) {
-                continue;
-            }
-            double accrual = 0;
-
-            if (type.getLeaveName().equalsIgnoreCase("Sick Leave")) {
-                accrual = 1.0;
-            }
-            if (type.getLeaveName().equalsIgnoreCase("Earned Leave")) {
-                accrual = 1.25;
-            }
-
-            if (accrual > 0) {
-                balance.setAccruedLeaves(balance.getAccruedLeaves() + accrual);
-                balance.updateRemainingLeaves();
-                balance.setLastAccrualDate(now);
-                leaveBalanceDao.save(balance);
-            }
-        }
-    }
-
-    }
+  

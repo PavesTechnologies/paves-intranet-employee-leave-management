@@ -1,11 +1,13 @@
 package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.service.LeaveBalanceServiceImpl;
+
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RestController
@@ -27,11 +29,7 @@ public class LeaveBalanceController {
         return ResponseEntity.ok("Carry forward process completed.");
     }
 
-    @PostMapping("/test-monthly-trigger")
-    public ResponseEntity<String> testMonthlyAccrual() {
-        LeaveBalanceServiceImpl leaveBalanceServiceImple = (LeaveBalanceServiceImpl) leaveBalanceService;
-        leaveBalanceServiceImple.triggerMonthlyLeaveAccrual();
-        return ResponseEntity.ok("Monthly leave accrual triggered successfully.");
+
     }
 }
 
