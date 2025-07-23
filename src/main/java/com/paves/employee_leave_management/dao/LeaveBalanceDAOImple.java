@@ -3,14 +3,15 @@ package com.paves.employee_leave_management.dao;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
+import lombok.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.*;
 
 @Repository
+@RequiredArgsConstructor
 public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
 
-    @Autowired
-    LeaveBalanceRepo leaveBalanceRepo;
+    private final LeaveBalanceRepo leaveBalanceRepo;
 
     @Override
     public void save(LeaveBalance balance) {
@@ -19,8 +20,6 @@ public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
 
     @Override
     public boolean existsByEmployeeIdAndLeaveTypeIdAndYear(String empId, String leaveTypeId, int year) {
-        return false;
+        return leaveBalanceRepo.existsByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(empId, leaveTypeId, year);
     }
-
-
 }
