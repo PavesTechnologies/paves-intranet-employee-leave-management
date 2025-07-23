@@ -1,7 +1,36 @@
 package com.paves.employee_leave_management.controller;
 
-import org.springframework.web.bind.annotation.RestController;
+import com.paves.employee_leave_management.entities.LeaveBalance;
+import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.swing.text.html.HTML;
+import java.util.List;
 
 @RestController
+@RequestMapping("/api/leave")
 public class LeaveTypeController {
+
+    @Autowired
+    LeaveTypeServiceInterface service;
+
+    @PostMapping("/add-leave-type")
+    public ResponseEntity<LeaveType> addLeaveType(@RequestBody LeaveType leaveType){
+        return service.addLeaveType(leaveType);
+    }
+
+    @GetMapping("/get-all-leave-types")
+    public ResponseEntity<List<LeaveType>> getAllLeaveTypes(){
+        return service.getAllLeaveTypes();
+    }
+
+    @PutMapping("/update-leave-type")
+    public ResponseEntity<LeaveType> updateLeave(@RequestBody LeaveType leaveType){
+         return service.addLeaveType(leaveType);
+    }
+
 }
