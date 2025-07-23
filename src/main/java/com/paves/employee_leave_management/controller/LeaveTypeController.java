@@ -18,26 +18,19 @@ public class LeaveTypeController {
     @Autowired
     LeaveTypeServiceInterface service;
 
-    @GetMapping("/")
-    public ResponseEntity<String> firstMethod(){
-        return new ResponseEntity<>("Hello and Welcome to paves", HttpStatus.OK);
-    }
-
     @PostMapping("/add-leave-type")
-    public ResponseEntity<?> addLeaveType(@RequestBody LeaveType leaveType){
-        LeaveType response = service.addLeaveType(leaveType);
-        if(response == null){
-            return new ResponseEntity<>(response, HttpStatus.NOT_ACCEPTABLE);
-        }
-        return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
+    public ResponseEntity<LeaveType> addLeaveType(@RequestBody LeaveType leaveType){
+        return service.addLeaveType(leaveType);
     }
 
     @GetMapping("/get-all-leave-types")
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes(){
-        List<LeaveType> allLeaveTypesResponse =  service.getAllLeaveTypes();
-        if (allLeaveTypesResponse == null){
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        }
-        return new ResponseEntity<>(allLeaveTypesResponse, HttpStatus.FOUND);
+        return service.getAllLeaveTypes();
     }
+
+    @PutMapping("/update-leave-type")
+    public ResponseEntity<LeaveType> updateLeave(@RequestBody LeaveType leaveType){
+         return service.addLeaveType(leaveType);
+    }
+
 }

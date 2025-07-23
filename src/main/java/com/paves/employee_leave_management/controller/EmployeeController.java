@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.controller;
 
 
+import com.paves.employee_leave_management.dto.EmployeeRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,11 +25,4 @@ public class EmployeeController
     public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId,@RequestBody Employee employee)
     { return serviceInterface.updateEmployee(employeeId, employee); }
 
-    @GetMapping("/getByEmployeeId/{employeeId}")
-    public ResponseEntity<Employee> getByEmployeeId(@PathVariable String employeeId)
-    { return serviceInterface.getByEmployeeId(employeeId); }
-
-    @GetMapping("/getAllEmployees")
-    public ResponseEntity<List<Employee>> getAllEmployees()
-    { return serviceInterface.getAllEmployees(); }
 }
