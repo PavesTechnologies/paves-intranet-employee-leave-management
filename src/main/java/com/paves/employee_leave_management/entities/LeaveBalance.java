@@ -44,26 +44,26 @@ public class LeaveBalance {
     private double totalLeaves;
 
     @Builder.Default
-    @Column(name = "accrued_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "accrued_leaves")
     private double accruedLeaves = 0;
 
     @Builder.Default
-    @Column(name = "used_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "used_leaves")
     private double usedLeaves = 0;
 
     @Column(name = "remaining_leaves", nullable = false)
     private double remainingLeaves;
 
     @Builder.Default
-    @Column(name = "carried_forward", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "carried_forward")
     private double carriedForward = 0;
 
     @Builder.Default
-    @Column(name = "expired_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "expired_leaves")
     private double expiredLeaves = 0;
 
     @Builder.Default
-    @Column(name = "encashed_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "encashed_leaves")
     private Integer encashedLeaves = 0;
 
     @Column(name = "year", nullable = false)
