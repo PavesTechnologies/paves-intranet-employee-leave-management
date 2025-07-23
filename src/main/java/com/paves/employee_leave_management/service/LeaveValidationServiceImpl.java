@@ -1,7 +1,6 @@
 package com.paves.employee_leave_management.service;
 
 /// 6. LeaveValidationServiceImpl.java (in service package)
-//        package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
@@ -42,7 +41,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
 
         result.setEmployeeName(employee.getFullName());
 
-//         Validate dates
+        // Validate dates
         validateDates(request, result, leaveType);
 
         // Validate leave balance
