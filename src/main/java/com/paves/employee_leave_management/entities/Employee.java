@@ -1,7 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -40,6 +40,9 @@ public class Employee {
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
+    @Column(name = "gender", length = 50, nullable = false, unique = true)
+    private String gender;
+
     @Column(name = "phone", length = 15)
     private String phone;
 
@@ -67,6 +70,7 @@ public class Employee {
     private List<LeaveRequest> approvedRequests;
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<LeaveBalance> leaveBalances;
 
     // Custom constructor for essential fields
