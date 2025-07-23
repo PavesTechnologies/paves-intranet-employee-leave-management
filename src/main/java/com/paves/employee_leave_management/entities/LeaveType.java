@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.entities;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,8 +15,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = {"leaveRequests", "leaveBalances"})
-@EqualsAndHashCode(exclude = {"leaveRequests", "leaveBalances"})
+//@ToString(exclude = {"leaveRequests", "leaveBalances"})
+//@EqualsAndHashCode(exclude = {"leaveRequests", "leaveBalances"})
 public class LeaveType {
 
     @Id
@@ -79,11 +80,12 @@ public class LeaveType {
     @Column(name = "notice_period_restriction", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean noticePeriodRestriction = false;
 
-    @OneToMany(mappedBy = "leaveType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<LeaveRequest> leaveRequests;
-
-    @OneToMany(mappedBy = "leaveType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<LeaveBalance> leaveBalances;
+//    @OneToMany(mappedBy = "leaveType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+//    private List<LeaveRequest> leaveRequests;
+//
+//    @JsonManagedReference
+//    @OneToMany(mappedBy = "leaveType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+//    private List<LeaveBalance> leaveBalances;
 
 
     // Custom constructor for essential fields

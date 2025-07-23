@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import javax.swing.text.html.HTML;
 import java.util.List;
 
+
+@CrossOrigin
 @RestController
 @RequestMapping("/api/leave")
 public class LeaveTypeController {
@@ -32,5 +34,4 @@ public class LeaveTypeController {
     public ResponseEntity<LeaveType> updateLeave(@RequestBody LeaveType leaveType){
          return service.addLeaveType(leaveType);
     }
-
 }

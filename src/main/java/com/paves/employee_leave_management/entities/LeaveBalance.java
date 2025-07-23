@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.entities;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,6 +34,7 @@ public class LeaveBalance {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
+    @JsonManagedReference
     @ManyToOne
     @JoinColumn(name = "leave_type_id", nullable = false)
     private LeaveType leaveType;
