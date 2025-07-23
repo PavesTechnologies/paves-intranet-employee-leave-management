@@ -41,7 +41,7 @@ public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
     }
 
     @Override
-    public List<LeaveBalance> findByLeaveName(String leaveName) {
-        return leaveBalanceRepo.findByLeaveTypeLeaveNameIgnoreCase(leaveName);
+    public List<LeaveBalance> findByLeaveId(String leaveId) {
+        return leaveBalanceRepo.findByLeaveTypeLeaveTypeId(leaveId);
     }
 }

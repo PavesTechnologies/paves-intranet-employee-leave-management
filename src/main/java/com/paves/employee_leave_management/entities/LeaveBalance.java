@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,7 +36,6 @@ public class LeaveBalance {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
-    @JsonManagedReference
     @ManyToOne
     @JsonIgnore
     @JoinColumn(name = "leave_type_id", nullable = false)
@@ -73,27 +73,9 @@ public class LeaveBalance {
     @Column(name = "last_accrual_date")
     private LocalDate lastAccrualDate;
 
-    // Custom constructor for essential fields
-    public LeaveBalance(Employee employee, LeaveType leaveType, Integer totalLeaves, Integer year) {
-        this.employee = employee;
-        this.leaveType = leaveType;
-        this.totalLeaves = totalLeaves;
-        this.year = year;
-        this.remainingLeaves = totalLeaves;
-        this.accruedLeaves = 0;
-        this.usedLeaves = 0;
-        this.carriedForward = 0;
-        this.expiredLeaves = 0;
-        this.encashedLeaves = 0;
-    }
-
-    // Business logic methods
-    public double getAvailableBalance() {
-        return accruedLeaves + carriedForward - usedLeaves - expiredLeaves;
-    }
 
     public void updateRemainingLeaves() {
-        this.remainingLeaves = totalLeaves + carriedForward - usedLeaves;
+        this.remainingLeaves = totalLeaves - usedLeaves;
     }
 }
 
