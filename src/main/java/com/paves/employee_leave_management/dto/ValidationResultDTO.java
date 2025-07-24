@@ -20,8 +20,8 @@ public class ValidationResultDTO {
     private List<String> errors = new ArrayList<>();
     private String employeeId;
     private String employeeName;
-    private Integer availableBalance;
-    private Integer requestedDays;
+    private float availableBalance;
+    private float requestedDays;
 
     public void addError(String error) {
         if (errors == null) {
