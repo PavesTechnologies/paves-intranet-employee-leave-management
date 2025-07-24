@@ -4,6 +4,7 @@ import com.paves.employee_leave_management.entities.Employee;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import jdk.jfr.Description;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/leave-balance")
 @RequiredArgsConstructor

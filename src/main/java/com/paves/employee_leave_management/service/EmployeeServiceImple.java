@@ -27,7 +27,7 @@ public class EmployeeServiceImple implements EmployeeServiceInterface {
     public ResponseEntity<Employee> saveEmployee(Employee employee) {
         Employee emp = employeeDAO.saveEmployee(employee);
         if(emp != null) {
-//            leaveBalanceService.createLeaveBalanceForNewEmployee(employee);
+            leaveBalanceService.createLeaveBalanceForNewEmployee(employee.getEmployeeId());
             return new ResponseEntity<Employee>(emp, HttpStatus.ACCEPTED);
         } else {
             throw new EmployeeExceptionHandler("Unable to save employee");

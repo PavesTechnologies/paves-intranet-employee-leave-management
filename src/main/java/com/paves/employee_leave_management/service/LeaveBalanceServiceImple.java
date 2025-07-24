@@ -230,7 +230,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         if (balance.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("Leave Balances not found for employee: " + employeeId);
         }
-        return new ResponseEntity<>(balance, HttpStatus.FOUND);
+        return new ResponseEntity<>(balance, HttpStatus.OK);
     }
 
     @Override
