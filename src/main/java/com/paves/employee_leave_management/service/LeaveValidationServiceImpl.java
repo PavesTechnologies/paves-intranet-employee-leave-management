@@ -8,6 +8,8 @@ import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveValidationServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.sql.SQLOutput;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -57,6 +59,10 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         result.setEmployeeName(employee.getFullName());
 
         // Validate dates
+        // check advance Notice Days
+        // for Paternity 5 days should be continuous
+        // should allow past days limit upto the leave type limit for backdated leaves
+
         validateDates(request, result, leaveType);
 
         // Validate leave balance
@@ -89,7 +95,8 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         LocalDate startDate = request.getStartDate();
         LocalDate endDate = request.getEndDate();
         LocalDate today = LocalDate.now();
-
+        System.out.println();
+        System.out.println("From Validate Days +++++++++++++++++++");
         System.out.print(startDate);
         System.out.print(endDate);
         System.out.print(today);
@@ -119,6 +126,16 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
                         leaveType.getAdvanceNoticeDays()));
             }
         }
+
+        if (leaveType.getAdvanceNoticeDays() != null && leaveType.getAdvanceNoticeDays() > 0) {
+
+            long daysBetween = ChronoUnit.DAYS.between(today, startDate);
+            if (daysBetween < leaveType.getAdvanceNoticeDays()) {
+                result.addError(String.format("Leave request requires at least %d days advance notice",
+                        leaveType.getAdvanceNoticeDays()));
+            }
+        }
+
         System.out.println("valid");
 //        // Validate days requested matches date range
 //        long calculatedDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
@@ -153,7 +170,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         }
 
         // Check waiting period for new employees
-        if (leaveType.getWaitingPeriodDays() != null && leaveType.getWaitingPeriodDays() > 0) {
+        if (!"L-UL".equalsIgnoreCase(leaveType.getLeaveTypeId())&& leaveType.getWaitingPeriodDays() != null && leaveType.getWaitingPeriodDays() > 0) {
             LocalDate eligibleDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
             if (LocalDate.now().isBefore(eligibleDate)) {
                 result.addError(String.format(

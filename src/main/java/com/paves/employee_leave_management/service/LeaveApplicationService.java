@@ -37,10 +37,10 @@ public class LeaveApplicationService {
                 .orElseThrow(() -> new RuntimeException("Leave type not found with ID: " + request.getLeaveTypeId()));
 
         // Calculate days requested if not provided
-        int daysRequested = request.getDaysRequested();
-        if (daysRequested <= 0) {
-            daysRequested = calculateWorkingDays(request.getStartDate(), request.getEndDate());
-        }
+//        int daysRequested = request.getDaysRequested();
+//        if (daysRequested <= 0) {
+//            daysRequested = calculateWorkingDays(request.getStartDate(), request.getEndDate());
+//        }
 
         // Create and save leave request using the entity constructor
         LeaveRequest leaveRequest = new LeaveRequest(
@@ -48,7 +48,7 @@ public class LeaveApplicationService {
                 leaveType,
                 request.getStartDate(),
                 request.getEndDate(),
-                daysRequested,
+                request.getDaysRequested(),
                 request.getReason()
         );
 
