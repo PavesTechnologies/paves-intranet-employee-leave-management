@@ -1,14 +1,11 @@
 package com.paves.employee_leave_management.controller;
 
-import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.swing.text.html.HTML;
 import java.util.List;
 
 
