@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,6 +30,7 @@ public class LeaveRequest {
         }
     }
     @ManyToOne
+
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
