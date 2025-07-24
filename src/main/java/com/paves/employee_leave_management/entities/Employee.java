@@ -174,6 +174,9 @@ public class Employee {
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<LeaveRequest> leaveRequests;
 
+    @Column(name="password", length = 10)
+    private String password;
+
     @OneToMany(mappedBy = "approvedBy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<LeaveRequest> approvedRequests;
 

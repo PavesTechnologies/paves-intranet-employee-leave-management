@@ -1,5 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,37 +32,39 @@ public class LeaveBalance {
     }
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "leave_type_id", nullable = false)
     private LeaveType leaveType;
 
     @Column(name = "total_leaves", nullable = false)
-    private Integer totalLeaves;
+    private double totalLeaves;
 
     @Builder.Default
-    @Column(name = "accrued_leaves", columnDefinition = "INT DEFAULT 0")
-    private Integer accruedLeaves = 0;
+    @Column(name = "accrued_leaves")
+    private double accruedLeaves = 0;
 
     @Builder.Default
-    @Column(name = "used_leaves", columnDefinition = "INT DEFAULT 0")
-    private Integer usedLeaves = 0;
+    @Column(name = "used_leaves")
+    private double usedLeaves = 0;
 
     @Column(name = "remaining_leaves", nullable = false)
-    private Integer remainingLeaves;
+    private double remainingLeaves;
 
     @Builder.Default
-    @Column(name = "carried_forward", columnDefinition = "INT DEFAULT 0")
-    private Integer carriedForward = 0;
+    @Column(name = "carried_forward")
+    private double carriedForward = 0;
 
     @Builder.Default
-    @Column(name = "expired_leaves", columnDefinition = "INT DEFAULT 0")
-    private Integer expiredLeaves = 0;
+    @Column(name = "expired_leaves")
+    private double expiredLeaves = 0;
 
     @Builder.Default
-    @Column(name = "encashed_leaves", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "encashed_leaves")
     private Integer encashedLeaves = 0;
 
     @Column(name = "year", nullable = false)
@@ -69,27 +73,9 @@ public class LeaveBalance {
     @Column(name = "last_accrual_date")
     private LocalDate lastAccrualDate;
 
-    // Custom constructor for essential fields
-    public LeaveBalance(Employee employee, LeaveType leaveType, Integer totalLeaves, Integer year) {
-        this.employee = employee;
-        this.leaveType = leaveType;
-        this.totalLeaves = totalLeaves;
-        this.year = year;
-        this.remainingLeaves = totalLeaves;
-        this.accruedLeaves = 0;
-        this.usedLeaves = 0;
-        this.carriedForward = 0;
-        this.expiredLeaves = 0;
-        this.encashedLeaves = 0;
-    }
-
-    // Business logic methods
-    public Integer getAvailableBalance() {
-        return accruedLeaves + carriedForward - usedLeaves - expiredLeaves;
-    }
 
     public void updateRemainingLeaves() {
-        this.remainingLeaves = totalLeaves + carriedForward - usedLeaves;
+        this.remainingLeaves = totalLeaves - usedLeaves;
     }
 }
 
