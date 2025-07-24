@@ -2,7 +2,15 @@ package com.paves.employee_leave_management.daoInterface;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
 
+import java.util.List;
+
 public interface LeaveBalanceDAO {
     void save(LeaveBalance balance);
     boolean existsByEmployeeIdAndLeaveTypeIdAndYear(String empId, String leaveTypeId, int year);
+
+    LeaveBalance findById(String balanceId);
+    List<LeaveBalance> findAll();
+    List<LeaveBalance> findByEmployeeId(String employeeId);
+    List<LeaveBalance> findByLeaveId(String leaveId);
 }
+
