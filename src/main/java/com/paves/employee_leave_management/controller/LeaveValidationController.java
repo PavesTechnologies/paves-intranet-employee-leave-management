@@ -18,7 +18,10 @@ public class LeaveValidationController {
     @PostMapping("/validate")
     public ResponseEntity<ValidationResultDTO> validateLeaveRequest(@RequestBody LeaveRequestValidationDTO request) {
         try {
+            System.out.println(request);
             ValidationResultDTO result = leaveValidationService.validateLeaveRequest(request);
+
+
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             ValidationResultDTO errorResult = ValidationResultDTO.builder()

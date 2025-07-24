@@ -36,10 +36,14 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
                 .requestedDays(request.getDaysRequested())
                 .build();
 
+        System.out.println(request);
+        System.out.println(result);
         // Get employee and leave type info
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
         LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
-
+        System.out.println("**************************************");
+        System.out.print(employee);
+        System.out.print(leaveType);
         if (employee == null) {
             result.addError("Employee not found");
             return result;
@@ -86,6 +90,10 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         LocalDate endDate = request.getEndDate();
         LocalDate today = LocalDate.now();
 
+        System.out.print(startDate);
+        System.out.print(endDate);
+        System.out.print(today);
+
         // End date must be after or equal to start date
         if (endDate.isBefore(startDate)) {
             result.addError("End date must be after or equal to start date");
@@ -111,34 +119,37 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
                         leaveType.getAdvanceNoticeDays()));
             }
         }
-
-        // Validate days requested matches date range
-        long calculatedDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
-        if (request.getDaysRequested() != calculatedDays) {
-            result.addError(String.format("Days requested (%d) doesn't match date range (%d days)",
-                    request.getDaysRequested(), calculatedDays));
-        }
+        System.out.println("valid");
+//        // Validate days requested matches date range
+//        long calculatedDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+//        if (request.getDaysRequested() != calculatedDays) {
+//            result.addError(String.format("Days requested (%d) doesn't match date range (%d days)",
+//                    request.getDaysRequested(), calculatedDays));
+//        }
     }
 
     private void validateBalance(LeaveRequestValidationDTO request, ValidationResultDTO result,
                                  Employee employee, LeaveType leaveType) {
         Integer currentYear = LocalDate.now().getYear();
+        System.out.println("***************************************");
+        System.out.println(request);
         LeaveBalanceDTO balance = leaveBalanceSerivce.getLeaveBalance(
                 request.getEmployeeId(), request.getLeaveTypeId(), currentYear);
-
+        System.out.println("***************************************");
+        System.out.print(balance);
         if (balance == null) {
             result.addError("Leave balance not found for the current year");
             return;
         }
 
-        result.setAvailableBalance(balance.getAvailableBalance());
+        result.setAvailableBalance(balance.getRemainingLeaves());
 
         // Check if employee has sufficient leave balance
         if (!leaveType.getAllowNegativeBalance() &&
-                balance.getAvailableBalance() < request.getDaysRequested()) {
+                balance.getRemainingLeaves() < request.getDaysRequested()) {
             result.addError(String.format(
                     "Insufficient %s balance. Available: %d days, Requested: %d days",
-                    leaveType.getLeaveName(), balance.getAvailableBalance(), request.getDaysRequested()));
+                    leaveType.getLeaveName(), balance.getRemainingLeaves(), request.getDaysRequested()));
         }
 
         // Check waiting period for new employees

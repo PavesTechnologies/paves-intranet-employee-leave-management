@@ -20,6 +20,6 @@ public class LeaveBalanceDTO {
     private Integer usedLeaves;
     private Integer remainingLeaves;
     private Integer carriedForward;
-    private Integer availableBalance;
+//    private Integer availableBalance;
     private Integer year;
 }

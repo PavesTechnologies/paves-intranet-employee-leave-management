@@ -102,7 +102,8 @@ public class LeaveBalanceServiceInterfaceImple implements LeaveBalanceServiceInt
     public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
         LeaveBalance balance = leaveBalanceRepo
                 .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
-
+        System.out.println("From leave balance service Implementation");
+        System.out.println(balance);
         if (balance == null) {
             return null;
         }
@@ -118,7 +119,7 @@ public class LeaveBalanceServiceInterfaceImple implements LeaveBalanceServiceInt
                 .usedLeaves(balance.getUsedLeaves())
                 .remainingLeaves(balance.getRemainingLeaves())
                 .carriedForward(balance.getCarriedForward())
-                .availableBalance(balance.getAvailableBalance())
+//                .availableBalance(balance.getAvailableBalance())
                 .year(balance.getYear())
                 .build();
     }

@@ -56,7 +56,6 @@ public class LeaveApplicationService {
     }
 
     private int calculateWorkingDays(LocalDate startDate, LocalDate endDate) {
-        // Simple calculation - you might want to implement more sophisticated logic
         // to exclude weekends and holidays
         return (int) ChronoUnit.DAYS.between(startDate, endDate) + 1;
     }
