@@ -1,8 +1,12 @@
 package com.paves.employee_leave_management.daoInterface;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface LeaveBalanceDAO {
     void save(LeaveBalance balance);
@@ -12,5 +16,6 @@ public interface LeaveBalanceDAO {
     List<LeaveBalance> findAll();
     List<LeaveBalance> findByEmployeeId(String employeeId);
     List<LeaveBalance> findByLeaveId(String leaveId);
+
 }
 

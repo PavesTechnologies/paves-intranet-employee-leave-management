@@ -56,6 +56,7 @@ public class Employee {
     private String jobTitle;
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "manager_id")
     private Employee manager;
 
