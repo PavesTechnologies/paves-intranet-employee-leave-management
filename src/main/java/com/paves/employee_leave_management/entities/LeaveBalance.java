@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.entities;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,12 +33,12 @@ public class LeaveBalance {
     }
 
     @ManyToOne
+    @JsonManagedReference
     @JsonIgnore
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
     @ManyToOne
-    @JsonIgnore
     @JoinColumn(name = "leave_type_id", nullable = false)
     private LeaveType leaveType;
 
@@ -75,7 +76,7 @@ public class LeaveBalance {
 
 
     public void updateRemainingLeaves() {
-        this.remainingLeaves = totalLeaves - usedLeaves;
+        this.remainingLeaves = accruedLeaves - usedLeaves;
     }
 }
 
