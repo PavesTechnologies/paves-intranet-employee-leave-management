@@ -2,6 +2,15 @@ package com.paves.employee_leave_management.dao;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
+// <<<<<<< feature/leaveType
+// // <<<<<<< feature/leaveType
+// // import jakarta.persistence.EntityManager;
+// // import jakarta.persistence.NoResultException;
+// // import jakarta.persistence.PersistenceContext;
+// // =======
+// // import com.paves.employee_leave_management.entities.LeaveBalance;
+// // >>>>>>> main
+// =======
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
@@ -9,6 +18,7 @@ import jakarta.persistence.PersistenceContext;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
 
+// >>>>>>> main
 import lombok.*;
 import org.springframework.stereotype.*;
 
