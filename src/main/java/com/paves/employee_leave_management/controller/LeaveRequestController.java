@@ -31,5 +31,10 @@ public class LeaveRequestController {
                                                       @RequestParam String comment) {
         return ResponseEntity.ok(leaveRequestService.rejectRequest(leaveId, managerId, comment));
     }
+
+    @PutMapping("/update/{leaveId}/{EmployeeId}")
+    public ResponseEntity<LeaveRequest> updateRequest(@PathVariable String leaveId, @PathVariable String EmployeeId, @RequestBody LeaveRequest leaveRequest) {
+        return ResponseEntity.ok(leaveRequestService.updateRequest(leaveId, EmployeeId, leaveRequest));
+    }
 }
 
