@@ -10,7 +10,6 @@ import java.util.List;
 
 
 public interface LeaveBalanceServiceInterface {
-    void createLeaveBalanceForNewEmployee(Employee employee);
     LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year);
     void createLeaveBalanceForNewEmployee(String EmpId);
     void processYearEndCarryForward();

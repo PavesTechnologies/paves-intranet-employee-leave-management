@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
@@ -26,5 +27,11 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     List<LeaveRequest> findOverlappingLeaves(@Param("employeeId") String employeeId,
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
+    List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
 }
+
+
+    
+
+   
