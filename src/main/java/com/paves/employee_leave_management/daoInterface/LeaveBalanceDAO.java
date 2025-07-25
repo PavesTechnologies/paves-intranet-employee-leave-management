@@ -12,8 +12,6 @@ public interface LeaveBalanceDAO {
     void save(LeaveBalance balance);
     boolean existsByEmployeeIdAndLeaveTypeIdAndYear(String empId, String leaveTypeId, int year);
     LeaveBalance findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear( String employeeId, String leaveTypeId, int year);
-    }
-
     LeaveBalance findById(String balanceId);
     List<LeaveBalance> findAll();
     List<LeaveBalance> findByEmployeeId(String employeeId);

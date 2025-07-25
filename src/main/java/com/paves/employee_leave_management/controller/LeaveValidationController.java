@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/leave/validation")
-@CrossOrigin
+@CrossOrigin(origins = "*")
 public class LeaveValidationController {
 
     @Autowired

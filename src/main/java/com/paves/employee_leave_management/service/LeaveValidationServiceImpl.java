@@ -5,6 +5,9 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
+import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveValidationServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,13 +23,17 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
 //    @Autowired
 //    private MockDataService mockDataService;
       @Autowired
-      private EmployeeServiceImple employeeService;
+      EmployeeServiceInterface employeeService;
+
       @Autowired
-      private LeaveTypeServiceImple leaveTypeService;
+      LeaveRequestRepo leaveRequestRepo;
+
       @Autowired
-      private LeaveBalanceServiceInterfaceImple leaveBalanceSerivce;
+      LeaveTypeServiceInterface leaveTypeServiceInterface;
+
       @Autowired
-      private LeaveRequestRepo leaveRequestRepo;
+      LeaveBalanceServiceInterface leaveBalanceServiceInterface;
+
 //      @Autowired
 //      private LeaveValidationServiceInterface leaveValidationService;
 
@@ -42,7 +49,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         System.out.println(result);
         // Get employee and leave type info
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
-        LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
+        LeaveType leaveType = leaveTypeServiceInterface.getLeaveTypeById(request.getLeaveTypeId()).getBody();
         System.out.println("**************************************");
         System.out.print(employee);
         System.out.print(leaveType);
@@ -150,7 +157,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         Integer currentYear = LocalDate.now().getYear();
         System.out.println("***************************************");
         System.out.println(request);
-        LeaveBalanceDTO balance = leaveBalanceSerivce.getLeaveBalance(
+        LeaveBalanceDTO balance = leaveBalanceServiceInterface.getLeaveBalance(
                 request.getEmployeeId(), request.getLeaveTypeId(), currentYear);
         System.out.println("***************************************");
         System.out.print(balance);
@@ -159,13 +166,13 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
             return;
         }
 
-        result.setAvailableBalance(balance.getRemainingLeaves());
+//        result.setAvailableBalance(balance.getRemainingLeaves());
 
         // Check if employee has sufficient leave balance
         if (!leaveType.getAllowNegativeBalance() &&
                 balance.getRemainingLeaves() < request.getDaysRequested()) {
             result.addError(String.format(
-                    "Insufficient %s balance. Available: %d days, Requested: %d days",
+                    "Insufficient %s balance. Available: %f days, Requested: %d days",
                     leaveType.getLeaveName(), balance.getRemainingLeaves(), request.getDaysRequested()));
         }
 
@@ -214,7 +221,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
 
     @Override
     public LeaveBalanceDTO getEmployeeLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
-        return leaveBalanceSerivce.getLeaveBalance(employeeId, leaveTypeId, year);
+        return leaveBalanceServiceInterface.getLeaveBalance(employeeId, leaveTypeId, year);
     }
 
     @Override

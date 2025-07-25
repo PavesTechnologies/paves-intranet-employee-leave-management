@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
+import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -37,6 +38,35 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Autowired
     EmployeeRepo employeeRepo;
+
+    @Override
+    public void createLeaveBalanceForNewEmployee(Employee employee) {
+
+    }
+
+    @Override
+    public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
+        LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+        System.out.println("From leave balance service Implementation");
+        System.out.println(balance);
+        if (balance == null) {
+            return null;
+        }
+        return LeaveBalanceDTO.builder()
+                .balanceId(balance.getBalanceId())
+                .employeeId(balance.getEmployee().getEmployeeId())
+                .employeeName(balance.getEmployee().getFullName())
+                .leaveTypeId(balance.getLeaveType().getLeaveTypeId())
+                .leaveTypeName(balance.getLeaveType().getLeaveName())
+                .totalLeaves(balance.getTotalLeaves())
+                .accruedLeaves(balance.getAccruedLeaves())
+                .usedLeaves(balance.getUsedLeaves())
+                .remainingLeaves(balance.getRemainingLeaves())
+                .carriedForward(balance.getCarriedForward())
+//                .availableBalance(balance.getAvailableBalance())
+                .year(balance.getYear())
+                .build();
+    }
 
     @Override
     public void createLeaveBalanceForNewEmployee(String empId) {
@@ -131,11 +161,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
 
-
     /**
      * Calculates all days accrued since hire date for the current onboarding (sick/earned only).
-     * @param hireDate Employee's hire date
-     * @param currentDate Date of onboarding/current date (use LocalDate.now() if today)
+     *
+     * @param hireDate     Employee's hire date
+     * @param currentDate  Date of onboarding/current date (use LocalDate.now() if today)
      * @param ratePerMonth 1.0 for Sick, 1.25 for Earned
      * @return Total days accrued up to and including today (hire day <= 15 counts that month)
      */
@@ -159,8 +189,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     /**
      * Calculates full-year leave entitlement for the onboarding year (sick/earned only).
-     * @param hireDate Employee's hire date
-     * @param currentDate Date of onboarding/current date
+     *
+     * @param hireDate     Employee's hire date
+     * @param currentDate  Date of onboarding/current date
      * @param ratePerMonth 1.0 for Sick, 1.25 for Earned
      * @return Total entitlement for onboarding year (if hired in previous year, full year; if in current year, pro-rata)
      */
@@ -185,13 +216,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
 
-
-
     @Override
     public void processYearEndCarryForward() {
         List<LeaveBalance> balances = leaveBalanceRepo.findAll();
-        if(balances.isEmpty())
-        {
+        if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
         for (LeaveBalance balance : balances) {
@@ -206,7 +234,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             switch (name) {
                 case "Earned Leave":
                     double forward = Math.min(10, unused);
-                    carryForward = Math.min(48,carryForward + forward);
+                    carryForward = Math.min(48, carryForward + forward);
                     newbalance.setCarriedForward(carryForward);
                     newbalance.setExpiredLeaves(unused - forward);
                     newbalance.setTotalLeaves(balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0 + carryForward);
@@ -236,6 +264,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     public void scheduleYearEndProcessing() {
         processYearEndCarryForward();
     }
+
     @Scheduled(cron = "0 5 0 1 * *")
     public void scheduleMonthlyLeaveAccrual() {
         triggerMonthlyLeaveAccrual();
@@ -244,12 +273,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public void triggerMonthlyLeaveAccrual() {
         List<LeaveBalance> balances = leaveBalanceRepo.findAll();
-        if(balances.isEmpty())
-        {
+        if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
         LocalDate now = LocalDate.now();
-        if(now.getDayOfMonth() != 1) return;
+        if (now.getDayOfMonth() != 1) return;
         for (LeaveBalance balance : balances) {
             Employee emp = balance.getEmployee();
             LeaveType type = balance.getLeaveType();
@@ -291,7 +319,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
         return new ResponseEntity<>(balance, HttpStatus.FOUND);
     }
-
 
 
     @Override

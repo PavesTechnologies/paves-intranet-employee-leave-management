@@ -16,7 +16,6 @@ public interface LeaveBalanceServiceInterface {
     void createLeaveBalanceForNewEmployee(String EmpId);
     void processYearEndCarryForward();
 
-
     void triggerMonthlyLeaveAccrual();
 
     ResponseEntity<LeaveBalance> findByBalanceId(String balanceId);

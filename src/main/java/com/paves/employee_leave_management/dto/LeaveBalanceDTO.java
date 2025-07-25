@@ -15,11 +15,11 @@ public class LeaveBalanceDTO {
     private String employeeName;
     private String leaveTypeId;
     private String leaveTypeName;
-    private Integer totalLeaves;
-    private Integer accruedLeaves;
-    private Integer usedLeaves;
-    private Integer remainingLeaves;
-    private Integer carriedForward;
+    private Double totalLeaves;
+    private Double accruedLeaves;
+    private Double usedLeaves;
+    private Double remainingLeaves;
+    private Double carriedForward;
 //    private Integer availableBalance;
     private Integer year;
 }
