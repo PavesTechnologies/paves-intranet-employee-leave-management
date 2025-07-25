@@ -59,5 +59,15 @@ public class LeaveBalanceController {
         leaveBalanceService.triggerMonthlyLeaveAccrual();
         return ResponseEntity.ok("Monthly process triggered successfully.");
     }
+
+    @PostMapping("/approve")
+    public ResponseEntity<String> approveLeave(
+            @RequestParam String employeeId,
+            @RequestParam String leaveTypeId,
+            @RequestParam double approvedDays
+    ) {
+        leaveBalanceService.updateLeaveBalanceAfterApproval(employeeId, leaveTypeId, approvedDays);
+        return ResponseEntity.ok("Leave approved and balance updated successfully.");
+    }
 }
 

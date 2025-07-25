@@ -2,7 +2,6 @@ package com.paves.employee_leave_management.repo;
 
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -19,6 +18,11 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
     List<LeaveBalance> findByLeaveTypeLeaveTypeId(String leaveId);
 
     List<LeaveBalance> findByEmployeeEmployeeId(String employeeId);
+
     Optional<LeaveBalance> findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
+
+
+
+    Optional<LeaveBalance> findByEmployee_EmployeeIdAndLeaveType_LeaveTypeId(String employeeId, String leaveTypeId);
 
 }

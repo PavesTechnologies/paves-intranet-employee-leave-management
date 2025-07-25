@@ -1,13 +1,15 @@
 package com.paves.employee_leave_management.dao;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
-import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
+
+import com.paves.employee_leave_management.entities.LeaveBalance;
+
 import lombok.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.*;
 
 import java.util.List;
