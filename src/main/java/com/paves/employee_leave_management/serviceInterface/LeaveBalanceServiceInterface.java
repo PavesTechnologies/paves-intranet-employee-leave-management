@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.serviceInterface;
 
+import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import jakarta.transaction.Transactional;
@@ -9,9 +10,10 @@ import java.util.List;
 
 
 public interface LeaveBalanceServiceInterface {
+    void createLeaveBalanceForNewEmployee(Employee employee);
+    LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year);
     void createLeaveBalanceForNewEmployee(String EmpId);
     void processYearEndCarryForward();
-
 
     void triggerMonthlyLeaveAccrual();
 
