@@ -1,22 +1,17 @@
 package com.paves.employee_leave_management.entities;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
-// LeaveType Entity
 @Entity
 @Table(name = "leave_type")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-//@ToString(exclude = {"leaveRequests", "leaveBalances"})
-//@EqualsAndHashCode(exclude = {"leaveRequests", "leaveBalances"})
 public class LeaveType {
 
     @Id
@@ -80,17 +75,14 @@ public class LeaveType {
     @Column(name = "notice_period_restriction", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean noticePeriodRestriction = false;
 
-//    @OneToMany(mappedBy = "leaveType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//    private List<LeaveRequest> leaveRequests;
-//
-//    @JsonManagedReference
-//    @OneToMany(mappedBy = "leaveType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//    private List<LeaveBalance> leaveBalances;
+    @Builder.Default
+    @Column(name = "weekends_and_holidays_allowed", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean weekendsAndHolidaysAllowed = false;
 
-
-    // Custom constructor for essential fields
-    public LeaveType(String leaveName, String description) {
+    // Custom constructor with new field
+    public LeaveType(String leaveName, String description, Boolean weekendsAndHolidaysAllowed) {
         this.leaveName = leaveName;
         this.description = description;
+        this.weekendsAndHolidaysAllowed = weekendsAndHolidaysAllowed;
     }
 }

@@ -27,9 +27,11 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     List<LeaveRequest> findOverlappingLeaves(@Param("employeeId") String employeeId,
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
-    List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
-
     List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
+    List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
+}
 
-    Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveRequestId, String employeeId);
 
+    
+
+   
