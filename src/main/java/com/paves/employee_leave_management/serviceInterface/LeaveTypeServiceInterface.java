@@ -9,4 +9,7 @@ public interface LeaveTypeServiceInterface {
     public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType);
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes();
     public ResponseEntity<LeaveType> updateLeaveType(LeaveType leaveType);
+//    public ResponseEntity<LeaveType> getleaveTypeById(String leaveTypeId);
+
+    ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId);
 }

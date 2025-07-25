@@ -2,6 +2,8 @@ package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.RejectRequestDTO;
 import com.paves.employee_leave_management.dto.UpdateLeaveRequestDTO;
+import com.paves.employee_leave_management.dto.LeaveRequestValidationDTO;
+import com.paves.employee_leave_management.dto.ValidationResultDTO;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,7 @@ public class LeaveRequestController {
                 leaveId, dto.getManagerId(), dto.getComment()));
     }
 
+
     @PutMapping("/update/{leaveId}")
     public ResponseEntity<LeaveRequest> updateLeaveByManager(
             @PathVariable String leaveId,
@@ -59,6 +62,11 @@ public class LeaveRequestController {
         );
     }
 
+
+    @PutMapping("/update-leave-request")
+    public ResponseEntity<ValidationResultDTO> updateRequest(@RequestBody LeaveRequest leaveRequest) {
+        return ResponseEntity.ok(leaveRequestService.updateRequest(leaveRequest));
+    }
 
 }
 

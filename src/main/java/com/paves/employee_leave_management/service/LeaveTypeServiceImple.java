@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import javax.swing.text.html.Option;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,4 +44,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         else
             return new ResponseEntity<>(repo.save(leaveType), HttpStatus.ACCEPTED);
     }
+
+    @Override
+    public ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId) {
+        Optional<LeaveType> optionalLeaveType = repo.findByLeaveTypeId(leaveTypeId);
+
+        return optionalLeaveType.map(leaveType -> new ResponseEntity<>(leaveType, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+
 }
