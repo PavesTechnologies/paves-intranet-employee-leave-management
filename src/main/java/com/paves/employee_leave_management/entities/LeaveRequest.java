@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -60,6 +61,7 @@ public class LeaveRequest {
 
     @ManyToOne
     @JoinColumn(name = "approved_by")
+    @JsonIgnoreProperties({"firstName","lastName","email","gender","phone","hireDate","salary","jobTitle","password"})
     private Employee approvedBy;
 
     @Builder.Default

@@ -7,6 +7,7 @@ import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,9 @@ public class LeaveRequestServiceImple implements LeaveRequestServiceInterface {
 
     @Autowired
     LeaveTypeRepo leaveTypeRepo;
+
+    @Autowired
+    LeaveBalanceServiceInterface leaveBalanceServiceInterface;
 
     @Override
     public List<LeaveRequest> getPendingRequestsForManager(String managerId) {
@@ -54,7 +58,7 @@ public class LeaveRequestServiceImple implements LeaveRequestServiceInterface {
         request.setStatus(LeaveStatus.APPROVED);
         request.setApprovedBy(manager);
         request.setResponseDate(LocalDate.now());
-
+//        leaveBalanceServiceInterface.updateLeaveBalanceAfterApproval(request.getEmployee().getEmployeeId(),request.get);
         return leaveRequestRepo.save(request);
     }
 
@@ -78,6 +82,7 @@ public class LeaveRequestServiceImple implements LeaveRequestServiceInterface {
         return leaveRequestRepo.save(request);
 
     }
+
 
     @Override
     public LeaveRequest updateLeaveRequestByManager(String leaveId, String managerId, String leaveTypeId, LocalDate startDate, LocalDate endDate) {

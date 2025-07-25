@@ -48,7 +48,7 @@ public class LeaveRequestController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return ResponseEntity.ok(leaveRequestService.updateLeaveRequestByManager(leaveId, managerId, leaveTypeId, startDate, endDate, reason));
+        return ResponseEntity.ok(leaveRequestService.updateLeaveRequestByManager(leaveId, managerId, leaveTypeId, startDate, endDate));
     }
 
 }
