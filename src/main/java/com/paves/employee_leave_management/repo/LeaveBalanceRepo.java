@@ -10,6 +10,10 @@ import java.util.Optional;
 public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
 
     boolean existsByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(String empId, String leaveTypeId, int year);
+    LeaveBalance findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+            String employeeId, String leaveTypeId, Integer year
+    );
+
 
     List<LeaveBalance> findByLeaveTypeLeaveTypeId(String leaveId);
 
@@ -17,8 +21,6 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
 // <<<<<<< feature/leaveType
     Optional<LeaveBalance> findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
 
-=======
+    Optional<LeaveBalance> findByEmployee_EmployeeIdAndLeaveType_LeaveTypeId(String employeeId, String leaveTypeId);
 
-//     Optional<LeaveBalance> findByEmployee_EmployeeIdAndLeaveType_LeaveTypeId(String employeeId, String leaveTypeId);
-// >>>>>>> main
 }

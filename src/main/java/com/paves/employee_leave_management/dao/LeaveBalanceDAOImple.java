@@ -3,11 +3,21 @@ package com.paves.employee_leave_management.dao;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 // <<<<<<< feature/leaveType
-// import jakarta.persistence.EntityManager;
-// import jakarta.persistence.NoResultException;
-// import jakarta.persistence.PersistenceContext;
+// // <<<<<<< feature/leaveType
+// // import jakarta.persistence.EntityManager;
+// // import jakarta.persistence.NoResultException;
+// // import jakarta.persistence.PersistenceContext;
+// // =======
+// // import com.paves.employee_leave_management.entities.LeaveBalance;
+// // >>>>>>> main
 // =======
-// import com.paves.employee_leave_management.entities.LeaveBalance;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
+
+import com.paves.employee_leave_management.entities.LeaveBalance;
+
 // >>>>>>> main
 import lombok.*;
 import org.springframework.stereotype.*;
@@ -41,6 +51,10 @@ public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
         return leaveBalanceRepo.findAll();
     }
 
+    @Override
+    public LeaveBalance findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId,String leaveTypeId, int year) {
+        return leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+    }
     @Override
     public List<LeaveBalance> findByEmployeeId(String employeeId) {
         return leaveBalanceRepo.findByEmployeeEmployeeId(employeeId);
