@@ -11,5 +11,5 @@ public interface LeaveRequestServiceInterface {
     LeaveRequest approveRequest(String leaveId,String managerId);
     LeaveRequest rejectRequest(String leaveId ,String managerId,String comment);
 
-     ValidationResultDTO updateRequest(LeaveRequest leaveRequest);
+     LeaveRequest updateRequest(LeaveRequest leaveRequest);
 }

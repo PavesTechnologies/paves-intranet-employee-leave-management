@@ -45,7 +45,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
                 .requestedDays(request.getDaysRequested())
                 .build();
 
-        System.out.println(request);
+        System.out.println(request.getEmployeeId());
         System.out.println(result);
         // Get employee and leave type info
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();

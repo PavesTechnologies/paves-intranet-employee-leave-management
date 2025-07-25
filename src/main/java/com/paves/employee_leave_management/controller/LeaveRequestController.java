@@ -34,8 +34,8 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestService.rejectRequest(leaveId, managerId, comment));
     }
 
-    @PutMapping("/update-leave-request")
-    public ResponseEntity<ValidationResultDTO> updateRequest(@RequestBody LeaveRequest leaveRequest) {
+    @PutMapping("/updateLeaveRequest")
+    public ResponseEntity<LeaveRequest> updateRequest(@RequestBody LeaveRequest leaveRequest) {
         return ResponseEntity.ok(leaveRequestService.updateRequest(leaveRequest));
     }
 }

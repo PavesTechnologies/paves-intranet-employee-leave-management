@@ -29,20 +29,12 @@ public class LeaveApplicationService {
     private LeaveTypeRepo leaveTypeRepository;
 
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
-        // Fetch employee and leave type entities
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + request.getEmployeeId()));
 
         LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
                 .orElseThrow(() -> new RuntimeException("Leave type not found with ID: " + request.getLeaveTypeId()));
 
-        // Calculate days requested if not provided
-//        int daysRequested = request.getDaysRequested();
-//        if (daysRequested <= 0) {
-//            daysRequested = calculateWorkingDays(request.getStartDate(), request.getEndDate());
-//        }
-
-        // Create and save leave request using the entity constructor
         LeaveRequest leaveRequest = new LeaveRequest(
                 employee,
                 leaveType,

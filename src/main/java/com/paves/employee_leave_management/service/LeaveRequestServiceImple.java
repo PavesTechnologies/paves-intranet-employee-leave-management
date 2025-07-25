@@ -76,23 +76,32 @@ public class LeaveRequestServiceImple implements LeaveRequestServiceInterface {
     }
 
     @Autowired
+    LeaveApplicationService leaveApplicationService;
+
+    @Autowired
     LeaveValidationServiceInterface leaveValidationService;
 
     @Override
-    public ValidationResultDTO updateRequest(LeaveRequest leaveRequest) {
-        return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId()).map(existingRequest -> {
-            if(existingRequest.getStatus().equals(LeaveStatus.APPROVED) || existingRequest.getStatus().equals(LeaveStatus.REJECTED)) {
-                throw new LeaveBalanceExceptionHandler("Cannot update a leave request that has already been approved or rejected.");
+    public LeaveRequest updateRequest(LeaveRequest leaveRequest) {
+        return leaveRequestRepo.findById(leaveRequest.getLeaveId()).map(existingRequest -> {
+            if(existingRequest.getStatus().equals(LeaveStatus.PENDING)){
+                LeaveRequestValidationDTO leaveRequestValidationDTO = LeaveRequestValidationDTO.builder()
+                        .employeeId(leaveRequest.getEmployee().getEmployeeId())
+                        .leaveTypeId(leaveRequest.getLeaveType().getLeaveTypeId())
+                        .startDate(leaveRequest.getStartDate())
+                        .endDate(leaveRequest.getEndDate())
+                        .daysRequested(leaveRequest.getDaysRequested())
+                        .reason(leaveRequest.getReason())
+                        .build();
+                ValidationResultDTO validationResult = leaveValidationService.validateLeaveRequest(leaveRequestValidationDTO);
+                if(validationResult.isValid()) {
+                    return leaveRequestRepo.save(leaveRequest);
+                } else {
+                    throw new LeaveBalanceExceptionHandler(validationResult.getErrors().get(0));
+                }
+            } else {
+                throw new LeaveBalanceExceptionHandler("Leave request is not in pending state");
             }
-            LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
-                    .employeeId(existingRequest.getEmployee().getEmployeeId())
-                    .leaveTypeId(existingRequest.getLeaveType().getLeaveTypeId())
-                    .startDate(existingRequest.getStartDate())
-                    .endDate(existingRequest.getEndDate())
-                    .daysRequested(existingRequest.getDaysRequested())
-                    .reason(existingRequest.getReason())
-                    .build();
-            return leaveValidationService.validateLeaveRequest(validationDTO);
-        }).orElseThrow(() -> new RuntimeException("Leave request not found"));
+        }).orElseThrow(() -> new LeaveBalanceExceptionHandler("Leave request not found"));
     }
 }
