@@ -1,10 +1,8 @@
 package com.paves.employee_leave_management.repo;
 
-import com.paves.employee_leave_management.entities.LeaveRequest;
-
 import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveStatus;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,13 +26,5 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     List<LeaveRequest> findOverlappingLeaves(@Param("employeeId") String employeeId,
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
-}
-
-import com.paves.employee_leave_management.entities.LeaveStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.List;
-
-public interface LeaveRequestRepo extends JpaRepository<LeaveRequest,String> {
-    List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
+    LeaveRequest findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
 }
