@@ -1,5 +1,7 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.dto.RejectRequestDTO;
+import com.paves.employee_leave_management.dto.UpdateLeaveRequestDTO;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
 import lombok.RequiredArgsConstructor;
@@ -34,22 +36,29 @@ public class LeaveRequestController {
     }
 
     @PutMapping("/reject/{leaveId}")
-    public ResponseEntity<LeaveRequest> rejectRequest(@PathVariable String leaveId,
-                                                      @RequestParam String managerId,
-                                                      @RequestParam String comment) {
-        return ResponseEntity.ok(leaveRequestService.rejectRequest(leaveId, managerId, comment));
+    public ResponseEntity<LeaveRequest> rejectRequest(
+            @PathVariable String leaveId,
+            @RequestBody RejectRequestDTO dto) {
+        return ResponseEntity.ok(leaveRequestService.rejectRequest(
+                leaveId, dto.getManagerId(), dto.getComment()));
     }
 
     @PutMapping("/update/{leaveId}")
     public ResponseEntity<LeaveRequest> updateLeaveByManager(
             @PathVariable String leaveId,
-            @RequestParam String managerId,
-            @RequestParam(required = false) String leaveTypeId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
-    ) {
-        return ResponseEntity.ok(leaveRequestService.updateLeaveRequestByManager(leaveId, managerId, leaveTypeId, startDate, endDate));
+            @RequestBody UpdateLeaveRequestDTO dto) {
+        return ResponseEntity.ok(
+                leaveRequestService.updateLeaveRequestByManager(
+                        leaveId,
+                        dto.getManagerId(),
+                        dto.getLeaveTypeId(),
+                        dto.getStartDate(),
+                        dto.getEndDate()
+//                        dto.getReason()
+                )
+        );
     }
+
 
 }
 
