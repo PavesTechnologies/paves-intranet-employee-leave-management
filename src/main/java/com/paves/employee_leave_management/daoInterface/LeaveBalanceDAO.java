@@ -11,7 +11,6 @@ import java.util.Optional;
 public interface LeaveBalanceDAO {
     void save(LeaveBalance balance);
     boolean existsByEmployeeIdAndLeaveTypeIdAndYear(String empId, String leaveTypeId, int year);
-
     LeaveBalance findById(String balanceId);
     List<LeaveBalance> findAll();
     List<LeaveBalance> findByEmployeeId(String employeeId);

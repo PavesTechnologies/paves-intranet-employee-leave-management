@@ -65,12 +65,14 @@ public class Employee {
     private List<Employee> subordinates;
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<LeaveRequest> leaveRequests;
 
     @Column(name="password", length = 10)
     private String password;
 
     @OneToMany(mappedBy = "approvedBy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<LeaveRequest> approvedRequests;
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

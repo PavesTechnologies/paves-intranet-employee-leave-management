@@ -1,8 +1,7 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
-import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.entities.LeaveBalance;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
@@ -10,6 +9,7 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +54,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 continue;
             }
 
+// <<<<<<< feature/leaveType
             // Skip gender-mismatched special leaves
             if (emp.getGender() != null) {
                 if (emp.getGender().equalsIgnoreCase("male") &&
@@ -80,6 +80,14 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     lt.getLeaveName().equalsIgnoreCase("Earned Leave")) {
                 carriedForward = prevEarnedBalance.get().getRemainingLeaves();
             }
+// =======
+            int monthsEligible = getEligibleMonths(emp.getHireDate(), currentYear);
+            double totalLeaves = calculateTotalLeaves(lt, monthsEligible);
+            double accruedLeaves = 0;
+            if (emp.getHireDate().getDayOfMonth() <= 15) {
+                if (lt.getLeaveName().equalsIgnoreCase("Sick Leave"))
+                    accruedLeaves = 1;
+// >>>>>>> main
 
             // -------- Accrual for Sick & Earned Leave --------
             double accruedLeaves;
@@ -111,6 +119,15 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 accruedLeaves = 0;
                 totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
             }
+            if (lt.getLeaveName().equalsIgnoreCase("Paternity Leave"))
+            {
+                accruedLeaves = 5;
+                totalLeaves = 10;
+            }
+            if (lt.getLeaveName().equalsIgnoreCase("Maternity Leave"))
+            {
+                totalLeaves = 364;
+            }
 
             LeaveBalance balance = LeaveBalance.builder()
                     .employee(emp)
@@ -130,6 +147,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
     }
 
+// <<<<<<< feature/leaveType
 
 
     /**
@@ -187,6 +205,35 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
 
 
+// =======
+    private int getEligibleMonths(LocalDate hireDate, int year) {
+        if (hireDate.getYear() > year) return 0;
+
+        LocalDate start = (hireDate.getYear() == year) ? hireDate : LocalDate.of(year, 1, 1);
+        int months = 0;
+        while (!start.isAfter(LocalDate.of(year, 12, 1))) {
+            if (start.getDayOfMonth() <= 15) {
+                months++;
+            }
+            start = start.plusMonths(1).withDayOfMonth(1);
+        }
+        return months;
+    }
+
+    private double calculateTotalLeaves(LeaveType leaveType, int monthsEligible) {
+        String leaveName = leaveType.getLeaveName().toLowerCase();
+
+        if (leaveName.equalsIgnoreCase("Sick Leave")) {
+            return monthsEligible * 1.0;
+        } else if (leaveName.equalsIgnoreCase("Earned Leave")) {
+            return monthsEligible * 1.25;
+        }
+        else{
+            return leaveType.getMaxDaysPerYear() != null ? leaveType.getMaxDaysPerYear() : 0;
+        }
+    }
+
+// >>>>>>> main
     @Override
     public void processYearEndCarryForward() {
         List<LeaveBalance> balances = leaveBalanceRepo.findAll();
@@ -320,4 +367,23 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
         return new ResponseEntity<>(balance, HttpStatus.FOUND);
     }
+
+    @Transactional
+    @Override
+    public void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays) {
+        if (approvedDays <= 0) {
+            throw new LeaveBalanceExceptionHandler("Approved days must be greater than 0");
+        }
+
+        LeaveBalance balance = leaveBalanceRepo
+                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeId(employeeId, leaveTypeId)
+                .orElseThrow(() -> new LeaveBalanceExceptionHandler("Leave balance not found for employee " + employeeId + " and leave type " + leaveTypeId));
+
+        balance.setUsedLeaves(balance.getUsedLeaves() + approvedDays);
+        balance.updateRemainingLeaves();
+
+        leaveBalanceRepo.save(balance);
+
+    }
+
 }
