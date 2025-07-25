@@ -40,11 +40,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     EmployeeRepo employeeRepo;
 
     @Override
-    public void createLeaveBalanceForNewEmployee(Employee employee) {
-        // Not implemented
-    }
-
-    @Override
     public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
         LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
         if (balance == null) {
