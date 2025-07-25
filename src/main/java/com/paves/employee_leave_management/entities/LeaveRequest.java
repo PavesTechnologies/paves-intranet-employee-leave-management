@@ -50,6 +50,9 @@ public class LeaveRequest {
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
+    @Column(name = "manager_comment", columnDefinition = "TEXT")
+    private String managerComment;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")

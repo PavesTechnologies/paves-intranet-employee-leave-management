@@ -62,7 +62,7 @@ public class LeaveRequestServiceImple implements LeaveRequestServiceInterface {
         request.setStatus(LeaveStatus.REJECTED);
         request.setApprovedBy(manager);
         request.setResponseDate(LocalDate.now());
-        request.setReason(request.getReason() + "\n\n[Manager Comment]: " + comment);
+        request.setManagerComment(comment);
 
         return leaveRequestRepo.save(request);
 

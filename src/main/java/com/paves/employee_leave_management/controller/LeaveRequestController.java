@@ -20,12 +20,12 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestService.getPendingRequestsForManager(managerId));
     }
 
-    @PostMapping("/approve/{leaveId}")
+    @PutMapping("/approve/{leaveId}")
     public ResponseEntity<LeaveRequest> approveRequest(@PathVariable String leaveId, @RequestParam String managerId) {
         return ResponseEntity.ok(leaveRequestService.approveRequest(leaveId, managerId));
     }
 
-    @PostMapping("/reject/{leaveId}")
+    @PutMapping("/reject/{leaveId}")
     public ResponseEntity<LeaveRequest> rejectRequest(@PathVariable String leaveId,
                                                       @RequestParam String managerId,
                                                       @RequestParam String comment) {
