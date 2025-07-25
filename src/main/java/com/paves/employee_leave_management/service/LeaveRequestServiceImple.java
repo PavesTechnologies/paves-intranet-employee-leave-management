@@ -67,4 +67,9 @@ public class LeaveRequestServiceImple implements LeaveRequestServiceInterface {
         return leaveRequestRepo.save(request);
 
     }
+
+    @Override
+    public LeaveRequest updateRequest(String leaveId, String employeeId, LeaveRequest leaveRequest) {
+        return null;
+    }
 }

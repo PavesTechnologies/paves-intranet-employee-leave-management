@@ -9,4 +9,5 @@ public interface LeaveRequestServiceInterface {
     LeaveRequest approveRequest(String leaveId,String managerId);
     LeaveRequest rejectRequest(String leaveId ,String managerId,String comment);
 
+    LeaveRequest updateRequest(String leaveId, String employeeId, LeaveRequest leaveRequest);
 }
