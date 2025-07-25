@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface LeaveRequestRepo extends JpaRepository<LeaveRequest,String> {
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
+    List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
+
 }

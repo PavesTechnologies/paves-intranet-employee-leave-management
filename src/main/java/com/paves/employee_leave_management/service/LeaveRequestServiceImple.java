@@ -3,14 +3,17 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveStatus;
+import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
+import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -23,9 +26,17 @@ public class LeaveRequestServiceImple implements LeaveRequestServiceInterface {
     @Autowired
     EmployeeRepo employeeRepo;
 
+    @Autowired
+    LeaveTypeRepo leaveTypeRepo;
+
     @Override
     public List<LeaveRequest> getPendingRequestsForManager(String managerId) {
         return leaveRequestRepo.findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus.PENDING , managerId);
+    }
+
+    @Override
+    public List<LeaveRequest> getLeaveHistoryForManager(String managerId) {
+        return leaveRequestRepo.findByEmployee_Manager_EmployeeId(managerId);
     }
 
     @Override
@@ -67,4 +78,29 @@ public class LeaveRequestServiceImple implements LeaveRequestServiceInterface {
         return leaveRequestRepo.save(request);
 
     }
+
+    @Override
+    public LeaveRequest updateLeaveRequestByManager(String leaveId, String managerId, String leaveTypeId, LocalDate startDate, LocalDate endDate) {
+        LeaveRequest request = leaveRequestRepo.findById(leaveId)
+                .orElseThrow(() -> new RuntimeException("Leave request not found"));
+
+        if (!request.getEmployee().getManager().getEmployeeId().equals(managerId)) {
+            throw new RuntimeException("Unauthorized action");
+        }
+
+        if (leaveTypeId != null) {
+            LeaveType newType = leaveTypeRepo.findById(leaveTypeId)
+                    .orElseThrow(() -> new RuntimeException("Leave type not found"));
+            request.setLeaveType(newType);
+        }
+
+        if (startDate != null && endDate != null) {
+            request.setStartDate(startDate);
+            request.setEndDate(endDate);
+            request.setDaysRequested((int) ChronoUnit.DAYS.between(startDate, endDate) + 1);
+        }
+
+        return leaveRequestRepo.save(request);
+    }
+
 }
