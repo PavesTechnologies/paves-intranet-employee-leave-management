@@ -1,5 +1,7 @@
 package com.paves.employee_leave_management.serviceInterface;
 
+import com.paves.employee_leave_management.dto.LeaveRequestValidationDTO;
+import com.paves.employee_leave_management.dto.ValidationResultDTO;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 
 import java.util.List;
@@ -9,5 +11,5 @@ public interface LeaveRequestServiceInterface {
     LeaveRequest approveRequest(String leaveId,String managerId);
     LeaveRequest rejectRequest(String leaveId ,String managerId,String comment);
 
-    LeaveRequest updateRequest(String leaveId, String employeeId, LeaveRequest leaveRequest);
+     ValidationResultDTO updateRequest(LeaveRequest leaveRequest);
 }

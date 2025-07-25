@@ -60,7 +60,7 @@ public class LeaveBalanceController {
         return ResponseEntity.ok("Monthly process triggered successfully.");
     }
 
-    @PostMapping("/approve")
+    @PostMapping("/update-leave-balance")
     public ResponseEntity<String> approveLeave(
             @RequestParam String employeeId,
             @RequestParam String leaveTypeId,
