@@ -2,11 +2,28 @@ package com.paves.employee_leave_management.dao;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
+// <<<<<<< feature/leaveType
+// // <<<<<<< feature/leaveType
+// // import jakarta.persistence.EntityManager;
+// // import jakarta.persistence.NoResultException;
+// // import jakarta.persistence.PersistenceContext;
+// // =======
+// // import com.paves.employee_leave_management.entities.LeaveBalance;
+// // >>>>>>> main
+// =======
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.PersistenceContext;
+
 import com.paves.employee_leave_management.entities.LeaveBalance;
+
+// >>>>>>> main
 import lombok.*;
 import org.springframework.stereotype.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -35,6 +52,10 @@ public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
     }
 
     @Override
+    public LeaveBalance findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId,String leaveTypeId, int year) {
+        return leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+    }
+    @Override
     public List<LeaveBalance> findByEmployeeId(String employeeId) {
         return leaveBalanceRepo.findByEmployeeEmployeeId(employeeId);
     }
@@ -42,5 +63,27 @@ public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
     @Override
     public List<LeaveBalance> findByLeaveId(String leaveId) {
         return leaveBalanceRepo.findByLeaveTypeLeaveTypeId(leaveId);
+    }
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    public Optional<LeaveBalance> findByEmployeeIdAndLeaveTypeIdAndYear(
+            String employeeId, String leaveTypeId, Integer year
+    ) {
+        String jpql = "SELECT lb FROM LeaveBalance lb " +
+                "WHERE lb.employee.employeeId = :employeeId " +
+                "AND lb.leaveType.leaveTypeId = :leaveTypeId " +
+                "AND lb.year = :year";
+        try {
+            LeaveBalance result = entityManager.createQuery(jpql, LeaveBalance.class)
+                    .setParameter("employeeId", employeeId)
+                    .setParameter("leaveTypeId", leaveTypeId)
+                    .setParameter("year", year)
+                    .getSingleResult();
+            return Optional.of(result);
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
     }
 }

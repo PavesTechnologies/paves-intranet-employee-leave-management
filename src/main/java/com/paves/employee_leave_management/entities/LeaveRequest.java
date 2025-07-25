@@ -1,7 +1,11 @@
 package com.paves.employee_leave_management.entities;
 
+import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -71,6 +75,10 @@ public class LeaveRequest {
     @Column(name = "response_date")
     private LocalDate responseDate;
 
+    @Column(name = "leave_name")
+    private LocalDate leaveName;
+
+
     // Custom constructor for essential fields
     public LeaveRequest(Employee employee, LeaveType leaveType, LocalDate startDate,
                         LocalDate endDate, Integer daysRequested, String reason) {
@@ -82,5 +90,9 @@ public class LeaveRequest {
         this.reason = reason;
         this.status = LeaveStatus.PENDING;
         this.requestDate = LocalDate.now();
+    }
+
+    public LeaveTypeRepo getLeaveName() {
+        return null;
     }
 }
