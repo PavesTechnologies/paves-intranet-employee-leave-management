@@ -15,6 +15,6 @@ public class LeaveRequestValidationDTO {
     private String leaveTypeId;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Integer daysRequested;
+    private double daysRequested;
     private String reason;
 }

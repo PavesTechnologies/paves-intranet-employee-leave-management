@@ -48,7 +48,7 @@ public class LeaveRequest {
     private LocalDate endDate;
 
     @Column(name = "days_requested", nullable = false)
-    private Integer daysRequested;
+    private double daysRequested;
 
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;

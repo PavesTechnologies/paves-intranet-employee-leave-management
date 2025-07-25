@@ -11,6 +11,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/leave-requests")
 @RequiredArgsConstructor
+
 public class LeaveRequestController {
 
     private final LeaveRequestServiceInterface leaveRequestService;

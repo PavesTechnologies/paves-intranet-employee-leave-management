@@ -27,4 +27,23 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'APPROVED' " +
+            "ORDER BY lr.startDate ASC")
+    List<LeaveRequest> findApprovedLeavesByType(@Param("employeeId") String employeeId,
+                                                @Param("leaveTypeId") String leaveTypeId);
+
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'PENDING'")
+    int countPendingLeavesByType(@Param("employeeId") String employeeId,
+                                 @Param("leaveTypeId") String leaveTypeId);
+
+
+
+
 }

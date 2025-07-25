@@ -12,7 +12,6 @@ import com.paves.employee_leave_management.serviceInterface.LeaveValidationServi
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLOutput;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -42,7 +41,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         ValidationResultDTO result = ValidationResultDTO.builder()
                 .isValid(true)
                 .employeeId(request.getEmployeeId())
-                .requestedDays(request.getDaysRequested())
+                .requestedDays((float) request.getDaysRequested())
                 .build();
 
         System.out.println(request);
@@ -80,6 +79,9 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
 
         // Validate leave type specific rules
         validateLeaveTypeRules(request, result, employee, leaveType);
+
+
+
 
         return result;
     }
@@ -144,12 +146,6 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         }
 
         System.out.println("valid");
-//        // Validate days requested matches date range
-//        long calculatedDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
-//        if (request.getDaysRequested() != calculatedDays) {
-//            result.addError(String.format("Days requested (%d) doesn't match date range (%d days)",
-//                    request.getDaysRequested(), calculatedDays));
-//        }
     }
 
     private void validateBalance(LeaveRequestValidationDTO request, ValidationResultDTO result,
@@ -172,7 +168,7 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
         if (!leaveType.getAllowNegativeBalance() &&
                 balance.getRemainingLeaves() < request.getDaysRequested()) {
             result.addError(String.format(
-                    "Insufficient %s balance. Available: %f days, Requested: %d days",
+                    "Insufficient %s balance. Available: %.2f days, Requested: %.2f days",
                     leaveType.getLeaveName(), balance.getRemainingLeaves(), request.getDaysRequested()));
         }
 
@@ -207,11 +203,84 @@ public class LeaveValidationServiceImpl implements LeaveValidationServiceInterfa
             result.addError("Leave reason/comments are mandatory");
         }
 
+        if ("L-ML".equalsIgnoreCase(request.getLeaveTypeId())) {
+
+            // Only females can apply
+//            if (!"Female".equalsIgnoreCase(employee.getGender())) {
+//                result.addError("Maternity leave is only applicable for female employees.");
+//                return;
+//            }
+            // Pending maternity leave check
+            int pendingCount = leaveRequestRepo.countPendingLeavesByType(employee.getEmployeeId(), "L-ML");
+            if (pendingCount > 0) {
+                result.addError("You already have a pending maternity leave request.");
+                return;
+            }
+
+
+            // Fetch all approved maternity leaves
+            List<LeaveRequest> approvedML = leaveRequestRepo.findApprovedLeavesByType(employee.getEmployeeId(), "L-ML");
+
+            // Count how many approved maternity leaves were >= 48 days
+            long longLeaves = approvedML.stream()
+                    .filter(lr -> lr.getDaysRequested() >= 48)
+                    .count();
+
+            // If already taken 2 such long maternity leaves, block the new one
+            if (request.getDaysRequested() >= 48 && longLeaves >= 2) {
+                result.addError("Maternity leave for 6 months (48+ days) can only be availed twice.");
+                return;
+            }
+
+            // If current request is for a long maternity leave but not exactly 180, warn
+            if (request.getDaysRequested() >= 48 && request.getDaysRequested() != 180) {
+                result.addError("Standard maternity leave should be exactly 180 days.");
+            }
+        }
+
         // Validate notice period restriction
 //        if (leaveType.getNoticePeriodRestriction()) {
 //            // Mock check - in real implementation, check if employee is in notice period
 //            // For now, we'll skip this validation
 //        }
+        if ("L-PL".equalsIgnoreCase(request.getLeaveTypeId())) {
+            // Check prior approvals
+            int pendingCount = leaveRequestRepo.countPendingLeavesByType(employee.getEmployeeId(), "L-PL");
+            if (pendingCount > 0) {
+                result.addError("You already have a pending paternity leave request. Please wait for it to be approved or rejected.");
+                return;
+            }
+
+            List<LeaveRequest> approvedPL = leaveRequestRepo.findApprovedLeavesByType(employee.getEmployeeId(), "L-PL");
+
+            if (approvedPL.size() >= 2) {
+                result.addError("Paternity leave can only be availed twice. You have already used the maximum limit.");
+                return;
+            }
+
+            if (request.getDaysRequested() != 5) {
+                result.addError("Paternity leave must be exactly 5 continuous days.");
+            }
+
+//            // Must be within 21 days of child birth
+//            if (request.getChildBirthDate() == null) {
+//                result.addError("Child birth date is required for paternity leave.");
+//            } else {
+//                long daysSinceBirth = ChronoUnit.DAYS.between(request.getChildBirthDate(), request.getStartDate());
+//                if (daysSinceBirth > 21) {
+//                    result.addError("Paternity leave must be taken within 21 days of child birth.");
+//                }
+//            }
+
+            // Check for 1-year gap if there’s a prior leave
+            if (approvedPL.size() == 1) {
+                LeaveRequest previousLeave = approvedPL.getFirst();
+                long gap = ChronoUnit.DAYS.between(previousLeave.getStartDate(), request.getStartDate());
+                if (gap < 365) {
+                    result.addError("There must be a minimum 1-year gap between two paternity leaves.");
+                }
+            }
+        }
 
         // Validate half-day restrictions
         if (!leaveType.getAllowHalfDay() && request.getDaysRequested() < 1) {

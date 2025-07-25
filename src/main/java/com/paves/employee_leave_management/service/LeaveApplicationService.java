@@ -1,5 +1,7 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.ApiResponse;
+import com.paves.employee_leave_management.dto.ValidationResultDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -9,6 +11,7 @@ import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.dto.LeaveRequestValidationDTO;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +31,13 @@ public class LeaveApplicationService {
     @Autowired
     private LeaveTypeRepo leaveTypeRepository;
 
+    @Autowired
+    private LeaveValidationServiceImpl leaveValidationService;
+
+
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
-        // Fetch employee and leave type entities
+
+
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + request.getEmployeeId()));
 
@@ -48,7 +56,7 @@ public class LeaveApplicationService {
                 leaveType,
                 request.getStartDate(),
                 request.getEndDate(),
-                request.getDaysRequested(),
+                (int) request.getDaysRequested(),
                 request.getReason()
         );
 
