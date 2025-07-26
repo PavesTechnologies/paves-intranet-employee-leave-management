@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.repo;
 
+import aj.org.objectweb.asm.commons.Remapper;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveStatus;
@@ -29,6 +30,10 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
                                              @Param("endDate") LocalDate endDate);
     List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
+//<<<<<<< feature/leaveType
+
+    Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
+//=======
     List<LeaveRequest> findByEmployee_EmployeeId(String employeeId);
 
     @Query("SELECT lr FROM LeaveRequest lr " +
@@ -54,4 +59,5 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
             "WHERE lr.leaveId = :leaveId AND lr.employee.employeeId = :employeeId")
     Optional<LeaveRequest> findByLeaveIdAndEmployeeIdWithDetails(@Param("leaveId") String leaveId, 
                                                                  @Param("employeeId") String employeeId);
+//>>>>>>> main
 }
