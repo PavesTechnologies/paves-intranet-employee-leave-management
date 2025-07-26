@@ -48,5 +48,10 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
 
     Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
 
-
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "JOIN FETCH lr.employee " +
+            "JOIN FETCH lr.leaveType " +
+            "WHERE lr.leaveId = :leaveId AND lr.employee.employeeId = :employeeId")
+    Optional<LeaveRequest> findByLeaveIdAndEmployeeIdWithDetails(@Param("leaveId") String leaveId, 
+                                                                 @Param("employeeId") String employeeId);
 }

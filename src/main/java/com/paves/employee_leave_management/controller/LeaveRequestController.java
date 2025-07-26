@@ -1,8 +1,12 @@
 package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.*;
+import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
+import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -20,6 +24,8 @@ import java.util.List;
 public class LeaveRequestController {
 
     private final LeaveRequestServiceInterface leaveRequestService;
+    private final EmployeeServiceInterface employeeService;
+    private final LeaveTypeServiceInterface leaveTypeService;
     
     // ==================== EMPLOYEE OPERATIONS ====================
     
@@ -51,8 +57,33 @@ public class LeaveRequestController {
      * Update leave request by employee
      */
     @PutMapping("/employee/update")
-    public ResponseEntity<ApiResponse<ValidationResultDTO>> updateLeaveRequest(@RequestBody LeaveRequest leaveRequest) {
+    public ResponseEntity<ApiResponse<ValidationResultDTO>> updateLeaveRequest(@RequestBody LeaveRequestUpdateDTO updateRequest) {
         try {
+            // Get the employee and leave type entities
+            Employee employee = employeeService.getByEmployeeId(updateRequest.getEmployeeId()).getBody();
+            LeaveType leaveType = leaveTypeService.getLeaveTypeById(updateRequest.getLeaveTypeId()).getBody();
+            
+            if (employee == null) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(false, "Employee not found", null));
+            }
+            
+            if (leaveType == null) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(false, "Leave type not found", null));
+            }
+            
+            // Create LeaveRequest object with proper entities
+            LeaveRequest leaveRequest = LeaveRequest.builder()
+                    .leaveId(updateRequest.getLeaveId())
+                    .employee(employee)
+                    .leaveType(leaveType)
+                    .startDate(updateRequest.getStartDate())
+                    .endDate(updateRequest.getEndDate())
+                    .daysRequested(updateRequest.getDaysRequested())
+                    .reason(updateRequest.getReason())
+                    .build();
+            
             ValidationResultDTO result = leaveRequestService.updateRequest(leaveRequest);
             if (result.isValid()) {
                 return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
