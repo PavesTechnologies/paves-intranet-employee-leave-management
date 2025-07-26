@@ -87,6 +87,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .endDate(request.getEndDate())
                 .daysRequested(request.getDaysRequested())
                 .reason(request.getReason())
+                .driveLink(request.getDriveLink())
                 .build();
 
         return validateLeaveRequest(dto);
@@ -112,7 +113,56 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             result.addError("Leave reason/comments are mandatory");
         }
 
+        // Validate drive link for documentation requirements
+        validateDriveLinkRequirements(request, result, leaveType);
+
         return true;
+    }
+
+    /**
+     * Validates drive link requirements based on leave type documentation needs
+     */
+    private void validateDriveLinkRequirements(LeaveRequestValidationDTO request, ValidationResultDTO result, LeaveType leaveType) {
+        // Check if leave type requires documentation
+        if (leaveType.getRequiresDocumentation()) {
+            // For leave types that require documentation, drive link should be provided
+            if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
+                result.addError("Drive link with supporting documents is required for " + leaveType.getLeaveName());
+            } else {
+                // Validate drive link format (basic URL validation)
+                validateDriveLinkFormat(request.getDriveLink(), result);
+            }
+        }
+        
+        // For sick leave specifically, check if drive link is required for longer durations
+        if ("Sick Leave".equalsIgnoreCase(leaveType.getLeaveName()) && request.getDaysRequested() > 3) {
+            if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
+                result.addError("Drive link with medical certificate is mandatory for sick leave exceeding 3 days");
+            }
+        }
+    }
+
+    /**
+     * Validates the format of the drive link URL
+     */
+    private void validateDriveLinkFormat(String driveLink, ValidationResultDTO result) {
+        if (driveLink != null && !driveLink.trim().isEmpty()) {
+            String trimmedLink = driveLink.trim();
+            
+            // Basic URL format validation
+            if (!trimmedLink.startsWith("http://") && !trimmedLink.startsWith("https://")) {
+                result.addError("Drive link must be a valid URL starting with http:// or https://");
+                return;
+            }
+            
+            // Check if it's a Google Drive link (optional - can be any cloud storage)
+            if (trimmedLink.contains("drive.google.com") || trimmedLink.contains("docs.google.com")) {
+                // Additional validation for Google Drive links if needed
+                if (!trimmedLink.contains("/") || trimmedLink.length() < 20) {
+                    result.addError("Invalid Google Drive link format");
+                }
+            }
+        }
     }
 
     /**
@@ -383,33 +433,30 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
      */
     @Override
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
-        // First validate the request
+        // Validate the request first
         ValidationResultDTO validationResult = validateLeaveRequest(request);
+        
         if (!validationResult.isValid()) {
             throw new RuntimeException("Leave request validation failed: " + 
-                String.join("; ", validationResult.getErrors()));
+                String.join(", ", validationResult.getErrors()));
         }
 
-        // Fetch employee and leave type entities
+        // Get employee and leave type
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
         LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
 
-        if (employee == null) {
-            throw new RuntimeException("Employee not found with ID: " + request.getEmployeeId());
-        }
-        if (leaveType == null) {
-            throw new RuntimeException("Leave type not found with ID: " + request.getLeaveTypeId());
-        }
-
-        // Create and save leave request
-        LeaveRequest leaveRequest = new LeaveRequest(
-                employee,
-                leaveType,
-                request.getStartDate(),
-                request.getEndDate(),
-                (int) request.getDaysRequested(),
-                request.getReason()
-        );
+        // Create new leave request
+        LeaveRequest leaveRequest = LeaveRequest.builder()
+                .employee(employee)
+                .leaveType(leaveType)
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .daysRequested(request.getDaysRequested())
+                .reason(request.getReason())
+                .driveLink(request.getDriveLink())
+                .status(LeaveStatus.PENDING)
+                .requestDate(LocalDate.now())
+                .build();
 
         return leaveRequestRepo.save(leaveRequest);
     }
@@ -580,11 +627,32 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         throw new LeaveBalanceExceptionHandler(
                                 "Cannot update a leave request that has already been approved or rejected.");
                     }
+                    
+                    // Validate the new request data
                     ValidationResultDTO validationResult = validateLeaveRequest(request);
 
-                    // If validation passes, update the existing request
+                    // If validation passes, update the existing request with new data
                     if (validationResult.isValid()) {
-                        LeaveRequest updatedRequest = leaveRequestRepo.save(leaveRequest);
+                        // Get updated leave type if changed
+                        LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
+                        
+                        // Update all fields from the validation DTO
+                        existingRequest.setLeaveType(leaveType);
+                        existingRequest.setStartDate(request.getStartDate());
+                        existingRequest.setEndDate(request.getEndDate());
+                        existingRequest.setDaysRequested(request.getDaysRequested());
+                        existingRequest.setReason(request.getReason());
+                        existingRequest.setDriveLink(request.getDriveLink());
+                        
+                        // Reset approval state since request is being modified
+                        existingRequest.setApprovedBy(null);
+                        existingRequest.setResponseDate(null);
+                        existingRequest.setManagerComment(null);
+                        existingRequest.setStatus(LeaveStatus.PENDING);
+                        
+                        // Save the updated request
+                        LeaveRequest updatedRequest = leaveRequestRepo.save(existingRequest);
+                        
                         // Add success message to validation result
                         validationResult.addMessage("Leave request updated successfully");
                         validationResult.setLeaveId(updatedRequest.getLeaveId());
