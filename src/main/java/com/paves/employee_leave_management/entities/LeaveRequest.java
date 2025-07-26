@@ -50,10 +50,13 @@ public class LeaveRequest {
     private LocalDate endDate;
 
     @Column(name = "days_requested", nullable = false)
-    private Integer daysRequested;
+    private double daysRequested;
 
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
+
+    @Column(name = "drive_link", columnDefinition = "TEXT")
+    private String driveLink;
 
     @Column(name = "manager_comment", columnDefinition = "TEXT")
     private String managerComment;
@@ -81,13 +84,14 @@ public class LeaveRequest {
 
     // Custom constructor for essential fields
     public LeaveRequest(Employee employee, LeaveType leaveType, LocalDate startDate,
-                        LocalDate endDate, Integer daysRequested, String reason) {
+                        LocalDate endDate, Integer daysRequested, String reason, String driveLink) {
         this.employee = employee;
         this.leaveType = leaveType;
         this.startDate = startDate;
         this.endDate = endDate;
         this.daysRequested = daysRequested;
         this.reason = reason;
+        this.driveLink = driveLink;
         this.status = LeaveStatus.PENDING;
         this.requestDate = LocalDate.now();
     }

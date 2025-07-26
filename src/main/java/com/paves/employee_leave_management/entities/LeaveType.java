@@ -42,8 +42,8 @@ public class LeaveType {
     @Column(name = "requires_documentation", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean requiresDocumentation = false;
 
-    @Column(name = "accrual_rate", precision = 3, scale = 2)
-    private BigDecimal accrualRate;
+    @Column(name = "accrual_rate")
+    private Double accrualRate;
 
     @Column(name = "accrual_frequency", length = 20)
     private String accrualFrequency;
