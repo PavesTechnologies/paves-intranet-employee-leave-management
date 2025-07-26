@@ -10,9 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.Year;
 import java.util.List;
 
-
+/**
+ * @author paves
+ */
 @CrossOrigin
 @RestController
 @RequestMapping("/api/leave-balance")
@@ -66,8 +70,8 @@ public class LeaveBalanceController {
             @RequestParam String leaveTypeId,
             @RequestParam double approvedDays
     ) {
-        leaveBalanceService.updateLeaveBalanceAfterApproval(employeeId, leaveTypeId, approvedDays);
+        int currentYear = Year.now().getValue();
+        leaveBalanceService.updateLeaveBalanceAfterApproval(employeeId, leaveTypeId, approvedDays, currentYear);
         return ResponseEntity.ok("Leave approved and balance updated successfully.");
     }
 }
-

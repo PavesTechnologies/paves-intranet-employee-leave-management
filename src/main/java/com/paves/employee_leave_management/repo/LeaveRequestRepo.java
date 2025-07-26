@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.repo;
 
 import aj.org.objectweb.asm.commons.Remapper;
+import com.paves.employee_leave_management.dto.ManagerQueryDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveStatus;
@@ -14,7 +15,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
+public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
+
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.leaveId = :leaveId")
+    Optional<LeaveRequest> findById(@Param("leaveId") String leaveId);
 
     List<LeaveRequest> findByEmployee(Employee employee);
 
@@ -30,10 +34,11 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
                                              @Param("endDate") LocalDate endDate);
     List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
-//<<<<<<< feature/leaveType
+
+    Optional<LeaveRequest> findByLeaveIdAndEmployee_Manager_EmployeeId(String leaveId, String managerId);
 
     Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
-//=======
+
     List<LeaveRequest> findByEmployee_EmployeeId(String employeeId);
 
     @Query("SELECT lr FROM LeaveRequest lr " +
@@ -51,7 +56,6 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     int countPendingLeavesByType(@Param("employeeId") String employeeId,
                                  @Param("leaveTypeId") String leaveTypeId);
 
-    Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
 
     @Query("SELECT lr FROM LeaveRequest lr " +
             "JOIN FETCH lr.employee " +
@@ -59,5 +63,18 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
             "WHERE lr.leaveId = :leaveId AND lr.employee.employeeId = :employeeId")
     Optional<LeaveRequest> findByLeaveIdAndEmployeeIdWithDetails(@Param("leaveId") String leaveId, 
                                                                  @Param("employeeId") String employeeId);
-//>>>>>>> main
+
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} " +
+            "AND (:#{#queryDTO.status} IS NULL AND lr.status = 'PENDING' OR lr.status = :#{#queryDTO.status}) " +
+            "AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId}) " +
+            "AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId}) " +
+            "AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})")
+    List<LeaveRequest> findManagerRequestsByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
+
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} " +
+            "AND (:#{#queryDTO.status} IS NULL AND lr.status IN ('APPROVED', 'REJECTED', 'CANCELLED') OR lr.status = :#{#queryDTO.status}) " +
+            "AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId}) " +
+            "AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId}) " +
+            "AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})")
+    List<LeaveRequest> findManagerHistoryByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
 }

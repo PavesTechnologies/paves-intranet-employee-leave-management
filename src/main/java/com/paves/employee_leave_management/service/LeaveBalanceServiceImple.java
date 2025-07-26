@@ -330,14 +330,13 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Transactional
     @Override
-    public void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays) {
+    public void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays, int year) {
         if (approvedDays <= 0) {
             throw new LeaveBalanceExceptionHandler("Approved days must be greater than 0");
         }
 
         LeaveBalance balance = leaveBalanceRepo
-                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeId(employeeId, leaveTypeId)
-                .orElseThrow(() -> new LeaveBalanceExceptionHandler("Leave balance not found for employee " + employeeId + " and leave type " + leaveTypeId));
+                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
 
         balance.setUsedLeaves(balance.getUsedLeaves() + approvedDays);
         balance.updateRemainingLeaves();
