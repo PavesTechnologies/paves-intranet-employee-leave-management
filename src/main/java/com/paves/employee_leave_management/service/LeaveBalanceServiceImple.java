@@ -186,7 +186,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Override
     public void processYearEndCarryForward() {
-        List<LeaveBalance> balances = leaveBalanceRepo.findAll();
+        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear() - 1);
         if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
@@ -221,7 +221,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     newbalance.setCarriedForward(0);
                     newbalance.setExpiredLeaves(unused);
             }
-
             newbalance.setYear(balance.getYear() + 1);
             newbalance.setLastAccrualDate(LocalDate.now());
             newbalance.setUsedLeaves(0);
@@ -243,15 +242,16 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Override
     public void triggerMonthlyLeaveAccrual() {
-        List<LeaveBalance> balances = leaveBalanceRepo.findAll();
+        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear());
         if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
         LocalDate now = LocalDate.now();
 
-        if (now.getDayOfMonth() != 1) return;
+        if (now.getDayOfMonth() != 1) throw new LeaveBalanceExceptionHandler("Accrual can only be triggered on the first day of the month");
 
         for (LeaveBalance balance : balances) {
+            System.out.println(balance.toString());
             Employee emp = balance.getEmployee();
             LeaveType type = balance.getLeaveType();
             LocalDate hireDate = emp.getHireDate();
@@ -268,11 +268,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             double accrual = 0;
 
             if (type.getLeaveName().equalsIgnoreCase("Sick Leave")) {
-                accrual = 1.0;
+                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
             }
 
             if (type.getLeaveName().equalsIgnoreCase("Earned Leave")) {
-                accrual = 1.25;
+                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;;
             }
 
             if (accrual > 0) {
