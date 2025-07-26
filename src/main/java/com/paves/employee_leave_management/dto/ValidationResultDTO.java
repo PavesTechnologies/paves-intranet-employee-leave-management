@@ -18,10 +18,13 @@ public class ValidationResultDTO {
     private boolean isValid;
     @Builder.Default
     private List<String> errors = new ArrayList<>();
+    @Builder.Default
+    private List<String> messages = new ArrayList<>();
     private String employeeId;
     private String employeeName;
     private float availableBalance;
     private float requestedDays;
+    private String leaveId;
 
     public void addError(String error) {
         if (errors == null) {
@@ -29,5 +32,12 @@ public class ValidationResultDTO {
         }
         errors.add(error);
         this.isValid = false;
+    }
+    
+    public void addMessage(String message) {
+        if (messages == null) {
+            messages = new ArrayList<>();
+        }
+        messages.add(message);
     }
 }

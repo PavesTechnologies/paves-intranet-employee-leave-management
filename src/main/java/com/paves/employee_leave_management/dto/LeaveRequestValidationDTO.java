@@ -11,10 +11,12 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class LeaveRequestValidationDTO {
+    private String leaveId;
     private String employeeId;
     private String leaveTypeId;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Integer daysRequested;
+    private double daysRequested;
     private String reason;
+    private String driveLink;
 }

@@ -29,9 +29,29 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
                                              @Param("endDate") LocalDate endDate);
     List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
+    List<LeaveRequest> findByEmployee_EmployeeId(String employeeId);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'APPROVED' " +
+            "ORDER BY lr.startDate ASC")
+    List<LeaveRequest> findApprovedLeavesByType(@Param("employeeId") String employeeId,
+                                                @Param("leaveTypeId") String leaveTypeId);
+
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'PENDING'")
+    int countPendingLeavesByType(@Param("employeeId") String employeeId,
+                                 @Param("leaveTypeId") String leaveTypeId);
+
+    Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "JOIN FETCH lr.employee " +
+            "JOIN FETCH lr.leaveType " +
+            "WHERE lr.leaveId = :leaveId AND lr.employee.employeeId = :employeeId")
+    Optional<LeaveRequest> findByLeaveIdAndEmployeeIdWithDetails(@Param("leaveId") String leaveId, 
+                                                                 @Param("employeeId") String employeeId);
 }
-
-
-    
-
-   
