@@ -574,22 +574,54 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
                 leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
                 .map(existingRequest -> {
+                    // Check if request can be updated (only PENDING requests)
                     if (existingRequest.getStatus().equals(LeaveStatus.APPROVED) || 
                         existingRequest.getStatus().equals(LeaveStatus.REJECTED)) {
                         throw new LeaveBalanceExceptionHandler(
                                 "Cannot update a leave request that has already been approved or rejected.");
                     }
                     
+                    // Create validation DTO with NEW values from the update request
                     LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
-                            .employeeId(existingRequest.getEmployee().getEmployeeId())
-                            .leaveTypeId(existingRequest.getLeaveType().getLeaveTypeId())
-                            .startDate(existingRequest.getStartDate())
-                            .endDate(existingRequest.getEndDate())
-                            .daysRequested(existingRequest.getDaysRequested())
-                            .reason(existingRequest.getReason())
+                            .employeeId(leaveRequest.getEmployee().getEmployeeId())
+                            .leaveTypeId(leaveRequest.getLeaveType().getLeaveTypeId())
+                            .startDate(leaveRequest.getStartDate())
+                            .endDate(leaveRequest.getEndDate())
+                            .daysRequested(leaveRequest.getDaysRequested())
+                            .reason(leaveRequest.getReason())
                             .build();
                     
-                    return validateLeaveRequest(validationDTO);
+                    // Validate the new request data
+                    ValidationResultDTO validationResult = validateLeaveRequest(validationDTO);
+                    
+                    // If validation passes, update the existing request
+                    if (validationResult.isValid()) {
+                        // Get the updated leave type (in case it changed)
+                        LeaveType updatedLeaveType = leaveTypeService.getLeaveTypeById(
+                                leaveRequest.getLeaveType().getLeaveTypeId()).getBody();
+                        
+                        // Update all fields with new values
+                        existingRequest.setLeaveType(updatedLeaveType);
+                        existingRequest.setStartDate(leaveRequest.getStartDate());
+                        existingRequest.setEndDate(leaveRequest.getEndDate());
+                        existingRequest.setDaysRequested(leaveRequest.getDaysRequested());
+                        existingRequest.setReason(leaveRequest.getReason());
+                        
+                        // Reset approval fields since this is a new request version
+                        existingRequest.setApprovedBy(null);
+                        existingRequest.setResponseDate(null);
+                        existingRequest.setManagerComment(null);
+                        existingRequest.setStatus(LeaveStatus.PENDING);
+                        
+                        // Save the updated request to database
+                        LeaveRequest updatedRequest = leaveRequestRepo.save(existingRequest);
+                        
+                        // Add success message to validation result
+                        validationResult.addMessage("Leave request updated successfully");
+                        validationResult.setLeaveId(updatedRequest.getLeaveId());
+                    }
+                    
+                    return validationResult;
                 })
                 .orElseThrow(() -> new RuntimeException("Leave request not found"));
     }
