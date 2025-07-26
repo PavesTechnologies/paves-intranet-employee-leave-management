@@ -11,6 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 public class LeaveRequestValidationDTO {
+    private String leaveId;
     private String employeeId;
     private String leaveTypeId;
     private LocalDate startDate;

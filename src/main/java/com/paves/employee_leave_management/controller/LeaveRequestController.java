@@ -57,11 +57,11 @@ public class LeaveRequestController {
      * Update leave request by employee
      */
     @PutMapping("/employee/update")
-    public ResponseEntity<ApiResponse<ValidationResultDTO>> updateLeaveRequest(@RequestBody LeaveRequestUpdateDTO updateRequest) {
-        try {
+    public ResponseEntity<ApiResponse<ValidationResultDTO>> updateLeaveRequest(@RequestBody LeaveRequestValidationDTO validationDTO) {
+
             // Get the employee and leave type entities
-            Employee employee = employeeService.getByEmployeeId(updateRequest.getEmployeeId()).getBody();
-            LeaveType leaveType = leaveTypeService.getLeaveTypeById(updateRequest.getLeaveTypeId()).getBody();
+            Employee employee = employeeService.getByEmployeeId(validationDTO.getEmployeeId()).getBody();
+            LeaveType leaveType = leaveTypeService.getLeaveTypeById(validationDTO.getLeaveTypeId()).getBody();
             
             if (employee == null) {
                 return ResponseEntity.badRequest()
@@ -75,16 +75,17 @@ public class LeaveRequestController {
             
             // Create LeaveRequest object with proper entities
             LeaveRequest leaveRequest = LeaveRequest.builder()
-                    .leaveId(updateRequest.getLeaveId())
+                    .leaveId(validationDTO.getLeaveId())
                     .employee(employee)
                     .leaveType(leaveType)
-                    .startDate(updateRequest.getStartDate())
-                    .endDate(updateRequest.getEndDate())
-                    .daysRequested(updateRequest.getDaysRequested())
-                    .reason(updateRequest.getReason())
+                    .startDate(validationDTO.getStartDate())
+                    .endDate(validationDTO.getEndDate())
+                    .daysRequested(validationDTO.getDaysRequested())
+                    .reason(validationDTO.getReason())
+                    .requestDate(LocalDate.now())
                     .build();
             
-            ValidationResultDTO result = leaveRequestService.updateRequest(leaveRequest);
+            ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest,validationDTO);
             if (result.isValid()) {
                 return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
             } else {
@@ -92,10 +93,6 @@ public class LeaveRequestController {
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(false, errorMessage, result));
             }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error updating leave request: " + e.getMessage(), null));
-        }
     }
 
     /**

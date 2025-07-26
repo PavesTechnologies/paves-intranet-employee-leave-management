@@ -17,7 +17,7 @@ public interface LeaveRequestServiceInterface {
     LeaveRequest updateLeaveRequestByManager(String leaveId, String managerId, String leaveTypeId, LocalDate startDate, LocalDate endDate);
 
     // Employee operations
-    ValidationResultDTO updateRequest(LeaveRequest leaveRequest);
+    ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest,LeaveRequestValidationDTO request);
     List<LeaveRequest> getLeaveRequestsByEmployee(String employeeId);
     LeaveRequest getLeaveRequestById(String leaveId);
     LeaveRequest cancelLeaveRequest(String leaveId, String employeeId);
