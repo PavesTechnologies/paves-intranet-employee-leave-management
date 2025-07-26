@@ -25,6 +25,7 @@ public class LeaveApplicationController {
     @Autowired
     private LeaveValidationServiceInterface leaveValidationService;
 
+    @CrossOrigin
     @PostMapping("/apply")
     public ResponseEntity<ApiResponse<LeaveRequest>> applyLeave(@Valid @RequestBody LeaveRequestValidationDTO request) {
         try {
