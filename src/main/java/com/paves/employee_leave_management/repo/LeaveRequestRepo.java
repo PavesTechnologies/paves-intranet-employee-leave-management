@@ -29,6 +29,7 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
                                              @Param("endDate") LocalDate endDate);
     List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
+    List<LeaveRequest> findByEmployee_EmployeeId(String employeeId);
 
     @Query("SELECT lr FROM LeaveRequest lr " +
             "WHERE lr.employee.employeeId = :employeeId " +
@@ -49,8 +50,3 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
 
 
 }
-
-
-
-
-
