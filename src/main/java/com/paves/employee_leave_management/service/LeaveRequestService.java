@@ -62,10 +62,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             return result;
         }
 
-        result.setEmployeeName(employee.getFullName());
+        if (employee != null) {
+            result.setEmployeeName(employee.getFullName());
+        }
 
         // Perform all validation checks
-        validateDateConstraints(request, result, leaveType);
+        validateBasicDateConstraints(request, result);
         validateLeaveBalance(request, result, employee, leaveType);
         validateLeaveConflicts(request, result);
         validateLeaveTypeSpecificRules(request, result, employee, leaveType);
@@ -114,52 +116,15 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     /**
-     * Validates all date-related constraints: date range, past dates, advance notice
+     * Validates basic date constraints that apply to ALL leave types
      */
-    private void validateDateConstraints(LeaveRequestValidationDTO request, ValidationResultDTO result, LeaveType leaveType) {
+    private void validateBasicDateConstraints(LeaveRequestValidationDTO request, ValidationResultDTO result) {
         LocalDate startDate = request.getStartDate();
         LocalDate endDate = request.getEndDate();
-        LocalDate today = LocalDate.now();
 
         // End date must be after or equal to start date
         if (endDate.isBefore(startDate)) {
             result.addError("End date must be after or equal to start date");
-            return;
-        }
-
-        // Validate past date restrictions
-        validatePastDateRestrictions(startDate, today, leaveType, result);
-
-        // Validate advance notice requirement
-        validateAdvanceNoticeRequirement(startDate, today, leaveType, result);
-    }
-
-    /**
-     * Validates past date restrictions based on leave type policy
-     */
-    private void validatePastDateRestrictions(LocalDate startDate, LocalDate today, LeaveType leaveType, ValidationResultDTO result) {
-        if (leaveType.getPastDateLimitDays() != null && leaveType.getPastDateLimitDays() > 0) {
-            LocalDate pastLimit = today.minusDays(leaveType.getPastDateLimitDays());
-            if (startDate.isBefore(pastLimit)) {
-                result.addError(String.format("Cannot request leave more than %d days in the past",
-                        leaveType.getPastDateLimitDays()));
-            }
-        } else if (startDate.isBefore(today.minusDays(1))) {
-            // Default: no past dates allowed except today
-            result.addError("Cannot request leave for past dates");
-        }
-    }
-
-    /**
-     * Validates advance notice requirement
-     */
-    private void validateAdvanceNoticeRequirement(LocalDate startDate, LocalDate today, LeaveType leaveType, ValidationResultDTO result) {
-        if (leaveType.getAdvanceNoticeDays() != null && leaveType.getAdvanceNoticeDays() > 0) {
-            long daysBetween = ChronoUnit.DAYS.between(today, startDate);
-            if (daysBetween < leaveType.getAdvanceNoticeDays()) {
-                result.addError(String.format("Leave request requires %d days advance notice",
-                        leaveType.getAdvanceNoticeDays()));
-            }
         }
     }
 
@@ -214,19 +179,39 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     /**
-     * Validates leave type specific business rules
+     * Validates leave type specific rules and constraints
      */
     private void validateLeaveTypeSpecificRules(LeaveRequestValidationDTO request, ValidationResultDTO result,
                                               Employee employee, LeaveType leaveType) {
         String leaveTypeId = request.getLeaveTypeId();
 
-        if ("L-ML".equalsIgnoreCase(leaveTypeId)) {
-            validateMaternityLeaveRules(request, result, employee);
-        } else if ("L-PL".equalsIgnoreCase(leaveTypeId)) {
-            validatePaternityLeaveRules(request, result, employee);
+        // Route to specific leave type validation methods
+        switch (leaveTypeId.toUpperCase()) {
+            case "L-ML":
+                validateMaternityLeaveRules(request, result, employee, leaveType);
+                break;
+            case "L-PL":
+                validatePaternityLeaveRules(request, result, employee, leaveType);
+                break;
+            case "L-COMPOFF":
+                validateCompensatoryLeaveRules(request, result, employee, leaveType);
+                break;
+            case "L-SL":
+                validateSickLeaveRules(request, result, employee, leaveType);
+                break;
+            case "L-EL":
+                validateEarnedLeaveRules(request, result, employee, leaveType);
+                break;
+            case "L-UL":
+                validateUnpaidLeaveRules(request, result, employee, leaveType);
+                break;
+            default:
+                // For any other leave types, apply default date and notice validations
+                validateDefaultLeaveRules(request, result, employee, leaveType);
+                break;
         }
 
-        // Validate half-day restrictions
+        // Validate half-day restrictions (applies to all leave types)
         if (!leaveType.getAllowHalfDay() && request.getDaysRequested() < 1) {
             result.addError(String.format("%s does not allow half-day leave", leaveType.getLeaveName()));
         }
@@ -235,7 +220,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     /**
      * Validates maternity leave specific rules
      */
-    private void validateMaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee) {
+    private void validateMaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
         // Check for pending maternity leave requests
         int pendingCount = leaveRequestRepo.countPendingLeavesByType(employee.getEmployeeId(), "L-ML");
         if (pendingCount > 0) {
@@ -261,12 +246,18 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         if (request.getDaysRequested() >= 48 && request.getDaysRequested() != 180) {
             result.addError("Standard maternity leave should be exactly 180 days.");
         }
+
+        // Validate past date restrictions
+        validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
+
+        // Validate advance notice requirement
+        validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
     }
 
     /**
      * Validates paternity leave specific rules
      */
-    private void validatePaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee) {
+    private void validatePaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
         // Check for pending paternity leave requests
         int pendingCount = leaveRequestRepo.countPendingLeavesByType(employee.getEmployeeId(), "L-PL");
         if (pendingCount > 0) {
@@ -291,6 +282,96 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             long gap = ChronoUnit.DAYS.between(previousLeave.getStartDate(), request.getStartDate());
             if (gap < 365) {
                 result.addError("There must be a minimum 1-year gap between two paternity leaves.");
+            }
+        }
+
+        // Validate past date restrictions
+        validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
+
+        // Validate advance notice requirement
+        validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
+    }
+
+    private void validateCompensatoryLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
+        // Check if documentation is required
+        if (leaveType.getRequiresDocumentation() && (request.getReason() == null || request.getReason().trim().isEmpty())) {
+            result.addError("Compensatory leave requires documentation/proof of overtime work");
+        }
+        
+        // Apply standard date and notice validations
+        validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
+        validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
+    }
+
+    private void validateSickLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
+        // Check if documentation is required for sick leave
+        if (leaveType.getRequiresDocumentation() && request.getDaysRequested() > 3) {
+            result.addError("Sick leave for more than 3 days requires medical certificate");
+        }
+        
+        // Sick leave may have different date restrictions (allow past dates for emergencies)
+        // For now, apply standard validations - can be customized later
+        validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
+        validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
+    }
+
+    private void validateEarnedLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
+        // Check waiting period for earned leave eligibility
+        if (leaveType.getWaitingPeriodDays() > 0) {
+            LocalDate eligibilityDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
+            if (LocalDate.now().isBefore(eligibilityDate)) {
+                result.addError(String.format("Earned leave requires %d days of service before eligibility", 
+                    leaveType.getWaitingPeriodDays()));
+            }
+        }
+        
+        // Apply standard date and notice validations
+        validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
+        validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
+    }
+
+    private void validateUnpaidLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
+        // Unpaid leave typically requires documentation
+        if (leaveType.getRequiresDocumentation() && (request.getReason() == null || request.getReason().trim().isEmpty())) {
+            result.addError("Unpaid leave requires detailed justification");
+        }
+        
+        // Apply standard date and notice validations
+        validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
+        validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
+    }
+
+    private void validateDefaultLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
+        // Apply standard date and notice validations for any leave type not explicitly handled
+        validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
+        validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
+    }
+
+    /**
+     * Validates past date restrictions based on leave type policy
+     */
+    private void validatePastDateRestrictions(LocalDate startDate, LocalDate today, LeaveType leaveType, ValidationResultDTO result) {
+        if (leaveType.getPastDateLimitDays() != null && leaveType.getPastDateLimitDays() > 0) {
+            LocalDate pastLimit = today.minusDays(leaveType.getPastDateLimitDays());
+            if (startDate.isBefore(pastLimit)) {
+                result.addError(String.format("Cannot request leave more than %d days in the past",
+                        leaveType.getPastDateLimitDays()));
+            }
+        } else if (startDate.isBefore(today.minusDays(1))) {
+            // Default: no past dates allowed except today
+            result.addError("Cannot request leave for past dates");
+        }
+    }
+
+    /**
+     * Validates advance notice requirement
+     */
+    private void validateAdvanceNoticeRequirement(LocalDate startDate, LocalDate today, LeaveType leaveType, ValidationResultDTO result) {
+        if (leaveType.getAdvanceNoticeDays() != null && leaveType.getAdvanceNoticeDays() > 0) {
+            long daysBetween = ChronoUnit.DAYS.between(today, startDate);
+            if (daysBetween < leaveType.getAdvanceNoticeDays()) {
+                result.addError(String.format("Leave request requires %d days advance notice",
+                        leaveType.getAdvanceNoticeDays()));
             }
         }
     }
