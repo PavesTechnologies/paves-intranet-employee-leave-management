@@ -19,4 +19,6 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
     Optional<LeaveBalance> findByEmployee_EmployeeIdAndLeaveType_LeaveTypeId(String employeeId, String leaveTypeId);
 
     LeaveBalance findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
+
+    List<LeaveBalance> findAllByYear(int year);
 }
