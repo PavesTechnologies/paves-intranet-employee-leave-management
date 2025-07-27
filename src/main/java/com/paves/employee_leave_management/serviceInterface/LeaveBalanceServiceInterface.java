@@ -8,7 +8,9 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
-
+/**
+ * 
+ */
 public interface LeaveBalanceServiceInterface {
     LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year);
     void createLeaveBalanceForNewEmployee(String EmpId);
@@ -23,6 +25,5 @@ public interface LeaveBalanceServiceInterface {
     ResponseEntity<List<LeaveBalance>> findByLeaveId(String leaveId);
 
     @Transactional
-    void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays);
+    void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays, int year);
 }
-

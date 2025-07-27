@@ -1,6 +1,8 @@
 package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.*;
+import com.paves.employee_leave_management.dto.ManagerQueryDTO;
+import com.paves.employee_leave_management.dto.ManagerUpdateRequestDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -166,8 +168,11 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveBalanceDTO>> getLeaveBalance(
             @PathVariable String employeeId,
             @PathVariable String leaveTypeId,
-            @RequestParam(defaultValue = "2025") Integer year) {
+            @RequestParam(required = false) Integer year) {
         try {
+            if (year == null) {
+                year = LocalDate.now().getYear();
+            }
             LeaveBalanceDTO balance = leaveRequestService.getEmployeeLeaveBalance(employeeId, leaveTypeId, year);
             if (balance != null) {
                 return ResponseEntity.ok(new ApiResponse<>(true, "Balance retrieved successfully", balance));
@@ -201,26 +206,26 @@ public class LeaveRequestController {
     // ==================== MANAGER OPERATIONS ====================
     
     /**
-     * Get pending leave requests for manager
+     * Get pending/filtered leave requests for manager
      */
-    @GetMapping("/manager/{managerId}/pending")
-    public ResponseEntity<ApiResponse<List<LeaveRequest>>> getPendingRequests(@PathVariable String managerId) {
+    @PostMapping("/manager/requests")
+    public ResponseEntity<ApiResponse<List<LeaveRequest>>> getRequestsForManager(@Valid @RequestBody ManagerQueryDTO queryDTO) {
         try {
-            List<LeaveRequest> pendingRequests = leaveRequestService.getPendingRequestsForManager(managerId);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Pending requests retrieved successfully", pendingRequests));
+            List<LeaveRequest> requests = leaveRequestService.getRequestsForManager(queryDTO);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Requests retrieved successfully", requests));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error retrieving pending requests: " + e.getMessage(), null));
+                    .body(new ApiResponse<>(false, "Error retrieving requests: " + e.getMessage(), null));
         }
     }
 
     /**
-     * Get leave history for manager
+     * Get leave history for manager with filtering
      */
-    @GetMapping("/manager/{managerId}/history")
-    public ResponseEntity<ApiResponse<List<LeaveRequest>>> getLeaveHistoryForManager(@PathVariable String managerId) {
+    @PostMapping("/manager/history")
+    public ResponseEntity<ApiResponse<List<LeaveRequest>>> getLeaveHistoryForManager(@Valid @RequestBody ManagerQueryDTO queryDTO) {
         try {
-            List<LeaveRequest> leaveHistory = leaveRequestService.getLeaveHistoryForManager(managerId);
+            List<LeaveRequest> leaveHistory = leaveRequestService.getLeaveHistoryForManager(queryDTO);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave history retrieved successfully", leaveHistory));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -229,14 +234,12 @@ public class LeaveRequestController {
     }
 
     /**
-     * Approve leave request
+     * Approve leave request using request body
      */
-    @PutMapping("/{leaveId}/approve")
-    public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(
-            @PathVariable String leaveId, 
-            @RequestParam String managerId) {
+    @PutMapping("/approve")
+    public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(@Valid @RequestBody ApprovalRequestDTO approvalRequest) {
         try {
-            LeaveRequest approvedRequest = leaveRequestService.approveRequest(leaveId, managerId);
+            LeaveRequest approvedRequest = leaveRequestService.approveRequest(approvalRequest);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request approved successfully", approvedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -245,15 +248,12 @@ public class LeaveRequestController {
     }
 
     /**
-     * Reject leave request
+     * Reject leave request using request body
      */
-    @PutMapping("/{leaveId}/reject")
-    public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(
-            @PathVariable String leaveId,
-            @RequestParam String managerId,
-            @RequestParam String comment) {
+    @PutMapping("/reject")
+    public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(@Valid @RequestBody RejectionRequestDTO rejectionRequest) {
         try {
-            LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(leaveId, managerId, comment);
+            LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(rejectionRequest);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request rejected successfully", rejectedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -262,18 +262,12 @@ public class LeaveRequestController {
     }
 
     /**
-     * Update leave request by manager
+     * Update leave request by manager using request body
      */
-    @PutMapping("/manager/{leaveId}/update")
-    public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(
-            @PathVariable String leaveId,
-            @RequestParam String managerId,
-            @RequestParam(required = false) String leaveTypeId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+    @PutMapping("/update")
+    public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(@Valid @RequestBody ManagerUpdateRequestDTO updateRequest) {
         try {
-            LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(
-                    leaveId, managerId, leaveTypeId, startDate, endDate);
+            LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(updateRequest);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", updatedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
