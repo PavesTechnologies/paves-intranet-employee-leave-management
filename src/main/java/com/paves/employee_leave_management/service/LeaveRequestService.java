@@ -357,7 +357,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     private void validateSickLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
         // Check if documentation is required for sick leave
-        if (leaveType.getRequiresDocumentation() && request.getDaysRequested() > 3) {
+        if (leaveType.getRequiresDocumentation() && request.getDaysRequested() > 3 && request.getDriveLink()==null) {
             result.addError("Sick leave for more than 3 days requires medical certificate");
         }
         
