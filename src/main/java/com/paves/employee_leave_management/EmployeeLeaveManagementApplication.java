@@ -9,7 +9,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class EmployeeLeaveManagementApplication {
 
 	public static void main(String[] args) {
+
 		SpringApplication.run(EmployeeLeaveManagementApplication.class, args);
+
 	}
 
 

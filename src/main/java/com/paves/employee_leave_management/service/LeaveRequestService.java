@@ -42,6 +42,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Autowired
     private LeaveBalanceServiceInterface leaveBalanceService;
 
+    @Autowired
+    private EmailNotificationService emailService;
+
     // ==================== VALIDATION METHODS ====================
 
     /**
@@ -447,6 +450,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
         LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
 
+
         // Create new leave request
         LeaveRequest leaveRequest = LeaveRequest.builder()
                 .employee(employee)
@@ -588,6 +592,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 //                request.getLeaveType().getLeaveTypeId(),
 //                request.getDaysRequested(),
 //                request.getStartDate().getYear());
+        emailService.sendEmailAsync("swarnaraj.alwala@outlook.com", "Leave request approved", "Dont waste Time");
+
 
         return leaveRequestRepo.save(request);
     }
