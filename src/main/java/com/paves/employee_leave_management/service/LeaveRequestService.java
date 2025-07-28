@@ -460,7 +460,17 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .requestDate(LocalDate.now())
                 .build();
 
-        return leaveRequestRepo.save(leaveRequest);
+        LeaveRequest request1 = leaveRequestRepo.save(leaveRequest);
+        if(request1 != null) {
+        leaveBalanceService.updateLeaveBalanceAfterApproval(
+                request1.getEmployee().getEmployeeId(),
+                request1.getLeaveType().getLeaveTypeId(),
+                request1.getDaysRequested(),
+                request1.getStartDate().getYear());
+            return request1;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -507,6 +517,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         request.setStatus(LeaveStatus.CANCELLED);
         request.setResponseDate(LocalDate.now());
         request.setManagerComment("Cancelled by employee");
+
+        leaveBalanceService.updateLeaveBalanceAfterRejected(
+                request.getEmployee().getEmployeeId(),
+                request.getLeaveType().getLeaveTypeId(),
+                request.getDaysRequested(),
+                request.getStartDate().getYear());
 
         return leaveRequestRepo.save(request);
     }
@@ -566,12 +582,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         if (approvalRequest.getComment() != null && !approvalRequest.getComment().trim().isEmpty()) {
             request.setManagerComment(approvalRequest.getComment());
         }
-
-        leaveBalanceService.updateLeaveBalanceAfterApproval(
-                request.getEmployee().getEmployeeId(),
-                request.getLeaveType().getLeaveTypeId(),
-                request.getDaysRequested(),
-                request.getStartDate().getYear());
+//
+//        leaveBalanceService.updateLeaveBalanceAfterApproval(
+//                request.getEmployee().getEmployeeId(),
+//                request.getLeaveType().getLeaveTypeId(),
+//                request.getDaysRequested(),
+//                request.getStartDate().getYear());
 
         return leaveRequestRepo.save(request);
     }

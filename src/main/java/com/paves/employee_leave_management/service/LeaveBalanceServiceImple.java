@@ -345,6 +345,17 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
+    public void updateLeaveBalanceAfterRejected(String employeeId, String leaveTypeId, double daysRequested, int year) {
+        LeaveBalance balance = leaveBalanceRepo
+                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+
+        balance.setUsedLeaves(balance.getUsedLeaves() - daysRequested);
+        balance.updateRemainingLeaves();
+
+        leaveBalanceRepo.save(balance);
+    }
+
+    @Override
     public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
         LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
         if (balance == null) {

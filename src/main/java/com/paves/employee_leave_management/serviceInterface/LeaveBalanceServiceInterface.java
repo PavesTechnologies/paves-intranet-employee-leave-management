@@ -26,4 +26,7 @@ public interface LeaveBalanceServiceInterface {
 
     @Transactional
     void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays, int year);
+
+    @Transactional
+    void updateLeaveBalanceAfterRejected(String employeeId, String leaveTypeId, double daysRequested, int year);
 }
