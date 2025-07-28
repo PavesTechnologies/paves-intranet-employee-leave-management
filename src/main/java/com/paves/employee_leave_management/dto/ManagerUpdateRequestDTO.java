@@ -4,19 +4,28 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
 
+/**
+ * DTO for manager update operations
+ */
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class LeaveRequestValidationDTO {
+public class ManagerUpdateRequestDTO {
+    
+    @NotBlank(message = "Manager ID is required")
+    private String managerId;
+    
+    @NotBlank(message = "Leave ID is required")
     private String leaveId;
-    private String employeeId;
+    
+    // Optional fields for update
     private String leaveTypeId;
     private LocalDate startDate;
     private LocalDate endDate;
-    private double daysRequested;
     private String reason;
-    private String driveLink;
 }

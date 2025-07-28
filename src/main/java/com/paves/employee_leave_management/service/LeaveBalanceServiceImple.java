@@ -39,26 +39,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Autowired
     EmployeeRepo employeeRepo;
 
-    @Override
-    public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
-        LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
-        if (balance == null) {
-            return null;
-        }
-        return LeaveBalanceDTO.builder()
-                .balanceId(balance.getBalanceId())
-                .employeeId(balance.getEmployee().getEmployeeId())
-                .employeeName(balance.getEmployee().getFullName())
-                .leaveTypeId(balance.getLeaveType().getLeaveTypeId())
-                .leaveTypeName(balance.getLeaveType().getLeaveName())
-                .totalLeaves(balance.getTotalLeaves())
-                .accruedLeaves(balance.getAccruedLeaves())
-                .usedLeaves(balance.getUsedLeaves())
-                .remainingLeaves(balance.getRemainingLeaves())
-                .carriedForward(balance.getCarriedForward())
-                .year(balance.getYear())
-                .build();
-    }
+
 
     @Override
     public void createLeaveBalanceForNewEmployee(String empId) {
@@ -66,49 +47,65 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 .orElseThrow(() -> new EmployeeExceptionHandler("Employee not found: " + empId));
         int currentYear = LocalDate.now().getYear();
         List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
+        LocalDate onboardingDate = LocalDate.now();
+        LocalDate hireDate = emp.getHireDate();
 
         for (LeaveType lt : leaveTypes) {
-            boolean exists = leaveBalanceRepo
-                    .findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(emp.getEmployeeId(), lt.getLeaveTypeId(), currentYear)
-                    .isPresent();
-            if (exists) continue;
-
-            if (emp.getGender() != null) {
-                if (emp.getGender().equalsIgnoreCase("male") && lt.getLeaveName().equalsIgnoreCase("Maternity Leave")) continue;
-                if (emp.getGender().equalsIgnoreCase("female") && lt.getLeaveName().equalsIgnoreCase("Paternity Leave")) continue;
+            // Skip if a balance already exists for this year and leave type
+            if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
+                    emp.getEmployeeId(), lt.getLeaveTypeId(), currentYear).isPresent()) {
+                continue;
             }
 
-            LocalDate onboardingDate = LocalDate.now();
-            int previousYear = onboardingDate.getYear() - 1;
-            Optional<LeaveBalance> prevEarnedBalance = leaveBalanceRepo
-                    .findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(emp.getEmployeeId(), lt.getLeaveTypeId(), previousYear);
-
-            double carriedForward = 0;
-            if (prevEarnedBalance.isPresent() && lt.getLeaveName().equalsIgnoreCase("Earned Leave")) {
-                carriedForward = prevEarnedBalance.get().getRemainingLeaves();
+            // Skip leave types not eligible by gender
+            if (emp.getGender() != null) {
+                if (emp.getGender().equalsIgnoreCase("male") &&
+                        lt.getLeaveName().equalsIgnoreCase("Maternity Leave")) continue;
+                if (emp.getGender().equalsIgnoreCase("female") &&
+                        lt.getLeaveName().equalsIgnoreCase("Paternity Leave")) continue;
             }
 
             double accruedLeaves;
             double totalLeaves;
+            double carriedForward = 0;
+            double usedLeaves = 0; // Assuming no leaves used at onboarding
 
             if (lt.getLeaveName().equalsIgnoreCase("Sick Leave")) {
-                accruedLeaves = getTotalAccruedLeaves(emp.getHireDate(), onboardingDate, 1.0);
-                totalLeaves = getTotalEntitlement(emp.getHireDate(), onboardingDate, 1.0);
+                // Sick leave accrues only for current year from Jan 1 or hire date if hired this year, no carry forward
+                LocalDate accrualStart = (hireDate.getYear() < currentYear)
+                        ? LocalDate.of(currentYear, 1, 1)
+                        : hireDate;
+                accruedLeaves = getTotalAccruedLeaves(accrualStart, onboardingDate, 1.0 );
+                totalLeaves = getTotalEntitlement(accrualStart, onboardingDate, 1.0);
+                carriedForward = 0;
             } else if (lt.getLeaveName().equalsIgnoreCase("Earned Leave")) {
-                accruedLeaves = getTotalAccruedLeaves(emp.getHireDate(), onboardingDate, 1.25);
-                totalLeaves = getTotalEntitlement(emp.getHireDate(), onboardingDate, 1.25);
+                // Earned leave accrues only for current year (Jan 1 or hire date), carry forward capped at 10 days
+                LocalDate accrualStart = (hireDate.getYear() < currentYear)
+                        ? LocalDate.of(currentYear, 1, 1)
+                        : hireDate;
+                accruedLeaves = getTotalAccruedLeaves(accrualStart, onboardingDate, 1.25);
+                totalLeaves = getTotalEntitlement(accrualStart, onboardingDate, 1.25);
+                if (onboardingDate.getYear() > hireDate.getYear()) {
+                    carriedForward = getCarriedForwardFromLastYear(
+                            emp.getEmployeeId(), lt.getLeaveTypeId(), onboardingDate.getYear() - 1
+                    );
+                }
             } else if (lt.getLeaveName().equalsIgnoreCase("Paternity Leave")) {
-                carriedForward = 0;
                 accruedLeaves = 5;
-                totalLeaves = 10;
-            } else if (lt.getLeaveName().equalsIgnoreCase("Maternity Leave")) {
+                totalLeaves = 5;
                 carriedForward = 0;
-                accruedLeaves = 0;
-                totalLeaves = 364;
+            } else if (lt.getLeaveName().equalsIgnoreCase("Maternity Leave")) {
+                accruedLeaves = 182;
+                totalLeaves = 182;
+                carriedForward = 0;
             } else {
                 accruedLeaves = 0;
                 totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+                carriedForward = 0;
             }
+
+            // remainingLeaves = carriedForward + accruedLeaves - usedLeaves (0 for onboarding)
+            double remainingLeaves = Math.max(0, carriedForward + accruedLeaves - usedLeaves);
 
             LeaveBalance balance = LeaveBalance.builder()
                     .employee(emp)
@@ -116,10 +113,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     .year(currentYear)
                     .totalLeaves(totalLeaves)
                     .accruedLeaves(accruedLeaves)
-                    .usedLeaves(0)
+                    .usedLeaves(usedLeaves)
                     .expiredLeaves(0)
                     .carriedForward(carriedForward)
-                    .remainingLeaves(carriedForward + accruedLeaves)
+                    .remainingLeaves(remainingLeaves)
                     .encashedLeaves(0)
                     .lastAccrualDate(onboardingDate)
                     .build();
@@ -128,22 +125,53 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
     }
 
-    private double getTotalAccruedLeaves(LocalDate hireDate, LocalDate currentDate, double ratePerMonth) {
-        if (hireDate.isAfter(currentDate)) return 0;
-        LocalDate startMonth = (hireDate.getDayOfMonth() > 15)
-                ? hireDate.plusMonths(1).withDayOfMonth(1)
-                : hireDate.withDayOfMonth(1);
-        double totalAccrued = 0;
-        LocalDate month = startMonth;
-        while (!month.isAfter(currentDate.withDayOfMonth(1))) {
-            totalAccrued += ratePerMonth;
+    /**
+     * Calculates accrued leave days between startDate and endDate.
+     * Counts full months based on hire date day (after 15th skips hire month).
+     */
+    private double getTotalAccruedLeaves(LocalDate startDate, LocalDate endDate, double ratePerMonth) {
+        if (startDate.isAfter(endDate)) return 0;
+        LocalDate start = (startDate.getDayOfMonth() > 15)
+                ? startDate.plusMonths(1).withDayOfMonth(1)
+                : startDate.withDayOfMonth(1);
+        int months = 0;
+        LocalDate month = start;
+        while (!month.isAfter(endDate.withDayOfMonth(1))) {
+            months++;
             month = month.plusMonths(1);
         }
-        return totalAccrued;
+        return months * ratePerMonth;
     }
 
-    private double getTotalEntitlement(LocalDate hireDate, LocalDate currentDate, double ratePerMonth) {
-        int year = currentDate.getYear();
+    /**
+     * Retrieves carried forward leave from last year, capped at 10 days.
+     */
+    private double getCarriedForwardFromLastYear(String empId, String leaveTypeId, int previousYear) {
+        Optional<LeaveBalance> prevBalance = leaveBalanceRepo
+                .findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
+                        empId, leaveTypeId, previousYear);
+        if (!prevBalance.isPresent()) return 0;
+         double carried_forward =  prevBalance.get().getCarriedForward();
+         double remaining_leave = prevBalance.get().getRemainingLeaves();
+         double used_leaves = prevBalance.get().getUsedLeaves();
+         double total_leaves = prevBalance.get().getTotalLeaves();
+
+         remaining_leave =  carried_forward + total_leaves;
+         remaining_leave = remaining_leave - used_leaves;
+         remaining_leave = remaining_leave - carried_forward;
+
+         
+
+        return Math.min(10, prevBalance.get().getRemainingLeaves());
+    }
+
+    /**
+     * Calculates total leave entitlement for the year.
+     * For hires before the start of the current year, full year (12 months).
+     * For hires this year, pro-rated months including the hire month if day <=15.
+     */
+    private double getTotalEntitlement(LocalDate hireDate, LocalDate endDate, double ratePerMonth) {
+        int year = endDate.getYear();
         if (hireDate.getYear() < year) {
             return 12 * ratePerMonth;
         } else {
@@ -160,33 +188,13 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
     }
 
-    private int getEligibleMonths(LocalDate hireDate, int year) {
-        if (hireDate.getYear() > year) return 0;
-        LocalDate start = (hireDate.getYear() == year) ? hireDate : LocalDate.of(year, 1, 1);
-        int months = 0;
-        while (!start.isAfter(LocalDate.of(year, 12, 1))) {
-            if (start.getDayOfMonth() <= 15) {
-                months++;
-            }
-            start = start.plusMonths(1).withDayOfMonth(1);
-        }
-        return months;
-    }
 
-    private double calculateTotalLeaves(LeaveType leaveType, int monthsEligible) {
-        String leaveName = leaveType.getLeaveName().toLowerCase();
-        if (leaveName.equalsIgnoreCase("Sick Leave")) {
-            return monthsEligible * 1.0;
-        } else if (leaveName.equalsIgnoreCase("Earned Leave")) {
-            return monthsEligible * 1.25;
-        } else {
-            return leaveType.getMaxDaysPerYear() != null ? leaveType.getMaxDaysPerYear() : 0;
-        }
-    }
+
+
 
     @Override
     public void processYearEndCarryForward() {
-        List<LeaveBalance> balances = leaveBalanceRepo.findAll();
+        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear() - 1);
         if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
@@ -221,7 +229,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     newbalance.setCarriedForward(0);
                     newbalance.setExpiredLeaves(unused);
             }
-
             newbalance.setYear(balance.getYear() + 1);
             newbalance.setLastAccrualDate(LocalDate.now());
             newbalance.setUsedLeaves(0);
@@ -243,15 +250,16 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Override
     public void triggerMonthlyLeaveAccrual() {
-        List<LeaveBalance> balances = leaveBalanceRepo.findAll();
+        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear());
         if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
         LocalDate now = LocalDate.now();
 
-        if (now.getDayOfMonth() != 1) return;
+        if (now.getDayOfMonth() != 1) throw new LeaveBalanceExceptionHandler("Accrual can only be triggered on the first day of the month");
 
         for (LeaveBalance balance : balances) {
+            System.out.println(balance.toString());
             Employee emp = balance.getEmployee();
             LeaveType type = balance.getLeaveType();
             LocalDate hireDate = emp.getHireDate();
@@ -268,11 +276,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             double accrual = 0;
 
             if (type.getLeaveName().equalsIgnoreCase("Sick Leave")) {
-                accrual = 1.0;
+                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
             }
 
             if (type.getLeaveName().equalsIgnoreCase("Earned Leave")) {
-                accrual = 1.25;
+                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;;
             }
 
             if (accrual > 0) {
@@ -322,18 +330,49 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Transactional
     @Override
-    public void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays) {
+    public void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays, int year) {
         if (approvedDays <= 0) {
             throw new LeaveBalanceExceptionHandler("Approved days must be greater than 0");
         }
 
         LeaveBalance balance = leaveBalanceRepo
-                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeId(employeeId, leaveTypeId)
-                .orElseThrow(() -> new LeaveBalanceExceptionHandler("Leave balance not found for employee " + employeeId + " and leave type " + leaveTypeId));
+                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
 
         balance.setUsedLeaves(balance.getUsedLeaves() + approvedDays);
         balance.updateRemainingLeaves();
 
         leaveBalanceRepo.save(balance);
+    }
+
+    @Override
+    public void updateLeaveBalanceAfterRejected(String employeeId, String leaveTypeId, double daysRequested, int year) {
+        LeaveBalance balance = leaveBalanceRepo
+                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+
+        balance.setUsedLeaves(balance.getUsedLeaves() - daysRequested);
+        balance.updateRemainingLeaves();
+
+        leaveBalanceRepo.save(balance);
+    }
+
+    @Override
+    public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
+        LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+        if (balance == null) {
+            return null;
+        }
+        return LeaveBalanceDTO.builder()
+                .balanceId(balance.getBalanceId())
+                .employeeId(balance.getEmployee().getEmployeeId())
+                .employeeName(balance.getEmployee().getFullName())
+                .leaveTypeId(balance.getLeaveType().getLeaveTypeId())
+                .leaveTypeName(balance.getLeaveType().getLeaveName())
+                .totalLeaves(balance.getTotalLeaves())
+                .accruedLeaves(balance.getAccruedLeaves())
+                .usedLeaves(balance.getUsedLeaves())
+                .remainingLeaves(balance.getRemainingLeaves())
+                .carriedForward(balance.getCarriedForward())
+                .year(balance.getYear())
+                .build();
     }
 }

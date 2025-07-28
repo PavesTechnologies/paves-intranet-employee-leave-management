@@ -4,6 +4,8 @@ import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -48,10 +50,13 @@ public class LeaveRequest {
     private LocalDate endDate;
 
     @Column(name = "days_requested", nullable = false)
-    private Integer daysRequested;
+    private double daysRequested;
 
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
+
+    @Column(name = "drive_link", columnDefinition = "TEXT")
+    private String driveLink;
 
     @Column(name = "manager_comment", columnDefinition = "TEXT")
     private String managerComment;
@@ -63,6 +68,7 @@ public class LeaveRequest {
 
     @ManyToOne
     @JoinColumn(name = "approved_by")
+    @JsonIgnoreProperties({"firstName","lastName","email","gender","phone","hireDate","salary","jobTitle","password"})
     private Employee approvedBy;
 
     @Builder.Default
@@ -78,13 +84,14 @@ public class LeaveRequest {
 
     // Custom constructor for essential fields
     public LeaveRequest(Employee employee, LeaveType leaveType, LocalDate startDate,
-                        LocalDate endDate, Integer daysRequested, String reason) {
+                        LocalDate endDate, Integer daysRequested, String reason, String driveLink) {
         this.employee = employee;
         this.leaveType = leaveType;
         this.startDate = startDate;
         this.endDate = endDate;
         this.daysRequested = daysRequested;
         this.reason = reason;
+        this.driveLink = driveLink;
         this.status = LeaveStatus.PENDING;
         this.requestDate = LocalDate.now();
     }
