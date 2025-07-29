@@ -195,7 +195,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // Check if employee has sufficient leave balance
-        if (!leaveType.getAllowNegativeBalance() &&
+        if ( !leaveType.getLeaveTypeId().equals("L-UPL") && !leaveType.getAllowNegativeBalance() &&
                 balance.getRemainingLeaves() < request.getDaysRequested()) {
             result.addError(String.format(
                     "Insufficient %s balance. Available: %.2f days, Requested: %.2f days",
@@ -203,7 +203,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // Check waiting period for new employees (exclude Unpaid Leave)
-        if (!"L-UL".equalsIgnoreCase(leaveType.getLeaveTypeId()) && 
+        if (!"L-UPL".equalsIgnoreCase(leaveType.getLeaveTypeId()) &&
             leaveType.getWaitingPeriodDays() != null && leaveType.getWaitingPeriodDays() > 0) {
             LocalDate eligibleDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
             if (LocalDate.now().isBefore(eligibleDate)) {
@@ -222,6 +222,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 request.getEmployeeId(), request.getStartDate(), request.getEndDate());
 
         for (LeaveRequest existing : overlappingRequests) {
+            if(existing.getLeaveId().equals(request.getLeaveId())) {
+                continue;
+            }
             result.addError(String.format(
                     "Leave request overlaps with existing %s leave from %s to %s",
                     existing.getLeaveType().getLeaveName(),
@@ -610,11 +613,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         request.setApprovedBy(manager);
         request.setResponseDate(LocalDate.now());
         request.setManagerComment(rejectionRequest.getComment());
-        leaveBalanceService.updateLeaveBalanceAfterRejected(
-        request.getEmployee().getEmployeeId(),
-        request.getLeaveType().getLeaveTypeId(),
-        request.getDaysRequested(),
-        request.getStartDate().getYear());
 
         leaveBalanceService.updateLeaveBalanceAfterRejected(
                 request.getEmployee().getEmployeeId(),
@@ -772,7 +770,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
      */
     @Override
     public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest,LeaveRequestValidationDTO request) {
-        return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
+        return leaveRequestRepo.findByLeaveIdAndEmployeeIdWithDetails(
                 leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
                 .map(existingRequest -> {
                     // Check if request can be updated (only PENDING requests)
@@ -811,7 +809,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         validationResult.addMessage("Leave request updated successfully");
                         validationResult.setLeaveId(updatedRequest.getLeaveId());
                     }
-
                     return validationResult;
                 })
                 .orElseThrow(() -> new RuntimeException("Leave request not found"));
