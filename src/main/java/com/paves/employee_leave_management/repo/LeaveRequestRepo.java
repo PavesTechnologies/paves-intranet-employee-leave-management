@@ -56,6 +56,7 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     int countPendingLeavesByType(@Param("employeeId") String employeeId,
                                  @Param("leaveTypeId") String leaveTypeId);
 
+    //Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
 
     @Query("SELECT lr FROM LeaveRequest lr " +
             "JOIN FETCH lr.employee " +

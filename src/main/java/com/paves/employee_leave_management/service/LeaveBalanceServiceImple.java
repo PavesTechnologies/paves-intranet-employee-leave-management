@@ -75,7 +75,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 LocalDate accrualStart = (hireDate.getYear() < currentYear)
                         ? LocalDate.of(currentYear, 1, 1)
                         : hireDate;
-                accruedLeaves = getTotalAccruedLeaves(accrualStart, onboardingDate, 1.0 );
+                accruedLeaves = getTotalAccruedLeaves(accrualStart, onboardingDate, 1.0);
                 totalLeaves = getTotalEntitlement(accrualStart, onboardingDate, 1.0);
                 carriedForward = 0;
             } else if (lt.getLeaveName().equalsIgnoreCase("Earned Leave")) {
