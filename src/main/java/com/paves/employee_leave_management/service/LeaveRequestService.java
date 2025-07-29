@@ -89,7 +89,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .endDate(request.getEndDate())
                 .daysRequested(request.getDaysRequested())
                 .reason(request.getReason())
-                .document(request.getDocument())
+                .driveLink(request.getDriveLink())
                 .build();
 
         return validateLeaveRequest(dto);
@@ -128,17 +128,17 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         // Check if leave type requires documentation
         if (leaveType.getRequiresDocumentation()) {
             // For leave types that require documentation, drive link should be provided
-            if (request.getDocument() == null || request.getDocument().trim().isEmpty()) {
+            if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
                 result.addError("Drive link with supporting documents is required for " + leaveType.getLeaveName());
             } else {
                 // Validate drive link format (basic URL validation)
-                validateDriveLinkFormat(request.getDocument(), result);
+                validateDriveLinkFormat(request.getDriveLink(), result);
             }
         }
         
         // For sick leave specifically, check if drive link is required for longer durations
         if ("Sick Leave".equalsIgnoreCase(leaveType.getLeaveName()) && request.getDaysRequested() > 3) {
-            if (request.getDocument()== null || request.getDocument().trim().isEmpty()) {
+            if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
                 result.addError("Drive link with medical certificate is mandatory for sick leave exceeding 3 days");
             }
         }
@@ -357,7 +357,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     private void validateSickLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
         // Check if documentation is required for sick leave
-        if (leaveType.getRequiresDocumentation() && request.getDaysRequested() > 3 && request.getDocument()==null) {
+        if (leaveType.getRequiresDocumentation() && request.getDaysRequested() > 3 && request.getDriveLink()==null) {
             result.addError("Sick leave for more than 3 days requires medical certificate");
         }
         
@@ -455,7 +455,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .endDate(request.getEndDate())
                 .daysRequested(request.getDaysRequested())
                 .reason(request.getReason())
-                .document(request.getDocument())
+                .driveLink(request.getDriveLink())
                 .status(LeaveStatus.PENDING)
                 .requestDate(LocalDate.now())
                 .build();
@@ -791,7 +791,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         existingRequest.setEndDate(request.getEndDate());
                         existingRequest.setDaysRequested(request.getDaysRequested());
                         existingRequest.setReason(request.getReason());
-                        existingRequest.setDocument(request.getDocument());
+                        existingRequest.setDriveLink(request.getDriveLink());
 
                         // Reset approval state since request is being modified
                         existingRequest.setApprovedBy(null);
