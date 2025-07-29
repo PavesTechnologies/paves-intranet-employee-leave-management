@@ -524,6 +524,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 request.getDaysRequested(),
                 request.getStartDate().getYear());
 
+
         return leaveRequestRepo.save(request);
     }
 
@@ -614,6 +615,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         request.getLeaveType().getLeaveTypeId(),
         request.getDaysRequested(),
         request.getStartDate().getYear());
+
+        leaveBalanceService.updateLeaveBalanceAfterRejected(
+                request.getEmployee().getEmployeeId(),
+                request.getLeaveType().getLeaveTypeId(),
+                request.getDaysRequested(),
+                request.getStartDate().getYear());
 
         return leaveRequestRepo.save(request);
     }
