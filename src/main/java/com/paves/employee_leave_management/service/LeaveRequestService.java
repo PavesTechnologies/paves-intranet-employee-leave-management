@@ -772,7 +772,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
      */
     @Override
     public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest,LeaveRequestValidationDTO request) {
-        return leaveRequestRepo.findByLeaveIdAndEmployeeIdWithDetails(
+        return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
                 leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
                 .map(existingRequest -> {
                     // Check if request can be updated (only PENDING requests)

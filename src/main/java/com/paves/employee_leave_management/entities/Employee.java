@@ -128,7 +128,6 @@ public class Employee {
 
     @Id
     @Column(name = "employee_id")
-    @JsonIgnore
     private String employeeId;
 
     @PrePersist
