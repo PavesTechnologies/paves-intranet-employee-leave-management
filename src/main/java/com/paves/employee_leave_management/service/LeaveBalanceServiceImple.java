@@ -351,7 +351,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
         balance.setUsedLeaves(balance.getUsedLeaves() - daysRequested);
         balance.setRemainingLeaves(balance.getRemainingLeaves() + daysRequested);
-        balance.setAccruedLeaves(balance.getAccruedLeaves() - daysRequested);
 
         leaveBalanceRepo.save(balance);
     }
