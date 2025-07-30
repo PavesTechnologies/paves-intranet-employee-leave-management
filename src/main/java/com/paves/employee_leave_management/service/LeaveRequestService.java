@@ -529,6 +529,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return leaveRequestRepo.findOverlappingLeaves(employeeId, startDate, endDate);
     }
 
+    @Override
+    public List<LeaveRequest> getLeaveHistoryByYear(String employeeId, LocalDate startDate, LocalDate endDate) {
+        return leaveRequestRepo.findLeaveHistory(employeeId,startDate,endDate);
+    }
+
     // ==================== NEW DTO-BASED MANAGER OPERATIONS ====================
 
     /**
