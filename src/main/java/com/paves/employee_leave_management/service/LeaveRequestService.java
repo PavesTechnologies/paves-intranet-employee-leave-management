@@ -315,7 +315,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     private void validatePaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
         // Check for pending paternity leave requests
         int pendingCount = leaveRequestRepo.countPendingLeavesByType(employee.getEmployeeId(), "L-PL");
-        if (pendingCount > 0) {
+        if (pendingCount > 0 && request.getLeaveId()==null) {
             result.addError("You already have a pending paternity leave request. Please wait for it to be approved or rejected.");
             return;
         }
@@ -637,6 +637,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(updateRequest.getLeaveId(), updateRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + updateRequest.getLeaveId() + " for this manager"));
+        leaveBalanceService.updateLeaveBalanceAfterRejected(
+                request.getEmployee().getEmployeeId(),
+                request.getLeaveType().getLeaveTypeId(),
+                request.getDaysRequested(),
+                request.getStartDate().getYear());
 
         // Update fields if they are provided in the DTO
         if (updateRequest.getLeaveTypeId() != null) {
@@ -654,6 +659,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         if (updateRequest.getComment() != null) {
             request.setReason(updateRequest.getComment());
         }
+        leaveBalanceService.updateLeaveBalanceAfterApproval(
+                request.getEmployee().getEmployeeId(),
+                request.getLeaveType().getLeaveTypeId(),
+                request.getDaysRequested(),
+                request.getStartDate().getYear());
 
         return leaveRequestRepo.save(request);
     }
@@ -674,14 +684,20 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Override
     public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest,LeaveRequestValidationDTO request) {
         return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
-                leaveRequest.getLeaveId(),leaveRequest.getEmployee().getEmployeeId())
+                        leaveRequest.getLeaveId(),leaveRequest.getEmployee().getEmployeeId())
                 .map(existingRequest -> {
                     // Check if request can be updated (only PENDING requests)
                     if (existingRequest.getStatus().equals(LeaveStatus.APPROVED) ||
-                        existingRequest.getStatus().equals(LeaveStatus.REJECTED)) {
+                            existingRequest.getStatus().equals(LeaveStatus.REJECTED)) {
                         throw new LeaveBalanceExceptionHandler(
                                 "Cannot update a leave request that has already been approved or rejected.");
                     }
+
+                    leaveBalanceService.updateLeaveBalanceAfterRejected(
+                            existingRequest.getEmployee().getEmployeeId(),
+                            existingRequest.getLeaveType().getLeaveTypeId(),
+                            existingRequest.getDaysRequested(),
+                            existingRequest.getStartDate().getYear());
 
                     // Validate the new request data
                     ValidationResultDTO validationResult = validateLeaveRequest(request);
@@ -704,6 +720,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         existingRequest.setResponseDate(null);
                         existingRequest.setManagerComment(null);
                         existingRequest.setStatus(LeaveStatus.PENDING);
+                        leaveBalanceService.updateLeaveBalanceAfterApproval(
+                                existingRequest.getEmployee().getEmployeeId(),
+                                existingRequest.getLeaveType().getLeaveTypeId(),
+                                existingRequest.getDaysRequested(),
+                                existingRequest.getStartDate().getYear());
 
                         // Save the updated request
                         LeaveRequest updatedRequest = leaveRequestRepo.save(existingRequest);
