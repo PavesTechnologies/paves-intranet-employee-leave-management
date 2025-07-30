@@ -18,7 +18,10 @@
 //                        .requestMatchers("/public/**",
 //                                "/swagger-ui/**",
 //                                "/v3/api-docs/**",
-//                                "/actuator/**"
+//                                "/actuator/**",
+//                                    "/v3/api-docs/**",
+//                                            "/swagger-ui/**",
+//                                            "/swagger-ui.html"
 //                        ).permitAll()
 //                        .anyRequest().authenticated()
 //                )
