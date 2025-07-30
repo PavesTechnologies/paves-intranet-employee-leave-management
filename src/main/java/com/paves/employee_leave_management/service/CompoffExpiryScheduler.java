@@ -6,7 +6,6 @@ import com.paves.employee_leave_management.entities.LeaveCompoff;
 import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveCompoffRepo;
-import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -20,7 +19,6 @@ import java.util.Optional;
 public class CompoffExpiryScheduler {
     private final LeaveCompoffRepo leaveCompoffRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
-    private  final LeaveBalanceServiceInterface balanceServiceInterface;
 
     @Scheduled(cron = "0 0 2 * * ?") // Runs every day at 2 AM
     public void expireUnusedCompoffs() {
@@ -36,7 +34,11 @@ public class CompoffExpiryScheduler {
                 LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(compoff.getEmployeeId(), "L-COMPOFF",LocalDate.now().getYear());
 
                 if (balance!=null) {
-//                    balanceServiceInterface.upda
+                    double days = compoff.getDays();
+                    balance.setTotalLeaves(balance.getTotalLeaves()- days);
+                    balance.setRemainingLeaves(balance.getRemainingLeaves() - days);
+                    balance.setAccruedLeaves(balance.getAccruedLeaves() - days);
+                    leaveBalanceRepo.save(balance);
                 }
             }
         }
