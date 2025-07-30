@@ -72,7 +72,7 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     List<LeaveRequest> findManagerRequestsByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} " +
-            "AND (:#{#queryDTO.status} IS NULL AND lr.status IN ('APPROVED', 'REJECTED', 'CANCELLED') OR lr.status = :#{#queryDTO.status}) " +
+            "AND (:#{#queryDTO.status} IS NULL AND lr.status IN ('APPROVED', 'REJECTED', 'CANCELLED' , 'PENDING') OR lr.status = :#{#queryDTO.status}) " +
             "AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId}) " +
             "AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId}) " +
             "AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})")

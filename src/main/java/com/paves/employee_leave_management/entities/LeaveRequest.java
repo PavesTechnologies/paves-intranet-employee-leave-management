@@ -34,8 +34,8 @@ public class LeaveRequest {
             leaveId = "LR"+ UUID.randomUUID().toString().replace("-","").substring(0,5).toUpperCase();
         }
     }
-    @ManyToOne
 
+    @ManyToOne
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
