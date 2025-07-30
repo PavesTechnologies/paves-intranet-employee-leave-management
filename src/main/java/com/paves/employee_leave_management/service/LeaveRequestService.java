@@ -643,117 +643,15 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         if (updateRequest.getStartDate() != null && updateRequest.getEndDate() != null) {
             request.setStartDate(updateRequest.getStartDate());
             request.setEndDate(updateRequest.getEndDate());
-            request.setDaysRequested((int) ChronoUnit.DAYS.between(updateRequest.getStartDate(), updateRequest.getEndDate()) + 1);
+            request.setDaysRequested(updateRequest.getDaysRequested());
         }
 
-        if (updateRequest.getReason() != null) {
-            request.setReason(updateRequest.getReason());
+        if (updateRequest.getComment() != null) {
+            request.setReason(updateRequest.getComment());
         }
 
         return leaveRequestRepo.save(request);
     }
-
-    // ==================== LEGACY MANAGER OPERATIONS (COMMENTED OUT) ====================
-
-    /**
-     * Get pending leave requests for a manager
-     */
-//    @Override
-//    public List<LeaveRequest> getPendingRequestsForManager(String managerId) {
-//        return leaveRequestRepo.findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus.PENDING, managerId);
-//    }
-
-    /**
-     * Get leave history for a manager
-     */
-//    @Override
-//    public List<LeaveRequest> getLeaveHistoryForManager(String managerId) {
-//        return leaveRequestRepo.findByEmployee_Manager_EmployeeId(managerId);
-//    }
-
-    /**
-     * Reject a leave request
-     */
-//    @Override
-//    public LeaveRequest rejectRequest(String leaveId, String managerId, String comment) {
-//        LeaveRequest request = leaveRequestRepo.findById(leaveId)
-//                .orElseThrow(() -> new RuntimeException("Leave request not found"));
-//
-//        if (!request.getEmployee().getManager().getEmployeeId().equals(managerId)) {
-//            throw new RuntimeException("Unauthorized action: not the manager of this employee");
-//        }
-//
-//        Employee manager = employeeRepo.findById(managerId)
-//                .orElseThrow(() -> new RuntimeException("Manager not found"));
-//
-//        request.setStatus(LeaveStatus.REJECTED);
-//        request.setApprovedBy(manager);
-//        request.setResponseDate(LocalDate.now());
-//        request.setManagerComment(comment);
-//
-//        return leaveRequestRepo.save(request);
-//    }
-
-    /**
-     * Update leave request by manager
-     */
-//    @Override
-//    public LeaveRequest updateLeaveRequestByManager(String leaveId, String managerId, String leaveTypeId, 
-//                                                   LocalDate startDate, LocalDate endDate) {
-//        LeaveRequest request = leaveRequestRepo.findById(leaveId)
-//                .orElseThrow(() -> new RuntimeException("Leave request not found"));
-//
-//        if (!request.getEmployee().getManager().getEmployeeId().equals(managerId)) {
-//            throw new RuntimeException("Unauthorized action");
-//        }
-//
-//        if (leaveTypeId != null) {
-//            LeaveType newType = leaveTypeRepo.findById(leaveTypeId)
-//                    .orElseThrow(() -> new RuntimeException("Leave type not found"));
-//            request.setLeaveType(newType);
-//        }
-//
-//        if (startDate != null && endDate != null) {
-//            request.setStartDate(startDate);
-//            request.setEndDate(endDate);
-//            request.setDaysRequested((int) ChronoUnit.DAYS.between(startDate, endDate) + 1);
-//        }
-//
-//        return leaveRequestRepo.save(request);
-//    }
-
-    /**
-     * Approve a leave request
-     */
-//    @Override
-//    @Transactional
-//    public LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest) {
-//        // Use a more specific query to find the request under the manager's hierarchy
-//        LeaveRequest request = leaveRequestRepo
-//                .findByLeaveIdAndEmployee_Manager_EmployeeId(approvalRequest.getLeaveId(), approvalRequest.getManagerId())
-//                .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + approvalRequest.getLeaveId() + " for this manager"));
-//
-//        // The manager is already validated by the query, but we still need the entity
-//        Employee manager = employeeRepo.findById(approvalRequest.getManagerId())
-//                .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + approvalRequest.getManagerId()));
-//
-//        // Update request status
-//        request.setStatus(LeaveStatus.APPROVED);
-//        request.setApprovedBy(manager);
-//        request.setResponseDate(LocalDate.now());
-//        if (approvalRequest.getComment() != null && !approvalRequest.getComment().trim().isEmpty()) {
-//            request.setManagerComment(approvalRequest.getComment());
-//        }
-//
-//        // Update leave balance
-//        leaveBalanceService.updateLeaveBalanceAfterApproval(
-//                request.getEmployee().getEmployeeId(),
-//                request.getLeaveType().getLeaveTypeId(),
-//                request.getDaysRequested(),
-//                request.getStartDate().getYear());
-//
-//        return leaveRequestRepo.save(request);
-//    }
 
     // ==================== UTILITY METHODS ====================
 
