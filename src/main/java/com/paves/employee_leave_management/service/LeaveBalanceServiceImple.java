@@ -69,23 +69,23 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 LocalDate accrualStart = (hireDate.getYear() < currentYear)
                         ? LocalDate.of(currentYear, 1, 1)
                         : hireDate;
-                accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, 1.0);
-                totalLeaves = 12;
+                accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, lt.getAccrualRate());
+                totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
 
             } else if (lt.getLeaveName().equalsIgnoreCase("Earned Leave")) {
                 LocalDate accrualStart = (hireDate.getYear() < currentYear)
                         ? LocalDate.of(currentYear, 1, 1)
                         : hireDate;
-                accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, 1.25);
+                accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, lt.getAccrualRate());
 
-                carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear);
-                totalLeaves = carriedForward + 15;
+                carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear,lt);
+                totalLeaves = carriedForward + (lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0);
             } else if (lt.getLeaveName().equalsIgnoreCase("Paternity Leave")) {
-                accruedLeaves = 5;
-                totalLeaves = 5;
+                accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+                totalLeaves = accruedLeaves;
             } else if (lt.getLeaveName().equalsIgnoreCase("Maternity Leave")) {
-                accruedLeaves = 182;
-                totalLeaves = 182;
+                accruedLeaves =lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+                totalLeaves = accruedLeaves;
             } else {
                 totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
                 accruedLeaves = 0;
@@ -139,14 +139,14 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         return months * ratePerMonth;
     }
 
-    private double calculateEarnedLeaveCarryForward(LocalDate hireDate, int currentYear) {
+    private double calculateEarnedLeaveCarryForward(LocalDate hireDate, int currentYear,LeaveType lt) {
         double totalCarried = 0;
         for (int year = hireDate.getYear(); year < currentYear; year++) {
             LocalDate yearStart = LocalDate.of(year, 1, 1);
             LocalDate yearEnd = LocalDate.of(year, 12, 31);
             LocalDate effectiveStart = hireDate.isAfter(yearStart) ? hireDate : yearStart;
-            double yearlyAccrued = getEarnedLeave(effectiveStart, yearEnd, 1.25);
-            double yearlyCarry = Math.min(yearlyAccrued, 10);  // max carry per year is 10
+            double yearlyAccrued = getEarnedLeave(effectiveStart, yearEnd, lt.getAccrualRate());
+            double yearlyCarry = Math.min(yearlyAccrued, lt.getMaxCarryForward());  // max carry per year is 10
             totalCarried += yearlyCarry;
             if (totalCarried >= 48) {
                 return 48;  // total max cap
@@ -173,7 +173,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
             switch (name) {
                 case "Earned Leave":
-                    double forward = Math.min(10, unused);
+                    double forward = Math.min(balance.getLeaveType().getMaxCarryForward(), unused);
                     carryForward = Math.min(48, carryForward + forward);
                     newbalance.setCarriedForward(carryForward);
                     newbalance.setExpiredLeaves(unused - forward);
