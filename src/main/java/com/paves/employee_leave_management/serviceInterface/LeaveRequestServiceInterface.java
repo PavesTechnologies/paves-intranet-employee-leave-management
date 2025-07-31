@@ -30,4 +30,7 @@ public interface LeaveRequestServiceInterface {
     // Utility operations
     LeaveBalanceDTO getEmployeeLeaveBalance(String employeeId, String leaveTypeId, Integer year);
     List<LeaveRequest> getOverlappingRequests(String employeeId, LocalDate startDate, LocalDate endDate);
+
+    List<LeaveRequest> getLeaveHistoryByYear(String employeeId, LocalDate startDate, LocalDate endDate);
+
 }

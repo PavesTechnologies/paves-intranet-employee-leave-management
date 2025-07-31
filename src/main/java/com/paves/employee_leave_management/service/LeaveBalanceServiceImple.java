@@ -339,8 +339,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
 
         balance.setUsedLeaves(balance.getUsedLeaves() + approvedDays);
-        balance.updateRemainingLeaves();
-
+        if (!leaveTypeId.equalsIgnoreCase("L-UP")) {
+            balance.updateRemainingLeaves();
+        }
         leaveBalanceRepo.save(balance);
     }
 

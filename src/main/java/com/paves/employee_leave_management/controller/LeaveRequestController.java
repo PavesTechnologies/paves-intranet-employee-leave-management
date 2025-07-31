@@ -274,4 +274,15 @@ public class LeaveRequestController {
                     .body(new ApiResponse<>(false, "Error updating request: " + e.getMessage(), null));
         }
     }
+
+    @GetMapping("/history/{employeeId}")
+    public ResponseEntity<List<LeaveRequest>> getLeaveHistoryByYear(
+            @PathVariable String employeeId,
+            @RequestParam int year
+    ) {
+        LocalDate startDate = LocalDate.of(year, 1, 1);
+        LocalDate endDate = LocalDate.of(year, 12, 31);
+        return ResponseEntity.ok(leaveRequestService.getLeaveHistoryByYear(employeeId, startDate, endDate));
+    }
+
 }

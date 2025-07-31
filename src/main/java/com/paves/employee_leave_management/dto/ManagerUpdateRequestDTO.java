@@ -27,5 +27,6 @@ public class ManagerUpdateRequestDTO {
     private String leaveTypeId;
     private LocalDate startDate;
     private LocalDate endDate;
-    private String reason;
+    private String comment;
+    private double daysRequested;
 }
