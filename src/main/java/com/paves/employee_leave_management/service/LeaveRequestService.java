@@ -10,6 +10,7 @@ import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInter
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Autowired
     private LeaveBalanceServiceInterface leaveBalanceService;
+
+    @Autowired
+    private EmailServiceInterface emailService;
 
     // ==================== VALIDATION METHODS ====================
 
@@ -452,7 +456,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
         LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
 
-        // Create new leave request
+        // Create and save the leave request
         LeaveRequest leaveRequest = LeaveRequest.builder()
                 .employee(employee)
                 .leaveType(leaveType)
@@ -465,19 +469,40 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .requestDate(LocalDate.now())
                 .build();
 
-        LeaveRequest request1 = leaveRequestRepo.save(leaveRequest);
-        if (request1 != null) {
+        LeaveRequest savedRequest = leaveRequestRepo.save(leaveRequest);
+
+        if (savedRequest != null) {
+            // Update leave balance
             leaveBalanceService.updateLeaveBalanceAfterApproval(
-                    request1.getEmployee().getEmployeeId(),
-                    request1.getLeaveType().getLeaveTypeId(),
-                    request1.getDaysRequested(),
-                    request1.getStartDate().getYear());
-            return request1;
+                    savedRequest.getEmployee().getEmployeeId(),
+                    savedRequest.getLeaveType().getLeaveTypeId(),
+                    savedRequest.getDaysRequested(),
+                    savedRequest.getStartDate().getYear());
+
+            // Send email notification to manager
+            try {
+                if (employee.getManager() != null && employee.getManager().getEmail() != null) {
+                    emailService.sendLeaveApplicationNotification(
+                            employee.getManager().getEmail(),
+                            employee.getFullName(),
+                            leaveType.getLeaveName(),
+                            request.getStartDate().toString(),
+                            request.getEndDate().toString(),
+                            request.getReason()
+                    );
+                }
+            } catch (Exception e) {
+                // Log the error but don't fail the request
+                System.err.println("Failed to send email notification: " + e.getMessage());
+            }
+
+            return savedRequest;
         } else {
             return null;
         }
     }
 
+// ...
     /**
      * Calculate working days between two dates (excluding weekends and holidays)
      */
@@ -580,6 +605,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Override
     @Transactional
     public LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest) {
+        // Find the leave request and validate manager permissions
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(approvalRequest.getLeaveId(), approvalRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + approvalRequest.getLeaveId() + " for this manager"));
@@ -587,19 +613,44 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         Employee manager = employeeRepo.findById(approvalRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + approvalRequest.getManagerId()));
 
+        // Update leave request status
         request.setStatus(LeaveStatus.APPROVED);
         request.setApprovedBy(manager);
         request.setResponseDate(LocalDate.now());
+
+        // Add manager comment if provided
         if (approvalRequest.getComment() != null && !approvalRequest.getComment().trim().isEmpty()) {
             request.setManagerComment(approvalRequest.getComment());
         }
-//
-//        leaveBalanceService.updateLeaveBalanceAfterApproval(
-//                request.getEmployee().getEmployeeId(),
-//                request.getLeaveType().getLeaveTypeId(),
-//                request.getDaysRequested(),
-//                request.getStartDate().getYear());
-        return leaveRequestRepo.save(request);
+
+        // Save the updated request
+        LeaveRequest approvedRequest = leaveRequestRepo.save(request);
+
+        // Update leave balance
+        leaveBalanceService.updateLeaveBalanceAfterApproval(
+                request.getEmployee().getEmployeeId(),
+                request.getLeaveType().getLeaveTypeId(),
+                request.getDaysRequested(),
+                request.getStartDate().getYear());
+
+        // Send email notification to employee
+        try {
+            if (request.getEmployee().getEmail() != null) {
+                emailService.sendLeaveApprovalNotification(
+                        request.getEmployee().getEmail(),
+                        request.getEmployee().getFullName(),
+                        request.getLeaveType().getLeaveName(),
+                        request.getStartDate().toString(),
+                        request.getEndDate().toString(),
+                        approvalRequest.getComment()
+                );
+            }
+        } catch (Exception e) {
+            // Log the error but don't fail the request
+            System.err.println("Failed to send approval email: " + e.getMessage());
+        }
+
+        return approvedRequest;
     }
 
     /**
@@ -638,6 +689,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Override
     @Transactional
     public LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest) {
+        // Find the leave request and validate manager permissions
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(rejectionRequest.getLeaveId(), rejectionRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + rejectionRequest.getLeaveId() + " for this manager"));
@@ -650,13 +702,34 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         request.setResponseDate(LocalDate.now());
         request.setManagerComment(rejectionRequest.getComment());
 
+        // Save the updated request
+        LeaveRequest rejectedRequest = leaveRequestRepo.save(request);
+
+        // Update leave balance to return the days
         leaveBalanceService.updateLeaveBalanceAfterRejected(
                 request.getEmployee().getEmployeeId(),
                 request.getLeaveType().getLeaveTypeId(),
                 request.getDaysRequested(),
                 request.getStartDate().getYear());
 
-        return leaveRequestRepo.save(request);
+        // Send email notification to employee
+        try {
+            if (request.getEmployee().getEmail() != null) {
+                emailService.sendLeaveRejectionNotification(
+                        request.getEmployee().getEmail(),
+                        request.getEmployee().getFullName(),
+                        request.getLeaveType().getLeaveName(),
+                        request.getStartDate().toString(),
+                        request.getEndDate().toString(),
+                        rejectionRequest.getComment()
+                );
+            }
+        } catch (Exception e) {
+            // Log the error but don't fail the request
+            System.err.println("Failed to send rejection email: " + e.getMessage());
+        }
+
+        return rejectedRequest;
     }
 
     /**
@@ -665,60 +738,87 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Override
     @Transactional
     public LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest) {
+        // Find the leave request and validate manager permissions
 
         // Fetch leave request assigned to the manager
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(updateRequest.getLeaveId(), updateRequest.getManagerId())
-                .orElseThrow(() -> new RuntimeException(
-                        "Leave request not found with ID: " + updateRequest.getLeaveId() + " for this manager"));
+                .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + updateRequest.getLeaveId() + " for this manager"));
 
-        // Track if any leave-critical information has changed
-        boolean isLeaveChanged = false;
+        // Track changes for the email notification
+        StringBuilder changes = new StringBuilder();
 
-        // Check and update leave type
-        if (updateRequest.getLeaveTypeId() != null &&
-                !request.getLeaveType().getLeaveTypeId().equals(updateRequest.getLeaveTypeId())) {
-
+        // Update leave type if provided
+        if (updateRequest.getLeaveTypeId() != null) {
+            LeaveType oldType = request.getLeaveType();
             LeaveType newType = leaveTypeRepo.findById(updateRequest.getLeaveTypeId())
                     .orElseThrow(() -> new RuntimeException("Leave type not found"));
-            request.setLeaveType(newType);
-            isLeaveChanged = true;
-        }
 
-        // Check and update dates/days
-        if (updateRequest.getStartDate() != null && updateRequest.getEndDate() != null) {
-            if (!request.getStartDate().equals(updateRequest.getStartDate()) ||
-                    !request.getEndDate().equals(updateRequest.getEndDate()) ||
-                    request.getDaysRequested() != updateRequest.getDaysRequested()) {
-
-                request.setStartDate(updateRequest.getStartDate());
-                request.setEndDate(updateRequest.getEndDate());
-                request.setDaysRequested(updateRequest.getDaysRequested());
-                isLeaveChanged = true;
+            if (!newType.getLeaveTypeId().equals(oldType.getLeaveTypeId())) {
+                changes.append("Leave Type: ").append(oldType.getLeaveName())
+                      .append(" → ").append(newType.getLeaveName()).append("\n");
+                request.setLeaveType(newType);
             }
         }
 
-        // Update reason/comment if provided
-        if (updateRequest.getComment() != null) {
+        // Update dates if provided
+        if (updateRequest.getStartDate() != null && updateRequest.getEndDate() != null) {
+            if (!updateRequest.getStartDate().equals(request.getStartDate()) ||
+                !updateRequest.getEndDate().equals(request.getEndDate())) {
+
+                changes.append("Dates: ").append(request.getStartDate())
+                      .append(" to ").append(request.getEndDate())
+                      .append(" → ")
+                      .append(updateRequest.getStartDate())
+                      .append(" to ")
+                      .append(updateRequest.getEndDate())
+                      .append("\n");
+
+                request.setStartDate(updateRequest.getStartDate());
+                request.setEndDate(updateRequest.getEndDate());
+                int newDays = (int) ChronoUnit.DAYS.between(
+                    updateRequest.getStartDate(),
+                    updateRequest.getEndDate()
+                ) + 1;
+
+                if (newDays != request.getDaysRequested()) {
+                    changes.append("Days: ").append(request.getDaysRequested())
+                          .append(" → ").append(newDays).append("\n");
+                    request.setDaysRequested(newDays);
+                }
+            }
+        }
+
+        // Update reason if provided
+        if (updateRequest.getComment() != null && !updateRequest.getComment().equals(request.getReason())) {
+            changes.append("Reason updated\n");
             request.setReason(updateRequest.getComment());
         }
 
-        // Reverse and reapply leave balance **only if changes occurred**
-        if (isLeaveChanged) {
-            leaveBalanceService.updateLeaveBalanceAfterRejected(
-                    request.getEmployee().getEmployeeId(),
-                    request.getLeaveType().getLeaveTypeId(),
-                    request.getDaysRequested(),
-                    request.getStartDate().getYear());
+        // Save the updated request
+        LeaveRequest updatedRequest = leaveRequestRepo.save(request);
 
-            leaveBalanceService.updateLeaveBalanceAfterApproval(
-                    request.getEmployee().getEmployeeId(),
-                    request.getLeaveType().getLeaveTypeId(),
-                    request.getDaysRequested(),
-                    request.getStartDate().getYear());
+        // Send email notification if there were changes
+        if (changes.length() > 0) {
+            try {
+                if (request.getEmployee().getEmail() != null) {
+                    String updateDetails = changes.toString();
+                    emailService.sendLeaveUpdateNotification(
+                            request.getEmployee().getEmail(),
+                            request.getEmployee().getFullName(),
+                            request.getLeaveType().getLeaveName(),
+                            request.getStartDate().toString(),
+                            request.getEndDate().toString(),
+                            updateDetails
+                    );
+                }
+            } catch (Exception e) {
+                // Log the error but don't fail the request
+                System.err.println("Failed to send update notification email: " + e.getMessage());
+            }
         }
 
-        return leaveRequestRepo.save(request);
+        return updatedRequest;
     }
 
 
