@@ -195,7 +195,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // Check if employee has sufficient leave balance
-        if (!leaveType.getLeaveTypeId().equals("L-UPL") && !leaveType.getAllowNegativeBalance() &&
+        if (!leaveType.getLeaveTypeId().equals("L-UP") && !leaveType.getAllowNegativeBalance() &&
                 balance.getRemainingLeaves() < request.getDaysRequested()) {
             result.addError(String.format(
                     "Insufficient %s balance. Available: %.2f days, Requested: %.2f days",
@@ -203,7 +203,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // Check waiting period for new employees (exclude Unpaid Leave)
-        if (!"L-UPL".equalsIgnoreCase(leaveType.getLeaveTypeId()) &&
+        if (!"L-UP".equalsIgnoreCase(leaveType.getLeaveTypeId()) &&
                 leaveType.getWaitingPeriodDays() != null && leaveType.getWaitingPeriodDays() > 0) {
             LocalDate eligibleDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
             if (LocalDate.now().isBefore(eligibleDate)) {
@@ -257,7 +257,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             case "L-EL":
                 validateEarnedLeaveRules(request, result, employee, leaveType);
                 break;
-            case "L-UL":
+            case "L-UP":
                 validateUnpaidLeaveRules(request, result, employee, leaveType);
                 break;
             default:
