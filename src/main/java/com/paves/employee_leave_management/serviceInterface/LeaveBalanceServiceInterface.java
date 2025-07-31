@@ -13,6 +13,7 @@ import java.util.List;
  */
 public interface LeaveBalanceServiceInterface {
     LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year);
+
     void createLeaveBalanceForNewEmployee(String EmpId);
     void processYearEndCarryForward();
 
