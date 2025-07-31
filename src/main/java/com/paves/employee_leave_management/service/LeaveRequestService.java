@@ -126,7 +126,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
      */
     private void validateDriveLinkRequirements(LeaveRequestValidationDTO request, ValidationResultDTO result, LeaveType leaveType) {
         // Check if leave type requires documentation
-        if (leaveType.getRequiresDocumentation()) {
+        if (leaveType.getRequiresDocumentation() && !leaveType.getLeaveTypeId().equals("L-SL")) {
             // For leave types that require documentation, drive link should be provided
             if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
                 result.addError("Drive link with supporting documents is required for " + leaveType.getLeaveName());
