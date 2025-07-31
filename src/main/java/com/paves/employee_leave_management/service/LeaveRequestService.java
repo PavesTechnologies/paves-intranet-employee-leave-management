@@ -13,6 +13,8 @@ import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInte
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
 import java.util.Optional;
 
 import java.time.LocalDate;
@@ -597,9 +599,38 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 //                request.getLeaveType().getLeaveTypeId(),
 //                request.getDaysRequested(),
 //                request.getStartDate().getYear());
-
         return leaveRequestRepo.save(request);
     }
+
+    /**
+     * Approve multiple leave requests using DTO
+     */
+
+    @Transactional
+    public List<LeaveRequest> approveMultipleRequests(BatchApprovalRequestDTO batchApproval) {
+        String managerId = batchApproval.getManagerId();
+
+        Employee manager = employeeRepo.findById(managerId)
+                .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + managerId));
+
+        List<LeaveRequest> approvedRequests = new ArrayList<>();
+
+        for (String leaveId : batchApproval.getLeaveIds()) {
+            LeaveRequest request = leaveRequestRepo
+                    .findByLeaveIdAndEmployee_Manager_EmployeeId(leaveId, managerId)
+                    .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + leaveId + " for this manager"));
+
+            request.setStatus(LeaveStatus.APPROVED);
+            request.setApprovedBy(manager);
+            request.setResponseDate(LocalDate.now());
+
+            approvedRequests.add(request);
+        }
+
+        return leaveRequestRepo.saveAll(approvedRequests);
+    }
+
+
 
     /**
      * Reject a leave request using DTO
