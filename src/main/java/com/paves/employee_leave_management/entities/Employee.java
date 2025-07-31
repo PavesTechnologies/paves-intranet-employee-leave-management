@@ -178,6 +178,9 @@ public class Employee {
     @Column(name="password", length = 10)
     private String password;
 
+//    @Column(name="usedLeaves")
+//    private int  usedLeaves;
+
     @OneToMany(mappedBy = "approvedBy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<LeaveRequest> approvedRequests;
