@@ -760,6 +760,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     /**
      * Update a leave request by manager using DTO
      */
+
     @Override
     @Transactional
     public LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest) {
@@ -801,10 +802,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
                 request.setStartDate(updateRequest.getStartDate());
                 request.setEndDate(updateRequest.getEndDate());
-                int newDays = (int) ChronoUnit.DAYS.between(
-                    updateRequest.getStartDate(),
-                    updateRequest.getEndDate()
-                ) + 1;
+                double newDays = updateRequest.getDaysRequested();
 
                 if (newDays != request.getDaysRequested()) {
                     changes.append("Days: ").append(request.getDaysRequested())
