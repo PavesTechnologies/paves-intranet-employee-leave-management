@@ -24,19 +24,18 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
     public void requestCompoff(LeaveCompoffRequestDTO dto) {
         LeaveCompoff compoff = LeaveCompoff.builder()
                 .employeeId(dto.getEmployeeId())
-                .managerId(dto.getManagerId())
-                .workedDate(dto.getWorkedDate())
+//                .managerId(dto.getManagerId())
+//                .workedDate(dto.getWorkedDate())
                 .startDate(dto.getStartDate())
                 .endDate(dto.getEndDate())
                 .days(dto.getDays())
                 .halfDays(dto.getHalfDays())
                 .note(dto.getNote())
-                .file(dto.getFile())
+//                .file(dto.getFile())
                 .status(LeaveStatusCompoff.PENDING)
                 .build();
 
         LeaveCompoff cf =leaveCompoffRepo.save(compoff);
-        System.out.println(cf);
     }
 
 
