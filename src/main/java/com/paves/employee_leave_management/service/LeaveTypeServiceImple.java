@@ -32,7 +32,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
          if(allLeaveTypes.isEmpty()){
              return new ResponseEntity<>(HttpStatus.NO_CONTENT);
          }
-         return new ResponseEntity<>(allLeaveTypes, HttpStatus.FOUND);
+         return new ResponseEntity<>(allLeaveTypes, HttpStatus.OK);
     }
 
     @Override
