@@ -13,5 +13,5 @@ public interface LeaveCompoffRepo extends JpaRepository<LeaveCompoff,Long> {
 
     List<LeaveCompoff> findByStatus(LeaveStatusCompoff leaveStatusCompoff);
 
-//    List<LeaveCompoff> findByEmployeeIdAndStatus(String employeeId, LeaveStatusCompoff status);
+    List<LeaveCompoff> findByManagerIdAndStatusOrderByWorkedDateDesc(String managerId, LeaveStatusCompoff status);
 }
