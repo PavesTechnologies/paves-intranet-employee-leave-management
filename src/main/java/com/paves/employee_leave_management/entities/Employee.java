@@ -146,7 +146,7 @@ public class Employee {
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
-    @Column(name = "gender", length = 50, nullable = false, unique = true)
+    @Column(name = "gender", length = 50, nullable = false)
     private String gender;
 
     @Column(name = "phone", length = 15)
