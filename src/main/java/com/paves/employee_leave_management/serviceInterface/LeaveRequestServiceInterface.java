@@ -35,4 +35,6 @@ public interface LeaveRequestServiceInterface {
     List<LeaveRequest> getLeaveHistoryByYear(String employeeId, LocalDate startDate, LocalDate endDate);
 
     List<LeaveRequest> approveMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
+
+    List<LeaveRequest> rejectMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
 }
