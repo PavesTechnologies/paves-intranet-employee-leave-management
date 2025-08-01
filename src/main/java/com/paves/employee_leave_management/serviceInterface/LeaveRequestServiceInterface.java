@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveRequest;
+import jakarta.validation.Valid;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,4 +34,5 @@ public interface LeaveRequestServiceInterface {
 
     List<LeaveRequest> getLeaveHistoryByYear(String employeeId, LocalDate startDate, LocalDate endDate);
 
+    List<LeaveRequest> approveMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
 }
