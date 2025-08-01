@@ -682,6 +682,31 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
 
+    @Transactional
+    public List<LeaveRequest> rejectMultipleRequests(BatchApprovalRequestDTO batchApproval) {
+        String managerId = batchApproval.getManagerId();
+
+        Employee manager = employeeRepo.findById(managerId)
+                .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + managerId));
+
+        List<LeaveRequest> approvedRequests = new ArrayList<>();
+
+        for (String leaveId : batchApproval.getLeaveIds()) {
+            LeaveRequest request = leaveRequestRepo
+                    .findByLeaveIdAndEmployee_Manager_EmployeeId(leaveId, managerId)
+                    .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + leaveId + " for this manager"));
+
+            request.setStatus(LeaveStatus.REJECTED);
+            request.setApprovedBy(manager);
+            request.setResponseDate(LocalDate.now());
+
+            approvedRequests.add(request);
+        }
+
+        return leaveRequestRepo.saveAll(approvedRequests);
+    }
+
+
 
     /**
      * Reject a leave request using DTO

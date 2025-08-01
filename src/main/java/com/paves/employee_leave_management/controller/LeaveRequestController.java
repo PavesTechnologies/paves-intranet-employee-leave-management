@@ -259,6 +259,15 @@ public class LeaveRequestController {
         return ResponseEntity.ok(approved);
     }
 
+    @PostMapping("/reject-batch")
+    public ResponseEntity<List<LeaveRequest>> rejectLeaveBatch(
+            @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
+
+        List<LeaveRequest> rejected = leaveRequestService.rejectMultipleRequests(batchApproval);
+        return ResponseEntity.ok(rejected);
+    }
+
+
 
     /**
      * Reject leave request using request body
