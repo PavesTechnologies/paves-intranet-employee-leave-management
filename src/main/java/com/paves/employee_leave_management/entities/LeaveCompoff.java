@@ -19,8 +19,12 @@ public class LeaveCompoff {
     @Column(name = "idleave_compoff")
     private Long idleaveCompoff;
 
-    @Column(name = "employee_id")
+    @Column(name = "employee_id" , insertable = false,updatable = false)
     private String employeeId;
+
+    @ManyToOne
+    @JoinColumn(name = "employee_id", referencedColumnName = "employee_id")
+    private Employee employee;
 
     @Column(name = "manager_id")
     private String managerId;
@@ -37,7 +41,7 @@ public class LeaveCompoff {
     private double days;
 
     @Column(name = "half_days")
-    private String halfDays;
+    private Double halfDays;
 
     private String note;
 

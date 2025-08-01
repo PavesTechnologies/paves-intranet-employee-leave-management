@@ -161,7 +161,7 @@ public class Employee {
     @Column(name = "job_title", length = 100)
     private String jobTitle;
 
-    @ManyToOne
+    @ManyToOne(fetch=FetchType.EAGER)
     @JsonIgnore
     @JoinColumn(name = "manager_id")
     @JsonManagedReference
