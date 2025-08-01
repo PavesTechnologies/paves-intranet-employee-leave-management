@@ -812,12 +812,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             }
         }
 
-        // Update reason if provided
-        if (updateRequest.getComment() != null && !updateRequest.getComment().equals(request.getReason())) {
-            changes.append("Reason updated\n");
-            request.setReason(updateRequest.getComment());
-        }
-
+//        // Update reason if provided
+//        if (updateRequest.getComment() != null && !updateRequest.getComment().equals(request.getReason())) {
+//            changes.append("Reason updated\n");
+//            request.setReason(updateRequest.getComment());
+//        }
         // Save the updated request
         LeaveRequest updatedRequest = leaveRequestRepo.save(request);
 
