@@ -1,8 +1,7 @@
 package com.paves.employee_leave_management.controller;
 
 
-import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
-import com.paves.employee_leave_management.dto.LeaveCompoffUpdateStatusDTO;
+import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
 import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
 import com.paves.employee_leave_management.service.LeaveCompoffServiceImpl;
@@ -27,10 +26,16 @@ public class LeaveCompoffController {
         return "Compoff requested successfully.";
     }
 
-    @PutMapping("/update-status")
-    public String updateCompoffStatus(@RequestBody LeaveCompoffUpdateStatusDTO dto) {
-        compoffService.updateCompoffStatus(dto);
-        return "Compoff status updated successfully.";
+    @PutMapping("/approve")
+    public String approveCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
+        compoffService.approveCompoff(dto.getCompoffId());
+        return "Compoff approved successfully.";
+    }
+
+    @PutMapping("/reject")
+    public String rejectCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
+        compoffService.rejectCompoff(dto.getCompoffId());
+        return "Compoff rejected successfully.";
     }
 
     @GetMapping("/employee/{employeeId}")
@@ -38,10 +43,14 @@ public class LeaveCompoffController {
         return compoffService.getCompoffsByEmployee(employeeId);
     }
 
-    @GetMapping("/manager/{managerId}/status/{status}")
-    public List<LeaveCompoff> getByManagerAndStatus(@PathVariable String managerId,
-                                                    @PathVariable LeaveStatusCompoff status) {
-        return compoffService.getCompoffsByManagerAndStatus(managerId, status);
+    @PostMapping("/manager/status")
+    public List<LeaveCompoff> getByManagerAndStatus(@RequestBody ManagerCompoffStatusDTO dto) {
+        return compoffService.getCompoffsByManagerAndStatus(dto.getManagerId(), dto.getStatus());
+    }
+
+    @PostMapping("/manager/pending")
+    public List<LeaveCompoff> getPendingCompoffsByManager(@RequestBody ManagerPendingCompoffDTO dto) {
+        return compoffService.getPendingCompoffsForManager(dto.getManagerId());
     }
 
 }
