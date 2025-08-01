@@ -74,7 +74,7 @@ public class LeaveBalance {
 
 
     public void updateRemainingLeaves() {
-        this.remainingLeaves = accruedLeaves - usedLeaves;
+        this.remainingLeaves = (accruedLeaves+carriedForward) - usedLeaves;
     }
 }
 

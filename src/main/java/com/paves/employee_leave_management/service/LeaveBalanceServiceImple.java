@@ -91,7 +91,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 accruedLeaves = 0;
             }
 
-            double remainingLeaves = Math.max(0, accruedLeaves - usedLeaves);
+            double remainingLeaves = Math.max(0, (accruedLeaves+carriedForward) - usedLeaves);
 
             LeaveBalance balance = LeaveBalance.builder()
                     .employee(emp)
