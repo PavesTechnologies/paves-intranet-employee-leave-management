@@ -4,9 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class ApproveRejectCompoffDTO {
+public class CancelCompoffRequestDTO {
     @NotBlank(message = "required")
     private Long compoffId;
-    @NotBlank(message= "required")
-    private String managerId;
+    @NotBlank(message = "required")
+    private String reason;
 }

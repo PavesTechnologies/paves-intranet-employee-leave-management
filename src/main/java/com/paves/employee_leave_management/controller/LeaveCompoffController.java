@@ -8,6 +8,8 @@ import com.paves.employee_leave_management.service.LeaveCompoffServiceImpl;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,36 +23,69 @@ public class LeaveCompoffController {
     LeaveCompoffSerivceInterface compoffService;
 
     @PostMapping("/request")
-    public String requestCompoff(@RequestBody LeaveCompoffRequestDTO dto) {
-        compoffService.requestCompoff(dto);
-        return "Compoff requested successfully.";
+    public ResponseEntity<ApiResponse<String>> requestCompoff(@RequestBody LeaveCompoffRequestDTO dto) {
+        try {
+            compoffService.requestCompoff(dto);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Compoff requested successfully.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error: " + e.getMessage(), null));
+        }
     }
 
     @PutMapping("/approve")
-    public String approveCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
-        compoffService.approveCompoff(dto.getCompoffId());
-        return "Compoff approved successfully.";
+    public ResponseEntity<ApiResponse<String>> approveCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
+        try {
+            compoffService.approveCompoff(dto.getCompoffId());
+            return ResponseEntity.ok(new ApiResponse<>(true, "Compoff approved successfully.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, "Approval failed: " + e.getMessage(), null));
+        }
     }
 
     @PutMapping("/reject")
-    public String rejectCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
-        compoffService.rejectCompoff(dto.getCompoffId());
-        return "Compoff rejected successfully.";
+    public ResponseEntity<ApiResponse<String>> rejectCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
+        try {
+            compoffService.rejectCompoff(dto.getCompoffId());
+            return ResponseEntity.ok(new ApiResponse<>(true, "Compoff rejected successfully.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, "Rejection failed: " + e.getMessage(), null));
+        }
     }
 
     @GetMapping("/employee/{employeeId}")
-    public List<LeaveCompoff> getByEmployee(@PathVariable String employeeId) {
-        return compoffService.getCompoffsByEmployee(employeeId);
+    public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByEmployee(@PathVariable String employeeId) {
+        List<LeaveCompoff> compoffs = compoffService.getCompoffsByEmployee(employeeId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Compoff list fetched", compoffs));
     }
 
     @PostMapping("/manager/status")
-    public List<LeaveCompoff> getByManagerAndStatus(@RequestBody ManagerCompoffStatusDTO dto) {
-        return compoffService.getCompoffsByManagerAndStatus(dto.getManagerId(), dto.getStatus());
+    public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByManagerAndStatus(@RequestBody ManagerCompoffStatusDTO dto) {
+        List<LeaveCompoff> compoffs = compoffService.getCompoffsByManagerAndStatus(dto.getManagerId(), dto.getStatus());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Filtered Compoff list", compoffs));
     }
 
-    @PostMapping("/manager/pending")
-    public List<LeaveCompoff> getPendingCompoffsByManager(@RequestBody ManagerPendingCompoffDTO dto) {
-        return compoffService.getPendingCompoffsForManager(dto.getManagerId());
+    @PostMapping("/pending")
+    public ResponseEntity<ApiResponse<List<PendingCompoffResponseDTO>>> getPendingCompoffs(
+            @RequestBody ManagerPendingCompoffDTO managerDTO) {
+
+        String managerId = managerDTO.getManagerId();
+        List<PendingCompoffResponseDTO> pendingCompoffs = compoffService.getPendingCompoffsForManager(managerId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Pending Compoffs fetched", pendingCompoffs));
+    }
+
+
+    @PutMapping("/cancel")
+    public ResponseEntity<ApiResponse<String>> cancelPendingCompoff(@RequestBody CancelCompoffRequestDTO dto) {
+        try {
+            compoffService.cancelPendingCompoff(dto);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, "Cancellation failed: " + e.getMessage(), null));
+        }
     }
 
 }

@@ -7,18 +7,17 @@ import java.time.LocalDate;
 
 @Data
 public class LeaveCompoffRequestDTO {
-    @NotBlank(message = "Employee Id is Required")
+    @NotBlank(message = "EmployeeId is required")
     private String employeeId;
-//    private String managerId;
-//    private LocalDate workedDate;
-    @NotBlank(message = "Start Date is Required")
+    private String managerId;
+    @NotBlank(message = "StartDate is required")
     private LocalDate startDate;
-    @NotBlank(message = "End Date is Required")
+    @NotBlank(message = "endDate is required")
     private LocalDate endDate;
-    @NotBlank(message = "Days are Required")
+    @NotBlank(message = "days are required")
     private double days;
     private String halfDays;
-    @NotBlank(message = "Note is Required")
+    @NotBlank(message = "note is required")
     private String note;
 //    private String file;
 }
