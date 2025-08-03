@@ -760,82 +760,93 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     /**
      * Update a leave request by manager using DTO
      */
-
     @Override
     @Transactional
     public LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest) {
-        // Find the leave request and validate manager permissions
-
-        // Fetch leave request assigned to the manager
+        // Fetch the leave request assigned to the manager
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(updateRequest.getLeaveId(), updateRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + updateRequest.getLeaveId() + " for this manager"));
 
-        // Track changes for the email notification
+        // Prepare new values (use updated if provided, else fallback to existing)
+        LeaveType updatedLeaveType = request.getLeaveType();
+        if (updateRequest.getLeaveTypeId() != null) {
+            updatedLeaveType = leaveTypeRepo.findById(updateRequest.getLeaveTypeId())
+                    .orElseThrow(() -> new RuntimeException("Leave type not found with ID: " + updateRequest.getLeaveTypeId()));
+        }
+
+        LocalDate updatedStartDate = updateRequest.getStartDate() != null
+                ? updateRequest.getStartDate() : request.getStartDate();
+
+        LocalDate updatedEndDate = updateRequest.getEndDate() != null
+                ? updateRequest.getEndDate() : request.getEndDate();
+
+        Double updatedDaysRequested = updateRequest.getDaysRequested() != null
+                ? updateRequest.getDaysRequested() : request.getDaysRequested();
+
+        // Build validation DTO before applying changes
+        LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
+                .leaveId(request.getLeaveId())
+                .employeeId(request.getEmployee().getEmployeeId())
+                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
+                .startDate(updatedStartDate)
+                .endDate(updatedEndDate)
+                .daysRequested(updatedDaysRequested)
+                .reason(request.getReason())
+                .driveLink(request.getDriveLink())
+                .build();
+
+        // Validate proposed update
+        ValidationResultDTO validationResult = validateLeaveRequest(validationDTO);
+        if (!validationResult.isValid()) {
+            throw new RuntimeException("Validation failed: " + String.join(", ", validationResult.getErrors()));
+        }
+
+        // Track changes for notification
         StringBuilder changes = new StringBuilder();
 
-        // Update leave type if provided
-        if (updateRequest.getLeaveTypeId() != null) {
-            LeaveType oldType = request.getLeaveType();
-            LeaveType newType = leaveTypeRepo.findById(updateRequest.getLeaveTypeId())
-                    .orElseThrow(() -> new RuntimeException("Leave type not found"));
-
-            if (!newType.getLeaveTypeId().equals(oldType.getLeaveTypeId())) {
-                changes.append("Leave Type: ").append(oldType.getLeaveName())
-                      .append(" → ").append(newType.getLeaveName()).append("\n");
-                request.setLeaveType(newType);
-            }
+        // Apply leave type change
+        if (!updatedLeaveType.getLeaveTypeId().equals(request.getLeaveType().getLeaveTypeId())) {
+            changes.append("Leave Type: ").append(request.getLeaveType().getLeaveName())
+                    .append(" → ").append(updatedLeaveType.getLeaveName()).append("\n");
+            request.setLeaveType(updatedLeaveType);
         }
 
-        // Update dates if provided
-        if (updateRequest.getStartDate() != null && updateRequest.getEndDate() != null) {
-            if (!updateRequest.getStartDate().equals(request.getStartDate()) ||
-                !updateRequest.getEndDate().equals(request.getEndDate())) {
-
-                changes.append("Dates: ").append(request.getStartDate())
-                      .append(" to ").append(request.getEndDate())
-                      .append(" → ")
-                      .append(updateRequest.getStartDate())
-                      .append(" to ")
-                      .append(updateRequest.getEndDate())
-                      .append("\n");
-
-                request.setStartDate(updateRequest.getStartDate());
-                request.setEndDate(updateRequest.getEndDate());
-                double newDays = updateRequest.getDaysRequested();
-
-                if (newDays != request.getDaysRequested()) {
-                    changes.append("Days: ").append(request.getDaysRequested())
-                          .append(" → ").append(newDays).append("\n");
-                    request.setDaysRequested(newDays);
-                }
-            }
+        // Apply start & end date changes
+        if (!updatedStartDate.equals(request.getStartDate()) || !updatedEndDate.equals(request.getEndDate())) {
+            changes.append("Dates: ").append(request.getStartDate())
+                    .append(" to ").append(request.getEndDate())
+                    .append(" → ")
+                    .append(updatedStartDate).append(" to ").append(updatedEndDate).append("\n");
+            request.setStartDate(updatedStartDate);
+            request.setEndDate(updatedEndDate);
         }
 
-//        // Update reason if provided
-//        if (updateRequest.getComment() != null && !updateRequest.getComment().equals(request.getReason())) {
-//            changes.append("Reason updated\n");
-//            request.setReason(updateRequest.getComment());
-//        }
-        // Save the updated request
+        // Apply days requested change
+        if (!updatedDaysRequested.equals(request.getDaysRequested())) {
+            changes.append("Days: ").append(request.getDaysRequested())
+                    .append(" → ").append(updatedDaysRequested).append("\n");
+            request.setDaysRequested(updatedDaysRequested);
+        }
+
+        // Save only if there are changes
         LeaveRequest updatedRequest = leaveRequestRepo.save(request);
 
-        // Send email notification if there were changes
+        // Send email if there were updates
         if (changes.length() > 0) {
             try {
-                if (request.getEmployee().getEmail() != null) {
-                    String updateDetails = changes.toString();
+                String email = request.getEmployee().getEmail();
+                if (email != null) {
                     emailService.sendLeaveUpdateNotification(
-                            request.getEmployee().getEmail(),
+                            email,
                             request.getEmployee().getFullName(),
                             request.getLeaveType().getLeaveName(),
                             request.getStartDate().toString(),
                             request.getEndDate().toString(),
-                            updateDetails
+                            changes.toString()
                     );
                 }
             } catch (Exception e) {
-                // Log the error but don't fail the request
                 System.err.println("Failed to send update notification email: " + e.getMessage());
             }
         }
