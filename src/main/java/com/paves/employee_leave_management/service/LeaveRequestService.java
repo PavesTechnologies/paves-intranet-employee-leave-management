@@ -506,11 +506,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     /**
      * Calculate working days between two dates (excluding weekends and holidays)
      */
-    private int calculateWorkingDays(LocalDate startDate, LocalDate endDate) {
-        // Basic calculation - can be enhanced to exclude weekends and holidays
-        return (int) ChronoUnit.DAYS.between(startDate, endDate) + 1;
-    }
-
     /**
      * Get all leave requests for an employee
      */
@@ -840,20 +835,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
                         leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
                 .map(existingRequest -> {
-
                     // Only allow updates if the status is still pending
                     if (existingRequest.getStatus() == LeaveStatus.APPROVED ||
                             existingRequest.getStatus() == LeaveStatus.REJECTED) {
                         throw new LeaveBalanceExceptionHandler("Cannot update a leave request that has already been approved or rejected.");
                     }
 
-                    // Check if any leave-critical field has changed
-                    boolean isLeaveChanged =
-                            !existingRequest.getLeaveType().getLeaveTypeId().equals(request.getLeaveTypeId()) ||
-                                    existingRequest.getDaysRequested() != request.getDaysRequested() ||
-                                    !existingRequest.getStartDate().equals(request.getStartDate());
-
-                    if (isLeaveChanged) {
                         // Reverse previous balance before applying changes
                         leaveBalanceService.updateLeaveBalanceAfterRejected(
                                 existingRequest.getEmployee().getEmployeeId(),
@@ -861,7 +848,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                                 existingRequest.getDaysRequested(),
                                 existingRequest.getStartDate().getYear()
                         );
-                    }
 
                     // Validate the new request
                     ValidationResultDTO validationResult = validateLeaveRequest(request);
@@ -890,14 +876,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     existingRequest.setStatus(LeaveStatus.PENDING);
 
                     // Apply new balance if leave was changed
-                    if (isLeaveChanged) {
                         leaveBalanceService.updateLeaveBalanceAfterApproval(
                                 existingRequest.getEmployee().getEmployeeId(),
                                 updatedLeaveType.getLeaveTypeId(),
                                 request.getDaysRequested(),
                                 request.getStartDate().getYear()
                         );
-                    }
 
                     // Save the updated request
                     LeaveRequest updatedRequest = leaveRequestRepo.save(existingRequest);
