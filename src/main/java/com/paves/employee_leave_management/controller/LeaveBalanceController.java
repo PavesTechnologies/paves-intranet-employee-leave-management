@@ -53,7 +53,7 @@ public class LeaveBalanceController {
         return leaveBalanceService.findByEmployeeId(employeeId);
     }
 
-    @PutMapping("/employee/{employeeId}")
+    @PutMapping("/update-leave-balance-employee")
     public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(@RequestBody List<LeaveBalance> leaveBalance) {
         return leaveBalanceService.UpdateLeaveBalancesByEmployeeId(leaveBalance);
     }
