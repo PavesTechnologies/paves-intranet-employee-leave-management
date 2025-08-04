@@ -79,7 +79,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, lt.getAccrualRate());
 
                 carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear,lt);
-                totalLeaves = carriedForward + (lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0);
+//              totalLeaves = carriedForward + (lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0);   //change
+                totalLeaves = lt.getMaxDaysPerYear();
             } else if (lt.getLeaveName().equalsIgnoreCase("Paternity Leave")) {
                 accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
                 totalLeaves = accruedLeaves;
@@ -146,7 +147,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             LocalDate yearEnd = LocalDate.of(year, 12, 31);
             LocalDate effectiveStart = hireDate.isAfter(yearStart) ? hireDate : yearStart;
             double yearlyAccrued = getEarnedLeave(effectiveStart, yearEnd, lt.getAccrualRate());
-            double yearlyCarry = Math.min(yearlyAccrued, lt.getMaxCarryForward());  // max carry per year is 10
+            double yearlyCarry = Math.min(yearlyAccrued, lt.getMaxCarryForwardPerYear());  // max carry per year is 10
             totalCarried += yearlyCarry;
             if (totalCarried >= 48) {
                 return 48;  // total max cap
@@ -171,14 +172,23 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             double unused = balance.getRemainingLeaves();
             double carryForward = balance.getCarriedForward();
 
+
+
             switch (name) {
                 case "Earned Leave":
-                    double forward = Math.min(balance.getLeaveType().getMaxCarryForward(), unused);
-                    carryForward = Math.min(48, carryForward + forward);
+                    double forward;
+                    if(unused >= carryForward){
+                        unused = unused - carryForward;
+                        forward = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
+                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(),carryForward + forward);
+                    }else {
+                        forward = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
+                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), forward);
+                    }
                     newbalance.setCarriedForward(carryForward);
                     newbalance.setExpiredLeaves(unused - forward);
                     newbalance.setTotalLeaves(
-                            (balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0) + carryForward
+                            (balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0)
                     );
                     newbalance.setAccruedLeaves(balance.getAccruedLeaves());
                     break;
