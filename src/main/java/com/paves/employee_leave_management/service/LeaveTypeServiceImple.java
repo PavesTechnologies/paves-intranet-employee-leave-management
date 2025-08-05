@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -36,13 +37,16 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     }
 
     @Override
-    public ResponseEntity<LeaveType> updateLeaveType(LeaveType leaveType) {
-        Optional<LeaveType> leaveTypeRes = repo.findByLeaveTypeId(leaveType.getLeaveTypeId());
-        if (leaveTypeRes.isEmpty()){
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId) {
+        Optional<LeaveType> leaveTypeRes = repo.findByLeaveTypeId(leaveTypeId);
+        if (leaveTypeRes.isPresent()){
+            return ResponseEntity
+                    .badRequest()
+                    .body(new ApiResponse<>(false, "", null));
         }
-        else
-            return new ResponseEntity<>(repo.save(leaveType), HttpStatus.ACCEPTED);
+        return ResponseEntity
+                .ok()
+                .body(new ApiResponse<>(true, "", leaveTypeRes.get()));
     }
 
     @Override
