@@ -42,8 +42,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                 .employeeId(dto.getEmployeeId())
                 .startDate(dto.getStartDate())
                 .endDate(dto.getEndDate())
-                .days(dto.getDays())
-                .halfDays(Double.valueOf(dto.getHalfDays()))
+                .duration(dto.getDuration())
                 .note(dto.getNote())
                 .status(LeaveStatusCompoff.PENDING)
                 .managerId(managerId)
@@ -73,10 +72,10 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
             throw new RuntimeException("Leave balance not found for employee: " + compoff.getEmployeeId());
         }
 
-        double days = compoff.getDays();
-            balance.setTotalLeaves(balance.getTotalLeaves() + days);
-            balance.setRemainingLeaves(balance.getRemainingLeaves() + days);
-            balance.setAccruedLeaves(balance.getAccruedLeaves() + days);
+        double duration = compoff.getDuration();
+            balance.setTotalLeaves(balance.getTotalLeaves() + duration);
+            balance.setRemainingLeaves(balance.getRemainingLeaves() + duration);
+            balance.setAccruedLeaves(balance.getAccruedLeaves() + duration);
 
         compoff.setStatus(LeaveStatusCompoff.APPROVED);
         compoff.setActionDate(LocalDate.now());
@@ -108,10 +107,10 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                 throw new RuntimeException("Leave balance not found for employee: " + compoff.getEmployeeId());
             }
 
-            double days = compoff.getDays();
-            balance.setTotalLeaves(Math.max(0, balance.getTotalLeaves() - days));
-            balance.setRemainingLeaves(Math.max(0, balance.getRemainingLeaves() - days));
-            balance.setAccruedLeaves(Math.max(0, balance.getAccruedLeaves() - days));
+            double duration = compoff.getDuration();
+            balance.setTotalLeaves(Math.max(0, balance.getTotalLeaves() - duration));
+            balance.setRemainingLeaves(Math.max(0, balance.getRemainingLeaves() - duration));
+            balance.setAccruedLeaves(Math.max(0, balance.getAccruedLeaves() - duration));
             leaveBalanceRepo.save(balance);
         }
 
@@ -149,8 +148,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
             dto.setEmployeeName(emp.getFirstName() + " " + emp.getLastName());
             dto.setStartDate(compoff.getStartDate());
             dto.setEndDate(compoff.getEndDate());
-            dto.setDays(compoff.getDays());
-            dto.setHalfDays(compoff.getHalfDays() != null ? compoff.getHalfDays() : 0.0);
+            dto.setDuration(compoff.getDuration());
             dto.setNote(compoff.getNote());
             dto.setStatus(compoff.getStatus().toString());
             dto.setActionDate(compoff.getActionDate());
