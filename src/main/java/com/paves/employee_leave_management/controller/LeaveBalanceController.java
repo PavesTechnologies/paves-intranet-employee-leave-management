@@ -53,6 +53,11 @@ public class LeaveBalanceController {
         return leaveBalanceService.findByEmployeeId(employeeId);
     }
 
+    @PutMapping("/update-leave-balance-employee")
+    public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(@RequestBody List<LeaveBalance> leaveBalance) {
+        return leaveBalanceService.UpdateLeaveBalancesByEmployeeId(leaveBalance);
+    }
+
     @GetMapping("/type/{leaveTypeId}")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByLeaveName(@PathVariable String leaveTypeId) {
         return leaveBalanceService.findByLeaveId(leaveTypeId);
