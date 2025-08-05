@@ -148,8 +148,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             double yearlyAccrued = getEarnedLeave(effectiveStart, yearEnd, lt.getAccrualRate());
             double yearlyCarry = Math.min(yearlyAccrued, lt.getMaxCarryForward());  // max carry per year is 10
             totalCarried += yearlyCarry;
-            if (totalCarried >= 48) {
-                return 48;  // total max cap
+            if (totalCarried >= lt.getMaxCarryForward()) {
+                return lt.getMaxCarryForward();  // total max cap
             }
         }
         return totalCarried;
@@ -299,13 +299,12 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         if (approvedDays <= 0) {
             throw new LeaveBalanceExceptionHandler("Approved days must be greater than 0");
         }
-
         LeaveBalance balance = leaveBalanceRepo
                 .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
 
         balance.setUsedLeaves(balance.getUsedLeaves() + approvedDays);
         if (!leaveTypeId.equalsIgnoreCase("L-UP")) {
-            balance.updateRemainingLeaves();
+            balance.setRemainingLeaves(balance.getRemainingLeaves() - approvedDays);
         }
         leaveBalanceRepo.save(balance);
     }
@@ -320,6 +319,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             balance.setRemainingLeaves(balance.getRemainingLeaves() + daysRequested);
         }
         leaveBalanceRepo.save(balance);
+    }
+
+    @Override
+    public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(List<LeaveBalance> leaveBalance) {
+        return new ResponseEntity<>(leaveBalanceRepo.saveAll(leaveBalance), HttpStatus.OK);
     }
 
     @Override

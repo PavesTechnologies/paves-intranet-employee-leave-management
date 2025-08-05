@@ -1,7 +1,6 @@
 package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
-import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
@@ -30,4 +29,6 @@ public interface LeaveBalanceServiceInterface {
 
     @Transactional
     void updateLeaveBalanceAfterRejected(String employeeId, String leaveTypeId, double daysRequested, int year);
+
+    ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(List<LeaveBalance> leaveBalance);
 }
