@@ -35,6 +35,10 @@ public class LeaveType {
     private Integer maxDaysPerYear;
 
     @Builder.Default
+    @Column(name = "max_carry_forward_per_year", columnDefinition = "INT DEFAULT 0")
+    private Integer maxCarryForwardPerYear = 0;
+
+    @Builder.Default
     @Column(name = "max_carry_forward", columnDefinition = "INT DEFAULT 0")
     private Integer maxCarryForward = 0;
 

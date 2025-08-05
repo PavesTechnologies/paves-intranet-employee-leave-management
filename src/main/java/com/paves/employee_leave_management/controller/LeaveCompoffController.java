@@ -88,4 +88,15 @@ public class LeaveCompoffController {
         }
     }
 
+    @PutMapping("/employee/cancle")
+    public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@RequestBody Long id){
+        try{
+            compoffService.cancelPendingCompOffByEmployee(id);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled", null));
+        }    catch (Exception e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, "Cancellation failed: " + e.getMessage(), null));
+        }
+    }
+
 }
