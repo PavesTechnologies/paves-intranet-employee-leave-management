@@ -621,12 +621,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         // Save the updated request
         LeaveRequest approvedRequest = leaveRequestRepo.save(request);
 
-        // Update leave balance
-        leaveBalanceService.updateLeaveBalanceAfterApproval(
-                request.getEmployee().getEmployeeId(),
-                request.getLeaveType().getLeaveTypeId(),
-                request.getDaysRequested(),
-                request.getStartDate().getYear());
+//        // Update leave balance
+//        leaveBalanceService.updateLeaveBalanceAfterApproval(
+//                request.getEmployee().getEmployeeId(),
+//                request.getLeaveType().getLeaveTypeId(),
+//                request.getDaysRequested(),
+//                request.getStartDate().getYear());
 
         // Send email notification to employee
         try {
@@ -696,6 +696,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             request.setResponseDate(LocalDate.now());
 
             approvedRequests.add(request);
+
+            leaveBalanceService.updateLeaveBalanceAfterRejected(
+                request.getEmployee().getEmployeeId(),
+                request.getLeaveType().getLeaveTypeId(),
+                request.getDaysRequested(),
+                request.getStartDate().getYear());
         }
 
         return leaveRequestRepo.saveAll(approvedRequests);
@@ -763,6 +769,13 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(updateRequest.getLeaveId(), updateRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + updateRequest.getLeaveId() + " for this manager"));
 
+        leaveBalanceService.updateLeaveBalanceAfterRejected(
+                request.getEmployee().getEmployeeId(),
+                request.getLeaveType().getLeaveTypeId(),
+                request.getDaysRequested(),
+                request.getStartDate().getYear()
+        );
+
         // Prepare new values (use updated if provided, else fallback to existing)
         LeaveType updatedLeaveType = request.getLeaveType();
         if (updateRequest.getLeaveTypeId() != null) {
@@ -823,6 +836,13 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     .append(" → ").append(updatedDaysRequested).append("\n");
             request.setDaysRequested(updatedDaysRequested);
         }
+
+        leaveBalanceService.updateLeaveBalanceAfterApproval(
+                request.getEmployee().getEmployeeId(),
+                request.getLeaveType().getLeaveTypeId(),
+                request.getDaysRequested(),
+                request.getStartDate().getYear()
+        );
 
         // Save only if there are changes
         LeaveRequest updatedRequest = leaveRequestRepo.save(request);
@@ -910,8 +930,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
                     // Apply new balance if leave was changed
                         leaveBalanceService.updateLeaveBalanceAfterApproval(
-                                existingRequest.getEmployee().getEmployeeId(),
-                                updatedLeaveType.getLeaveTypeId(),
+                                request.getEmployeeId(),
+                                request.getLeaveTypeId(),
                                 request.getDaysRequested(),
                                 request.getStartDate().getYear()
                         );
