@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
@@ -43,7 +44,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     }
 
     @Override
+    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId) {
+        return null;
+    }
+
+
     @Transactional
+    @Override
     public ResponseEntity<LeaveType> updateLeaveType(LeaveType updatedLeaveType) {
         Optional<LeaveType> existingOpt = repo.findByLeaveTypeId(updatedLeaveType.getLeaveTypeId());
 

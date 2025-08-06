@@ -1,9 +1,12 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
+import com.paves.employee_leave_management.dto.LeaveBalanceUpdateHandleDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
+import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
@@ -22,6 +25,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.Year;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +44,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     EmployeeRepo employeeRepo;
 
     @Override
-    public void createLeaveBalanceForNewEmployee(String empId) {
+public void createLeaveBalanceForNewEmployee(String empId) {
         Employee emp = employeeRepo.findById(empId)
                 .orElseThrow(() -> new EmployeeExceptionHandler("Employee not found: " + empId));
 
@@ -366,6 +370,31 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(List<LeaveBalance> leaveBalance) {
         return new ResponseEntity<>(leaveBalanceRepo.saveAll(leaveBalance), HttpStatus.OK);
     }
+    @Override
+    public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
+        for (LeaveBalanceUpdateRequest.BalanceUpdate update : request.getBalances()) {
+            LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+                    request.getEmployeeId(),
+                    update.getLeaveTypeId(),
+                    update.getYear()
+            );
+
+            if (balance == null) {
+                throw new RuntimeException(
+                        "Leave Balance not found for employeeId: " + request.getEmployeeId() +
+                                ", leaveTypeId: " + update.getLeaveTypeId() +
+                                ", year: " + update.getYear()
+                );
+            }
+
+            balance.setRemainingLeaves(update.getRemainingLeaves());
+            leaveBalanceRepo.save(balance);
+        }
+
+        return ResponseEntity.ok("Leave balances updated successfully.");
+    }
+
+
 
     @Override
     public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
