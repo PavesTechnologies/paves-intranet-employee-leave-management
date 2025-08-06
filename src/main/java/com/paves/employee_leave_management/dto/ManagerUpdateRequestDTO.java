@@ -28,4 +28,7 @@ public class ManagerUpdateRequestDTO {
     private LocalDate startDate;
     private LocalDate endDate;
     private Double daysRequested;
+    private LocalDate requestDate;
+    private String reason;
+    private String driveLink;
 }

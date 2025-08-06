@@ -18,4 +18,6 @@ public interface LeaveCompoffSerivceInterface {
 
 
     void cancelPendingCompoff(CancelCompoffRequestDTO dto);
+
+    void cancelPendingCompOffByEmployee(Long id);
 }
