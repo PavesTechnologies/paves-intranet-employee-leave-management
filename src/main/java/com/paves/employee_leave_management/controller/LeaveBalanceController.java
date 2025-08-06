@@ -1,8 +1,10 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.entities.Employee;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
+import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import jdk.jfr.Description;
 import lombok.*;
@@ -43,7 +45,7 @@ public class LeaveBalanceController {
         return leaveBalanceService.findByBalanceId(balanceID);
     }
 
-    @GetMapping
+    @GetMapping("/all-leave-balances")
     public ResponseEntity<List<LeaveBalance>> getAllLeaveBalances() {
         return leaveBalanceService.getAllLeaveBalances();
     }
@@ -78,5 +80,10 @@ public class LeaveBalanceController {
         int currentYear = Year.now().getValue();
         leaveBalanceService.updateLeaveBalanceAfterApproval(employeeId, leaveTypeId, approvedDays, currentYear);
         return ResponseEntity.ok("Leave approved and balance updated successfully.");
+    }
+
+    @PutMapping("/update")
+    public ResponseEntity<String> updateLeave(@RequestBody LeaveBalanceUpdateRequest request){
+        return leaveBalanceService.updateLeaveBalancesFromHr(request);
     }
 }

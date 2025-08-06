@@ -176,7 +176,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     /**
      * Validates basic date constraints that apply to ALL leave types
      */
-    private void validateBasicDateConstraints(LeaveRequestValidationDTO request, ValidationResultDTO result) {
+    private void    validateBasicDateConstraints(LeaveRequestValidationDTO request, ValidationResultDTO result) {
         LocalDate startDate = request.getStartDate();
         LocalDate endDate = request.getEndDate();
 

@@ -32,7 +32,7 @@ public class LeaveBalance {
 
     @ManyToOne
     @JsonManagedReference
-    @JsonIgnore
+//    @JsonIgnore
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
