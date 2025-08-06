@@ -48,7 +48,7 @@ public class LeaveType {
     @Column(name = "accrual_frequency", length = 20)
     private String accrualFrequency;
 
-    @Column(name = "expiry_days")
+    @Column(name = "expiry_days",columnDefinition = "INT DEFAULT 0")
     private Integer expiryDays;
 
     @Builder.Default

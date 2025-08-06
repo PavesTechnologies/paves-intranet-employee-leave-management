@@ -4,13 +4,11 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.dto.CancelCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
-import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveCompoff;
-import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveCompoffRepo;
+import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +23,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
     private final LeaveCompoffRepo leaveCompoffRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final EmployeeRepo employeeRepo;
+    private final LeaveTypeRepo leaveTypeRepo;
 
     @Override
     public void requestCompoff(LeaveCompoffRequestDTO dto) {
@@ -58,6 +57,18 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         LeaveCompoff compoff = leaveCompoffRepo.findById(compoffId)
                 .orElseThrow(() -> new RuntimeException("Compoff request not found"));
 
+        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId("L-COMPOFF").orElse(null);
+
+        int expiryDays = 0;
+        LocalDate date  = null;
+
+        if (leaveType != null && leaveType.getExpiryDays() != 0) {
+
+            expiryDays = leaveType.getExpiryDays();
+            date = LocalDate.now().plusDays(expiryDays);
+        }
+
+
         LeaveStatusCompoff currentStatus = compoff.getStatus();
 
         // ✅ Allow approve if status is PENDING or REJECTED
@@ -79,7 +90,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
         compoff.setStatus(LeaveStatusCompoff.APPROVED);
         compoff.setActionDate(LocalDate.now());
-        compoff.setExpiryDate(LocalDate.now().plusDays(21));
+        compoff.setExpiryDate(date);
         balance.setLastAccrualDate(LocalDate.now());
 
         leaveCompoffRepo.save(compoff);
