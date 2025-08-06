@@ -34,7 +34,7 @@ public class CompoffExpiryScheduler {
                 LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(compoff.getEmployeeId(), "L-COMPOFF",LocalDate.now().getYear());
 
                 if (balance!=null) {
-                    double days = compoff.getDays();
+                    double days = compoff.getDuration();
                     balance.setTotalLeaves(balance.getTotalLeaves()- days);
                     balance.setRemainingLeaves(balance.getRemainingLeaves() - days);
                     balance.setAccruedLeaves(balance.getAccruedLeaves() - days);

@@ -11,8 +11,9 @@ public class PendingCompoffResponseDTO {
     private String employeeName;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Double days;
-    private Double halfDays;
+//    private Double days;
+//    private Double halfDays;
+    private Double duration;
     private String note;
     private String status;
     private LocalDate actionDate;
