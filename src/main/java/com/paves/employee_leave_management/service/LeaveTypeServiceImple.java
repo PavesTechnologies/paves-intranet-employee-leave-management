@@ -1,14 +1,17 @@
 package com.paves.employee_leave_management.service;
 
-import com.paves.employee_leave_management.dto.ApiResponse;
+import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +20,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Autowired
     LeaveTypeRepo repo;
+
+    @Autowired
+    LeaveBalanceRepo leaveBalanceRepo;
 
     @Override
     public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType) {
@@ -37,17 +43,43 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     }
 
     @Override
-    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId) {
-        Optional<LeaveType> leaveTypeRes = repo.findByLeaveTypeId(leaveTypeId);
-        if (leaveTypeRes.isPresent()){
-            return ResponseEntity
-                    .badRequest()
-                    .body(new ApiResponse<>(false, "", null));
+    @Transactional
+    public ResponseEntity<LeaveType> updateLeaveType(LeaveType updatedLeaveType) {
+        Optional<LeaveType> existingOpt = repo.findByLeaveTypeId(updatedLeaveType.getLeaveTypeId());
+
+        if (existingOpt.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        return ResponseEntity
-                .ok()
-                .body(new ApiResponse<>(true, "", leaveTypeRes.get()));
+
+//        LeaveType existingLeaveType = existingOpt.get();
+        double newAccrualRate = updatedLeaveType.getAccrualRate();
+
+        // Save updated LeaveType
+        LeaveType savedLeaveType = repo.save(updatedLeaveType);
+
+        // Get remaining months in the year (excluding current month)
+        int currentMonth = LocalDate.now().getMonthValue(); // 1 to 12
+        int remainingMonths = 12 - currentMonth;
+
+        // Get all LeaveBalance entries for this leave type
+        List<LeaveBalance> affectedBalances = leaveBalanceRepo.findByLeaveType(savedLeaveType);
+
+        for (LeaveBalance balance : affectedBalances) {
+            double accruedLeaves = balance.getAccruedLeaves(); // leaves_till_now
+            double recalculatedTotal = accruedLeaves + (remainingMonths * newAccrualRate);
+
+            balance.setTotalLeaves(recalculatedTotal);
+
+            // Optional: update availableLeaves if needed
+            // double usedLeaves = balance.getUsedLeaves();
+            // balance.setAvailableLeaves(recalculatedTotal - usedLeaves);
+        }
+
+        leaveBalanceRepo.saveAll(affectedBalances);
+
+        return new ResponseEntity<>(savedLeaveType, HttpStatus.ACCEPTED);
     }
+
 
     @Override
     public ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId) {
