@@ -282,7 +282,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         if (balance.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No records Found");
         }
-        return new ResponseEntity<>(balance, HttpStatus.FOUND);
+        return new ResponseEntity<>(balance, HttpStatus.OK);
     }
 
     @Override

@@ -43,7 +43,7 @@ public class LeaveBalanceController {
         return leaveBalanceService.findByBalanceId(balanceID);
     }
 
-    @GetMapping
+    @GetMapping("/all-leave-balances")
     public ResponseEntity<List<LeaveBalance>> getAllLeaveBalances() {
         return leaveBalanceService.getAllLeaveBalances();
     }
