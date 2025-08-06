@@ -20,6 +20,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.Year;
 import java.util.List;
 
 @Service
@@ -71,6 +72,23 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                         : hireDate;
                 accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, lt.getAccrualRate());
 //                totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+                int currYear = Year.now().getValue();
+
+                if (hireDate.getYear() < currYear) {
+                    // Hired in previous year, full year accrual
+                    totalLeaves = 12 * lt.getAccrualRate();
+                } else {
+                    // Hired this year, calculate based on remaining months
+                    int hireMonth = hireDate.getMonthValue();
+                    int monthsLeftInYear = 12 - hireMonth;
+
+                    if (hireDate.getDayOfMonth() < 15) {
+                        monthsLeftInYear += 1; // include hire month
+                    }
+
+                    totalLeaves = monthsLeftInYear * lt.getAccrualRate();
+                }
+
             } else if (lt.getLeaveName().equalsIgnoreCase("Earned Leave")) {
                 LocalDate accrualStart = (hireDate.getYear() < currentYear)
                         ? LocalDate.of(currentYear, 1, 1)
@@ -78,8 +96,22 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, lt.getAccrualRate());
 
                 carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear,lt);
-//              totalLeaves = carriedForward + (lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0);   //change
-                totalLeaves = lt.getMaxDaysPerYear();
+                int currYear = Year.now().getValue();
+
+                if (hireDate.getYear() < currYear) {
+                    // Hired in previous year, full year accrual
+                    totalLeaves = 12 * lt.getAccrualRate();
+                } else {
+                    // Hired this year, calculate based on remaining months
+                    int hireMonth = hireDate.getMonthValue();
+                    int monthsLeftInYear = 12 - hireMonth;
+
+                    if (hireDate.getDayOfMonth() < 15) {
+                        monthsLeftInYear += 1; // include hire month
+                    }
+
+                    totalLeaves = monthsLeftInYear * lt.getAccrualRate();
+                }
             } else if (lt.getLeaveName().equalsIgnoreCase("Paternity Leave")) {
                 accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
                 totalLeaves = accruedLeaves;
