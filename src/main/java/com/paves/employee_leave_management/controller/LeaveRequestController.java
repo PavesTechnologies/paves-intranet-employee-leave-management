@@ -134,7 +134,7 @@ public class LeaveRequestController {
             @RequestParam String employeeId) {
         try {
             LeaveRequest cancelledRequest = leaveRequestService.cancelLeaveRequest(leaveId, employeeId);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request cancelled successfully", cancelledRequest));
+            return ResponseEntity.ok(new ApiResponse<>(true, "Cancelled By employee", cancelledRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(false, "Error cancelling request: " + e.getMessage(), null));
