@@ -15,8 +15,7 @@ public class LeaveCompoffRequestDTO {
     @NotBlank(message = "endDate is required")
     private LocalDate endDate;
     @NotBlank(message = "days are required")
-    private double days;
-    private String halfDays;
+    private double duration;
     @NotBlank(message = "note is required")
     private String note;
 //    private String file;

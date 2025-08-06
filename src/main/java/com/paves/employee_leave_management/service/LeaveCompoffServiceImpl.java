@@ -4,13 +4,11 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.dto.CancelCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
-import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveCompoff;
-import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveCompoffRepo;
+import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +23,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
     private final LeaveCompoffRepo leaveCompoffRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final EmployeeRepo employeeRepo;
+    private final LeaveTypeRepo leaveTypeRepo;
 
     @Override
     public void requestCompoff(LeaveCompoffRequestDTO dto) {
@@ -42,8 +41,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                 .employeeId(dto.getEmployeeId())
                 .startDate(dto.getStartDate())
                 .endDate(dto.getEndDate())
-                .days(dto.getDays())
-                .halfDays(Double.valueOf(dto.getHalfDays()))
+                .duration(dto.getDuration())
                 .note(dto.getNote())
                 .status(LeaveStatusCompoff.PENDING)
                 .managerId(managerId)
@@ -59,6 +57,18 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         LeaveCompoff compoff = leaveCompoffRepo.findById(compoffId)
                 .orElseThrow(() -> new RuntimeException("Compoff request not found"));
 
+        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId("L-COMPOFF").orElse(null);
+
+        int expiryDays = 0;
+        LocalDate date  = null;
+
+        if (leaveType != null && leaveType.getExpiryDays() != 0) {
+
+            expiryDays = leaveType.getExpiryDays();
+            date = LocalDate.now().plusDays(expiryDays);
+        }
+
+
         LeaveStatusCompoff currentStatus = compoff.getStatus();
 
         // ✅ Allow approve if status is PENDING or REJECTED
@@ -73,14 +83,14 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
             throw new RuntimeException("Leave balance not found for employee: " + compoff.getEmployeeId());
         }
 
-        double days = compoff.getDays();
-            balance.setTotalLeaves(balance.getTotalLeaves() + days);
-            balance.setRemainingLeaves(balance.getRemainingLeaves() + days);
-            balance.setAccruedLeaves(balance.getAccruedLeaves() + days);
+        double duration = compoff.getDuration();
+            balance.setTotalLeaves(balance.getTotalLeaves() + duration);
+            balance.setRemainingLeaves(balance.getRemainingLeaves() + duration);
+            balance.setAccruedLeaves(balance.getAccruedLeaves() + duration);
 
         compoff.setStatus(LeaveStatusCompoff.APPROVED);
         compoff.setActionDate(LocalDate.now());
-        compoff.setExpiryDate(LocalDate.now().plusDays(21));
+        compoff.setExpiryDate(date);
         balance.setLastAccrualDate(LocalDate.now());
 
         leaveCompoffRepo.save(compoff);
@@ -108,10 +118,10 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                 throw new RuntimeException("Leave balance not found for employee: " + compoff.getEmployeeId());
             }
 
-            double days = compoff.getDays();
-            balance.setTotalLeaves(Math.max(0, balance.getTotalLeaves() - days));
-            balance.setRemainingLeaves(Math.max(0, balance.getRemainingLeaves() - days));
-            balance.setAccruedLeaves(Math.max(0, balance.getAccruedLeaves() - days));
+            double duration = compoff.getDuration();
+            balance.setTotalLeaves(Math.max(0, balance.getTotalLeaves() - duration));
+            balance.setRemainingLeaves(Math.max(0, balance.getRemainingLeaves() - duration));
+            balance.setAccruedLeaves(Math.max(0, balance.getAccruedLeaves() - duration));
             leaveBalanceRepo.save(balance);
         }
 
@@ -149,8 +159,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
             dto.setEmployeeName(emp.getFirstName() + " " + emp.getLastName());
             dto.setStartDate(compoff.getStartDate());
             dto.setEndDate(compoff.getEndDate());
-            dto.setDays(compoff.getDays());
-            dto.setHalfDays(compoff.getHalfDays() != null ? compoff.getHalfDays() : 0.0);
+            dto.setDuration(compoff.getDuration());
             dto.setNote(compoff.getNote());
             dto.setStatus(compoff.getStatus().toString());
             dto.setActionDate(compoff.getActionDate());
