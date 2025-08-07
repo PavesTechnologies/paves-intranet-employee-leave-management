@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Optional;
 
 import java.time.LocalDate;
@@ -692,15 +693,14 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             approvedRequests.add(request);
 
             leaveBalanceService.updateLeaveBalanceAfterRejected(
-                request.getEmployee().getEmployeeId(),
-                request.getLeaveType().getLeaveTypeId(),
-                request.getDaysRequested(),
-                request.getRequestDate().getYear());
+                    request.getEmployee().getEmployeeId(),
+                    request.getLeaveType().getLeaveTypeId(),
+                    request.getDaysRequested(),
+                    request.getRequestDate().getYear());
         }
 
         return leaveRequestRepo.saveAll(approvedRequests);
     }
-
 
 
     /**
@@ -853,33 +853,55 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
                         leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
                 .map(existingRequest -> {
-                    // Only allow updates if the status is still pending
+                    // Disallow update if already approved/rejected
                     if (existingRequest.getStatus() == LeaveStatus.APPROVED ||
                             existingRequest.getStatus() == LeaveStatus.REJECTED) {
                         throw new LeaveBalanceExceptionHandler("Cannot update a leave request that has already been approved or rejected.");
                     }
 
-                        // Reverse previous balance before applying changes
-                        leaveBalanceService.updateLeaveBalanceAfterRejected(
-                                existingRequest.getEmployee().getEmployeeId(),
-                                existingRequest.getLeaveType().getLeaveTypeId(),
-                                existingRequest.getDaysRequested(),
-                                existingRequest.getRequestDate().getYear()
-                        );
+                    // Reverse the old leave balance before applying changes
+                    leaveBalanceService.updateLeaveBalanceAfterRejected(
+                            existingRequest.getEmployee().getEmployeeId(),
+                            existingRequest.getLeaveType().getLeaveTypeId(),
+                            existingRequest.getDaysRequested(),
+                            existingRequest.getRequestDate().getYear()
+                    );
 
-                    // Validate the new request
-                    ValidationResultDTO validationResult = validateLeaveRequest(request);
-                    if (!validationResult.isValid()) {
-                        return validationResult;
-                    }
-
-                    // Fetch the updated leave type
+                    // Build new leave type
                     LeaveType updatedLeaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
                     if (updatedLeaveType == null) {
                         throw new LeaveBalanceExceptionHandler("Leave type not found: " + request.getLeaveTypeId());
                     }
 
-                    // Update the existing leave request with new values
+                    // Validate updated request
+                    ValidationResultDTO validationResult = validateLeaveRequest(request);
+                    if (!validationResult.isValid()) {
+                        return validationResult;
+                    }
+
+                    // Track changes for email
+                    StringBuilder changes = new StringBuilder();
+                    if (!existingRequest.getLeaveType().getLeaveTypeId().equals(updatedLeaveType.getLeaveTypeId())) {
+                        changes.append("Leave Type: ").append(existingRequest.getLeaveType().getLeaveName())
+                                .append(" → ").append(updatedLeaveType.getLeaveName()).append("\n");
+                    }
+                    if (!existingRequest.getStartDate().equals(request.getStartDate())) {
+                        changes.append("Start Date: ").append(existingRequest.getStartDate())
+                                .append(" → ").append(request.getStartDate()).append("\n");
+                    }
+                    if (!existingRequest.getEndDate().equals(request.getEndDate())) {
+                        changes.append("End Date: ").append(existingRequest.getEndDate())
+                                .append(" → ").append(request.getEndDate()).append("\n");
+                    }
+                    if (existingRequest.getDaysRequested() != request.getDaysRequested()) {
+                        changes.append("Days Requested: ").append(existingRequest.getDaysRequested())
+                                .append(" → ").append(request.getDaysRequested()).append("\n");
+                    }
+                    if (!Objects.equals(existingRequest.getReason(), request.getReason())) {
+                        changes.append("Reason updated.\n");
+                    }
+
+                    // Update fields
                     existingRequest.setLeaveType(updatedLeaveType);
                     existingRequest.setStartDate(request.getStartDate());
                     existingRequest.setEndDate(request.getEndDate());
@@ -887,29 +909,48 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     existingRequest.setReason(request.getReason());
                     existingRequest.setDriveLink(request.getDriveLink());
 
-                    // Reset approval-related fields
+                    // Reset approval fields
                     existingRequest.setApprovedBy(null);
                     existingRequest.setResponseDate(null);
                     existingRequest.setManagerComment(null);
                     existingRequest.setStatus(LeaveStatus.PENDING);
 
-                    // Apply new balance if leave was changed
-                        leaveBalanceService.updateLeaveBalanceAfterApproval(
-                                request.getEmployeeId(),
-                                request.getLeaveTypeId(),
-                                request.getDaysRequested(),
-                                request.getRequestDate().getYear()
-                        );
+                    // Re-apply updated leave balance
+                    leaveBalanceService.updateLeaveBalanceAfterApproval(
+                            request.getEmployeeId(),
+                            request.getLeaveTypeId(),
+                            request.getDaysRequested(),
+                            request.getRequestDate().getYear()
+                    );
 
-                    // Save the updated request
+                    // Save updated request
                     LeaveRequest updatedRequest = leaveRequestRepo.save(existingRequest);
 
-                    // Populate result
+                    // Notify manager if changes were made
+                    if (changes.length() > 0) {
+                        try {
+                            String managerEmail = updatedRequest.getEmployee().getManager() != null ?
+                                    updatedRequest.getEmployee().getManager().getEmail() : null;
+                            if (managerEmail != null && !managerEmail.isEmpty()) {
+                                emailService.sendLeaveUpdateNotification(
+                                        managerEmail,
+                                        updatedRequest.getEmployee().getFullName(),
+                                        updatedLeaveType.getLeaveName(),
+                                        updatedRequest.getStartDate().toString(),
+                                        updatedRequest.getEndDate().toString(),
+                                        changes.toString()
+                                );
+                            }
+                        } catch (Exception e) {
+                            System.err.println("Failed to send update notification email: " + e.getMessage());
+                        }
+                    }
+
+                    // Finalize result
                     validationResult.addMessage("Leave request updated successfully.");
                     validationResult.setLeaveId(updatedRequest.getLeaveId());
 
                     return validationResult;
-
                 })
                 .orElseThrow(() -> new LeaveBalanceExceptionHandler("Leave request not found for given ID and employee."));
     }
