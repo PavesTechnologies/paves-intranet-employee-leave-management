@@ -77,10 +77,10 @@ public class LeaveCompoffController {
     }
 
 
-    @PutMapping("/cancel")
-    public ResponseEntity<ApiResponse<String>> cancelPendingCompoff(@RequestBody CancelCompoffRequestDTO dto) {
+    @PutMapping("/cancel/{compOffId}")
+    public ResponseEntity<ApiResponse<String>> cancelPendingCompoff(@PathVariable Long compOffId) {
         try {
-            compoffService.cancelPendingCompoff(dto);
+            compoffService.cancelPendingCompoff(compOffId);
             return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled.", null));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

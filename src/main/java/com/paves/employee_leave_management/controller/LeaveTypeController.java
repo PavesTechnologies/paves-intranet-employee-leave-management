@@ -1,7 +1,7 @@
 package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
-import com.paves.employee_leave_management.dto.LeaveTypeDto;
+//import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,8 +29,14 @@ public class LeaveTypeController {
         return service.getAllLeaveTypes();
     }
 
-    @PatchMapping("/update-leave-type/{leaveTypeId}")
-    public void updateLeave(@PathVariable String leaveTypeId, @RequestBody LeaveTypeDto leaveTypeDto){
-         service.updateLeaveType(leaveTypeId);
+//    @PatchMapping("/update-leave-type/{leaveTypeId}")
+    @PatchMapping("/update-leave-type/")
+    public void updateLeave(@RequestBody LeaveType leaveTypeDto){
+         service.updateLeaveType(leaveTypeDto);
+    }
+
+    @DeleteMapping("/delete-leave-type/{leaveTypeId}")
+    public void deleteLeaveType(@PathVariable String leaveTypeId){
+        service.deleteLeaveType(leaveTypeId);
     }
 }

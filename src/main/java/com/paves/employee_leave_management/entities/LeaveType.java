@@ -1,9 +1,11 @@
 package com.paves.employee_leave_management.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -82,6 +84,11 @@ public class LeaveType {
     @Builder.Default
     @Column(name = "weekends_and_holidays_allowed", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean weekendsAndHolidaysAllowed = false;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "leaveType", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    private List<LeaveBalance> leaveBalances;
+
 
     // Custom constructor with new field
     public LeaveType(String leaveName, String description, Boolean weekendsAndHolidaysAllowed) {

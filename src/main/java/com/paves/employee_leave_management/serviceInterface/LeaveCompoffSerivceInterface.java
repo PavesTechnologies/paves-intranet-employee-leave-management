@@ -17,7 +17,7 @@ public interface LeaveCompoffSerivceInterface {
     List<PendingCompoffResponseDTO> getPendingCompoffsForManager(String managerId);
 
 
-    void cancelPendingCompoff(CancelCompoffRequestDTO dto);
+    void cancelPendingCompoff(Long compOffId);
 
     void cancelPendingCompOffByEmployee(Long id);
 }
