@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -35,6 +36,7 @@ public class LeaveRequestController {
      * Apply for leave - Employee submits a new leave request
      */
     @PostMapping("/apply")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<ApiResponse<LeaveRequest>> applyLeave(@Valid @RequestBody LeaveRequestValidationDTO request) {
         try {
             // Validate the leave request
@@ -59,6 +61,7 @@ public class LeaveRequestController {
      * Update leave request by employee
      */
     @PutMapping("/employee/update")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<ApiResponse<ValidationResultDTO>> updateLeaveRequest(@RequestBody LeaveRequestValidationDTO validationDTO) {
 
             // Get the employee and leave type entities
@@ -115,6 +118,7 @@ public class LeaveRequestController {
      * Get a specific leave request by ID
      */
     @GetMapping("/{leaveId}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<LeaveRequest>> getLeaveRequestById(@PathVariable String leaveId) {
         try {
             LeaveRequest leaveRequest = leaveRequestService.getLeaveRequestById(leaveId);
@@ -165,6 +169,7 @@ public class LeaveRequestController {
      * Get employee leave balance
      */
     @GetMapping("/balance/{employeeId}/{leaveTypeId}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<LeaveBalanceDTO>> getLeaveBalance(
             @PathVariable String employeeId,
             @PathVariable String leaveTypeId,
@@ -237,6 +242,7 @@ public class LeaveRequestController {
      * Approve leave request using request body
      */
     @PutMapping("/approve")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(@Valid @RequestBody ApprovalRequestDTO approvalRequest) {
         try {
             LeaveRequest approvedRequest = leaveRequestService.approveRequest(approvalRequest);
@@ -273,6 +279,7 @@ public class LeaveRequestController {
      * Reject leave request using request body
      */
     @PutMapping("/reject")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(@Valid @RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(rejectionRequest);
@@ -287,6 +294,7 @@ public class LeaveRequestController {
      * Update leave request by manager using request body
      */
     @PutMapping("/update")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(@Valid @RequestBody ManagerUpdateRequestDTO updateRequest) {
         try {
             LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(updateRequest);

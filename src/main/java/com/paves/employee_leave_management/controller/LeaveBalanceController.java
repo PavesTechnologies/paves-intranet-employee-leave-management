@@ -9,6 +9,7 @@ import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceI
 import jdk.jfr.Description;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,49 +30,51 @@ public class LeaveBalanceController {
     LeaveBalanceServiceInterface leaveBalanceService;
 
     @PostMapping("/generate/{employeeId}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<String> generateLeaveBalance(@PathVariable String employeeId) {
         leaveBalanceService.createLeaveBalanceForNewEmployee(employeeId);
         return ResponseEntity.ok("Leave balance generated successfully for employee: " + employeeId);
     }
 
     @PostMapping("/carryforward")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<String> carryForward() {
         leaveBalanceService.processYearEndCarryForward();
         return ResponseEntity.ok("Carry forward process completed.");
     }
 
     @GetMapping("/{balanceID}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<LeaveBalance> getLeaveBalancesByBalanceId(@PathVariable String balanceID) {
         return leaveBalanceService.findByBalanceId(balanceID);
     }
 
     @GetMapping("/all-leave-balances")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<List<LeaveBalance>> getAllLeaveBalances() {
         return leaveBalanceService.getAllLeaveBalances();
     }
 
     @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN','SUPER_ADMIN')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeId(@PathVariable String employeeId) {
         return leaveBalanceService.findByEmployeeId(employeeId);
     }
 
-    @PutMapping("/update-leave-balance-employee")
-    public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(@RequestBody List<LeaveBalance> leaveBalance) {
-        return leaveBalanceService.UpdateLeaveBalancesByEmployeeId(leaveBalance);
-    }
-
     @GetMapping("/type/{leaveTypeId}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByLeaveName(@PathVariable String leaveTypeId) {
         return leaveBalanceService.findByLeaveId(leaveTypeId);
     }
 
-    @PostMapping("/trigger-monthly-process")
-    public ResponseEntity<String> triggerMonthlyProcess() {
-        leaveBalanceService.triggerMonthlyLeaveAccrual();
-        return ResponseEntity.ok("Monthly process triggered successfully.");
+    @PutMapping("/update-leave-balance-employee")
+    @PreAuthorize("hasRole('EMPLOYEE')")
+    public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(@RequestBody List<LeaveBalance> leaveBalance) {
+        return leaveBalanceService.UpdateLeaveBalancesByEmployeeId(leaveBalance);
     }
 
     @PostMapping("/update-leave-balance")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<String> approveLeave(
             @RequestParam String employeeId,
             @RequestParam String leaveTypeId,
@@ -83,7 +86,15 @@ public class LeaveBalanceController {
     }
 
     @PutMapping("/update")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<String> updateLeave(@RequestBody LeaveBalanceUpdateRequest request){
         return leaveBalanceService.updateLeaveBalancesFromHr(request);
+    }
+
+    @PostMapping("/trigger-monthly-process")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<String> triggerMonthlyProcess() {
+        leaveBalanceService.triggerMonthlyLeaveAccrual();
+        return ResponseEntity.ok("Monthly process triggered successfully.");
     }
 }
