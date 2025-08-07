@@ -19,10 +19,4 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleException(LeaveBalanceExceptionHandler leaveBalanceExceptionHandler) {
         return ResponseEntity.status(400).body(leaveBalanceExceptionHandler.getExMsg());
     }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<String> handleAccessDeniedException(AccessDeniedException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body("Not allowed: You do not have the required role.");
-    }
 }
