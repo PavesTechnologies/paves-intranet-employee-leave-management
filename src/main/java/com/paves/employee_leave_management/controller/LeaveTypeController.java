@@ -1,6 +1,5 @@
 package com.paves.employee_leave_management.controller;
 
-import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -23,19 +22,19 @@ public class LeaveTypeController {
     LeaveTypeServiceInterface service;
 
     @PostMapping("/add-leave-type")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('HR')")
     public ResponseEntity<LeaveType> addLeaveType(@RequestBody LeaveType leaveType){
         return service.addLeaveType(leaveType);
     }
 
     @GetMapping("/get-all-leave-types")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes(){
         return service.getAllLeaveTypes();
     }
 
     @PatchMapping("/update-leave-type/{leaveTypeId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('HR')")
     public void updateLeave(@PathVariable String leaveTypeId, @RequestBody LeaveTypeDto leaveTypeDto){
          service.updateLeaveType(leaveTypeId);
     }

@@ -5,8 +5,6 @@ import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInter
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @CrossOrigin(origins = "http://localhost:5173")
@@ -17,22 +15,14 @@ public class EmployeeController {
     EmployeeServiceInterface serviceInterface;
 
     @PostMapping("/register")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<Employee> registerEmployee(@RequestBody Employee employee) {
         return serviceInterface.saveEmployee(employee);
-    } // TODO>
-
-    @PutMapping("/update/{employeeId}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
-    public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId, @RequestBody Employee employee) {
-        return serviceInterface.updateEmployee(employeeId, employee);
     }
 
-    @PostMapping("/role-checker")
-    @PreAuthorize("hasRole('EMPLOYEE')")
-    public String checkRole() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("Authorities: " + authentication.getAuthorities());
-        return "role: ";
+    @PutMapping("/update/{employeeId}")
+    @PreAuthorize("hasAnyRole('HR')")
+    public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId, @RequestBody Employee employee) {
+        return serviceInterface.updateEmployee(employeeId, employee);
     }
 }

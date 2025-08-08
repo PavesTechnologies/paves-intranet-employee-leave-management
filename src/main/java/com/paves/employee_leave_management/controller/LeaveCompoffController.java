@@ -2,8 +2,6 @@ package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
-import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
-import com.paves.employee_leave_management.service.LeaveCompoffServiceImpl;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +21,7 @@ public class LeaveCompoffController {
     LeaveCompoffSerivceInterface compoffService;
 
     @PostMapping("/request")
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasRole('GENERAL')")
     public ResponseEntity<ApiResponse<String>> requestCompoff(@RequestBody LeaveCompoffRequestDTO dto) {
         try {
             compoffService.requestCompoff(dto);
@@ -35,7 +33,7 @@ public class LeaveCompoffController {
     }
 
     @PutMapping("/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     public ResponseEntity<ApiResponse<String>> approveCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
         try {
             compoffService.approveCompoff(dto.getCompoffId());
@@ -47,6 +45,7 @@ public class LeaveCompoffController {
     }
 
     @PutMapping("/reject")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     public ResponseEntity<ApiResponse<String>> rejectCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
         try {
             compoffService.rejectCompoff(dto.getCompoffId());
@@ -58,20 +57,21 @@ public class LeaveCompoffController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasRole('MANAGER','GENERAL')")
     public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByEmployee(@PathVariable String employeeId) {
         List<LeaveCompoff> compoffs = compoffService.getCompoffsByEmployee(employeeId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Compoff list fetched", compoffs));
     }
 
     @PostMapping("/manager/status")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('GENERAL')")
     public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByManagerAndStatus(@RequestBody ManagerCompoffStatusDTO dto) {
         List<LeaveCompoff> compoffs = compoffService.getCompoffsByManagerAndStatus(dto.getManagerId(), dto.getStatus());
         return ResponseEntity.ok(new ApiResponse<>(true, "Filtered Compoff list", compoffs));
     }
 
     @PostMapping("/pending")
+    @PreAuthorize("hasAnyRole('MANAGER','GENERAL')")
     public ResponseEntity<ApiResponse<List<PendingCompoffResponseDTO>>> getPendingCompoffs(
             @RequestBody ManagerPendingCompoffDTO managerDTO) {
 
@@ -80,20 +80,8 @@ public class LeaveCompoffController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending Compoffs fetched", pendingCompoffs));
     }
 
-
-    @PutMapping("/cancel")
-    public ResponseEntity<ApiResponse<String>> cancelPendingCompoff(@RequestBody CancelCompoffRequestDTO dto) {
-        try {
-            compoffService.cancelPendingCompoff(dto);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled.", null));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>(false, "Cancellation failed: " + e.getMessage(), null));
-        }
-    }
-
     @PutMapping("/employee/cancle")
-    @PreAuthorize("hasRole('EMPLOYEE')")
+    @PreAuthorize("hasRole('GENERAL')")
     public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@RequestBody Long id){
         try{
             compoffService.cancelPendingCompOffByEmployee(id);
