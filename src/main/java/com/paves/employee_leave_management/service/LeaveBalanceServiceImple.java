@@ -1,13 +1,8 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
-import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
-import com.paves.employee_leave_management.dto.LeaveBalanceUpdateHandleDTO;
-import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
-import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
@@ -25,7 +20,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.Year;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -70,7 +65,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
             double carriedForward = 0;
             double usedLeaves = 0;
 
-            if (lt.getLeaveName().equalsIgnoreCase("Sick Leave")) {
+            if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
                 LocalDate accrualStart = (hireDate.getYear() < currentYear)
                         ? LocalDate.of(currentYear, 1, 1)
                         : hireDate;
@@ -93,7 +88,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
                     totalLeaves = monthsLeftInYear * lt.getAccrualRate();
                 }
 
-            } else if (lt.getLeaveName().equalsIgnoreCase("Earned Leave")) {
+            } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
                 LocalDate accrualStart = (hireDate.getYear() < currentYear)
                         ? LocalDate.of(currentYear, 1, 1)
                         : hireDate;
@@ -116,10 +111,10 @@ public void createLeaveBalanceForNewEmployee(String empId) {
 
                     totalLeaves = monthsLeftInYear * lt.getAccrualRate();
                 }
-            } else if (lt.getLeaveName().equalsIgnoreCase("Paternity Leave")) {
+            } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
                 accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
                 totalLeaves = accruedLeaves;
-            } else if (lt.getLeaveName().equalsIgnoreCase("Maternity Leave")) {
+            } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
                 accruedLeaves =lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
                 totalLeaves = accruedLeaves;
             } else {
@@ -210,7 +205,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
 
 
             switch (name) {
-                case "Earned Leave":
+                case "EARNED_LEAVE":
                     double forward;
                     if(unused >= carryForward){
                         unused = unused - carryForward;
@@ -227,7 +222,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
                     );
                     newbalance.setAccruedLeaves(balance.getAccruedLeaves());
                     break;
-                case "Sick Leave":
+                case "SICK_LEAVE":
                     newbalance.setCarriedForward(0);
                     newbalance.setExpiredLeaves(unused);
                     newbalance.setTotalLeaves(balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0);
@@ -284,11 +279,11 @@ public void createLeaveBalanceForNewEmployee(String empId) {
 
             double accrual = 0;
 
-            if (type.getLeaveName().equalsIgnoreCase("Sick Leave")) {
+            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
                 accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
             }
 
-            if (type.getLeaveName().equalsIgnoreCase("Earned Leave")) {
+            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
                 accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
                 ;
             }
@@ -317,7 +312,12 @@ public void createLeaveBalanceForNewEmployee(String empId) {
         if (balance.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No records Found");
         }
-        return new ResponseEntity<>(balance, HttpStatus.OK);
+        java.time.Year currentYear = java.time.Year.now();
+        List<LeaveBalance> filteredBalance = balance
+                .stream()
+                .filter(b->b.getYear()==currentYear.getValue())
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(filteredBalance, HttpStatus.OK);
     }
 
     @Override

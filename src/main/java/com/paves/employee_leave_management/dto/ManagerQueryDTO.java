@@ -27,4 +27,6 @@ public class ManagerQueryDTO {
     private LocalDate toDate;
     private String employeeId;
     private String leaveTypeId;
+    private Integer year;
+    private Integer month;
 }
