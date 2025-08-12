@@ -22,7 +22,7 @@ public class LeaveType {
 
     @PrePersist
     public void generateId() {
-        if (leaveTypeId == null && leaveName != null) {
+        if (leaveTypeId == "" && leaveName != null) {
             if (leaveName.equals(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
                 leaveTypeId = "L-ML";
             } else if (leaveName.equals(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
