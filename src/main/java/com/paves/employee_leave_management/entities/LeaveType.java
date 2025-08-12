@@ -21,9 +21,21 @@ public class LeaveType {
     private String leaveTypeId;
 
     @PrePersist
-    public void generateId(){
-        if (leaveTypeId==null) {
-            leaveTypeId = "L" + UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase();
+    public void generateId() {
+        if (leaveTypeId == null && leaveName != null) {
+            if (leaveName.equals(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
+                leaveTypeId = "L-ML";
+            } else if (leaveName.equals(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
+                leaveTypeId = "L-PL";
+            } else if (leaveName.equals(LeaveTypesEnum.SICK_LEAVE.toString())) {
+                leaveTypeId = "L-SL";
+            } else if (leaveName.equals(LeaveTypesEnum.EARNED_LEAVE.toString())) {
+                leaveTypeId = "L-EL";
+            } else if (leaveName.equals(LeaveTypesEnum.UNPAID_LEAVE.toString())) {
+                leaveTypeId = "L-UP";
+            } else if (leaveName.equals(LeaveTypesEnum.COMPENSATORY_LEAVE.toString())) {
+                leaveTypeId = "L-COMPOFF";
+            }
         }
     }
 

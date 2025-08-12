@@ -34,6 +34,7 @@ public class LeaveBalanceController {
         return ResponseEntity.ok("Leave balance generated successfully for employee: " + employeeId);
     }
 
+
     @PostMapping("/carryforward")
     public ResponseEntity<String> carryForward() {
         leaveBalanceService.processYearEndCarryForward();
@@ -83,7 +84,12 @@ public class LeaveBalanceController {
     }
 
     @PutMapping("/update")
-    public ResponseEntity<String> updateLeave(@RequestBody LeaveBalanceUpdateRequest request){
+    public ResponseEntity<String> updateLeave(@RequestBody LeaveBalanceUpdateRequest request) {
         return leaveBalanceService.updateLeaveBalancesFromHr(request);
     }
 }
+
+//    @GetMapping("/year")
+//    public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByYear(@RequestBody ) {
+//
+//}
