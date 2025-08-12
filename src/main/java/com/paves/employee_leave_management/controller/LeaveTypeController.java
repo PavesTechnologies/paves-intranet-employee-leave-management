@@ -50,7 +50,7 @@ public class LeaveTypeController {
     }
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
-    public void deleteLeaveType(@PathVariable String leaveTypeId){
-        service.deleteLeaveType(leaveTypeId);
+    public ResponseEntity<String> deleteLeaveType(@PathVariable String leaveTypeId){
+        return service.deleteLeaveType(leaveTypeId);
     }
 }
