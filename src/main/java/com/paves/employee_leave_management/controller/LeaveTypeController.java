@@ -45,8 +45,8 @@ public class LeaveTypeController {
 
 //    @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PatchMapping("/update-leave-type/")
-    public void updateLeave(@RequestBody LeaveType leaveTypeDto){
-         service.updateLeaveType(leaveTypeDto);
+    public ResponseEntity<LeaveType> updateLeave(@RequestBody LeaveType leaveTypeDto){
+         return service.updateLeaveType(leaveTypeDto);
     }
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
