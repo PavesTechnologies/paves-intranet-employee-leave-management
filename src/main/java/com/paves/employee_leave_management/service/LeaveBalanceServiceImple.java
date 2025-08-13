@@ -220,12 +220,23 @@ public void createLeaveBalanceForNewEmployee(String empId) {
                     newbalance.setTotalLeaves(
                             (balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0)
                     );
-                    newbalance.setAccruedLeaves(balance.getAccruedLeaves());
+                    newbalance.setAccruedLeaves(0);
                     break;
                 case "SICK_LEAVE":
-                    newbalance.setCarriedForward(0);
-                    newbalance.setExpiredLeaves(unused);
-                    newbalance.setTotalLeaves(balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0);
+                    double forwardSick;
+                    if(unused >= carryForward){
+                        unused = unused - carryForward;
+                        forwardSick = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
+                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(),carryForward + forwardSick);
+                    }else {
+                        forwardSick = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
+                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), forwardSick);
+                    }
+                    newbalance.setCarriedForward(carryForward);
+                    newbalance.setExpiredLeaves(unused - forwardSick);
+                    newbalance.setTotalLeaves(
+                            (balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0)
+                    );
                     newbalance.setAccruedLeaves(0);
                     break;
                 default:
