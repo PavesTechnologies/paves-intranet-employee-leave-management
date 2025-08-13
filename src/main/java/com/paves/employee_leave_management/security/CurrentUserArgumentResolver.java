@@ -14,26 +14,17 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
-        return parameter.getParameterAnnotation(CurrentUser.class) != null &&
-                parameter.getParameterType().equals(UserDTO.class);
+        return parameter.getParameterAnnotation(CurrentUser.class) != null && parameter.getParameterType().equals(UserDTO.class);
     }
 
     @Override
-    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                  NativeWebRequest webRequest, org.springframework.web.bind.support.WebDataBinderFactory binderFactory) {
+    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, org.springframework.web.bind.support.WebDataBinderFactory binderFactory) {
 
         Authentication auth = (Authentication) webRequest.getUserPrincipal();
-        if (auth == null || !(auth.getPrincipal() instanceof Jwt)) {
+        if (auth == null || !(auth.getPrincipal() instanceof Jwt jwt)) {
             return null;
         }
 
-        Jwt jwt = (Jwt) auth.getPrincipal();
-        return new UserDTO(
-                Long.valueOf(jwt.getClaimAsString("user_id")),
-                jwt.getClaim("email"),
-                jwt.getClaimAsString("name"),
-                jwt.getClaimAsStringList("roles"),
-                jwt.getClaimAsStringList("permissions")
-        );
+        return new UserDTO(Long.valueOf(jwt.getClaimAsString("user_id")), jwt.getClaim("email"), jwt.getClaimAsString("name"), jwt.getClaimAsStringList("roles"), jwt.getClaimAsStringList("permissions"));
     }
 }
