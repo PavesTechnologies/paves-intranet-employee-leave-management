@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
+//import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
@@ -20,53 +21,52 @@ import java.util.Optional;
 public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Autowired
-    LeaveTypeRepo repo;
+    LeaveTypeRepo leaveTypeRepo;
 
     @Autowired
     LeaveBalanceRepo leaveBalanceRepo;
 
     @Override
     public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType) {
-        Optional<LeaveType> leaveRes = repo.findByLeaveTypeId(leaveType.getLeaveTypeId());
+        Optional<LeaveType> leaveRes = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
         if(leaveRes.isEmpty()){
-            return new ResponseEntity<>(repo.save(leaveType), HttpStatus.OK);
+            return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
         }
-        return new ResponseEntity<>(repo.save(leaveType), HttpStatus.OK);
+        return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
     }
 
     @Override
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes() {
-         List<LeaveType> allLeaveTypes = repo.findAll();
-         if(allLeaveTypes.isEmpty()){
-             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-         }
-         return new ResponseEntity<>(allLeaveTypes, HttpStatus.OK);
+        List<LeaveType> allLeaveTypes = leaveTypeRepo.findAll();
+        if (allLeaveTypes.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
+        return new ResponseEntity<>(allLeaveTypes, HttpStatus.OK);
     }
 
-    @Override
-    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId) {
-        return null;
-    }
+//    @Override
+//    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId) {
+//        return null;
+//    }
 
 
     @Transactional
     @Override
     public ResponseEntity<LeaveType> updateLeaveType(LeaveType updatedLeaveType) {
-        Optional<LeaveType> existingOpt = repo.findByLeaveTypeId(updatedLeaveType.getLeaveTypeId());
-
+        Optional<LeaveType> existingOpt = leaveTypeRepo.findByLeaveTypeId(updatedLeaveType.getLeaveTypeId());
         if (existingOpt.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-
 //        LeaveType existingLeaveType = existingOpt.get();
         double newAccrualRate = updatedLeaveType.getAccrualRate();
-
         // Save updated LeaveType
-        LeaveType savedLeaveType = repo.save(updatedLeaveType);
+        LeaveType savedLeaveType = leaveTypeRepo.save(updatedLeaveType);
 
         // Get remaining months in the year (excluding current month)
         int currentMonth = LocalDate.now().getMonthValue(); // 1 to 12
         int remainingMonths = 12 - currentMonth;
+
+        System.out.println("Remaining months: Swarna here");
 
         // Get all LeaveBalance entries for this leave type
         List<LeaveBalance> affectedBalances = leaveBalanceRepo.findByLeaveType(savedLeaveType);
@@ -90,9 +90,18 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Override
     public ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId) {
-        Optional<LeaveType> optionalLeaveType = repo.findByLeaveTypeId(leaveTypeId);
+        Optional<LeaveType> optionalLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId);
 
         return optionalLeaveType.map(leaveType -> new ResponseEntity<>(leaveType, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    @Override
+    public ResponseEntity<String> deleteLeaveType(String leaveTypeId) {
+        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
+                .orElseThrow(()-> new RuntimeException("Leave type not found."));
+        List<LeaveBalance> leaveBalanceList = leaveBalanceRepo.findByLeaveType(leaveType);
+        leaveTypeRepo.delete(leaveType);
+        return new ResponseEntity<>("Leave type deleted successfully", HttpStatus.OK);
     }
 
 

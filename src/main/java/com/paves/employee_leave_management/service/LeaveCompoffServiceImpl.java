@@ -171,8 +171,8 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
 
     @Override
-    public void cancelPendingCompoff(CancelCompoffRequestDTO dto) {
-        LeaveCompoff compoff = leaveCompoffRepo.findById(dto.getCompoffId())
+    public void cancelPendingCompoff(Long compOffId) {
+        LeaveCompoff compoff = leaveCompoffRepo.findById(compOffId)
                 .orElseThrow(() -> new RuntimeException("CompOff request not found"));
 
         if (compoff.getStatus() != LeaveStatusCompoff.PENDING) {
@@ -183,10 +183,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         compoff.setActionDate(LocalDate.now());
 
         // Optional: Save cancellation note
-        if (dto.getReason() != null) {
-            compoff.setNote("Cancelled by employee: " + dto.getReason());
-        }
-
+        compoff.setNote("cancelled by Employee");
         leaveCompoffRepo.save(compoff);
     }
 

@@ -1,9 +1,11 @@
 package com.paves.employee_leave_management.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -19,9 +21,21 @@ public class LeaveType {
     private String leaveTypeId;
 
     @PrePersist
-    public void generateId(){
-        if (leaveTypeId==null) {
-            leaveTypeId = "L" + UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase();
+    public void generateId() {
+        if (leaveTypeId == "" && leaveName != null) {
+            if (leaveName.equals(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
+                leaveTypeId = "L-ML";
+            } else if (leaveName.equals(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
+                leaveTypeId = "L-PL";
+            } else if (leaveName.equals(LeaveTypesEnum.SICK_LEAVE.toString())) {
+                leaveTypeId = "L-SL";
+            } else if (leaveName.equals(LeaveTypesEnum.EARNED_LEAVE.toString())) {
+                leaveTypeId = "L-EL";
+            } else if (leaveName.equals(LeaveTypesEnum.UNPAID_LEAVE.toString())) {
+                leaveTypeId = "L-UP";
+            } else if (leaveName.equals(LeaveTypesEnum.COMPENSATORY_LEAVE.toString())) {
+                leaveTypeId = "L-COMPOFF";
+            }
         }
     }
 
@@ -82,6 +96,11 @@ public class LeaveType {
     @Builder.Default
     @Column(name = "weekends_and_holidays_allowed", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean weekendsAndHolidaysAllowed = false;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "leaveType", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    private List<LeaveBalance> leaveBalances;
+
 
     // Custom constructor with new field
     public LeaveType(String leaveName, String description, Boolean weekendsAndHolidaysAllowed) {
