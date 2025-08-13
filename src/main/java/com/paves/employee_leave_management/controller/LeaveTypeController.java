@@ -8,6 +8,7 @@ import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInte
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -24,6 +25,7 @@ public class LeaveTypeController {
     LeaveTypeServiceInterface service;
 
     @GetMapping("/types")
+    @PreAuthorize("hasRole('HR','MANAGER','GENERAL')")
     public List<Map<String, String>> getLeaveTypes() {
         return Arrays.stream(LeaveTypesEnum.values())
                 .map(type -> Map.of(
@@ -34,22 +36,26 @@ public class LeaveTypeController {
     }
 
     @PostMapping("/add-leave-type")
+    @PreAuthorize("hasRole('HR')")
     public ResponseEntity<LeaveType> addLeaveType(@RequestBody LeaveType leaveType){
         return service.addLeaveType(leaveType);
     }
 
     @GetMapping("/get-all-leave-types")
+    @PreAuthorize("hasRole('HR','MANAGER','GENERAL')")
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes(){
         return service.getAllLeaveTypes();
     }
 
 //    @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PatchMapping("/update-leave-type/")
-    public ResponseEntity<LeaveType> updateLeave(@RequestBody LeaveType leaveTypeDto){
-         return service.updateLeaveType(leaveTypeDto);
+    @PreAuthorize("hasRole('HR')")
+    public void updateLeave(@RequestBody LeaveType leaveTypeDto){
+         service.updateLeaveType(leaveTypeDto);
     }
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
+    @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> deleteLeaveType(@PathVariable String leaveTypeId){
         return service.deleteLeaveType(leaveTypeId);
     }

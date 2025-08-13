@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.globalExceptionHandler;
 
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -9,10 +10,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
 
-@ExceptionHandler(EmployeeExceptionHandler.class)
-public ResponseEntity<String> handleException(EmployeeExceptionHandler employeeExceptionHandler) {
-return ResponseEntity.status(400).body(employeeExceptionHandler.getExMSg());
-}
+    @ExceptionHandler(EmployeeExceptionHandler.class)
+    public ResponseEntity<String> handleException(EmployeeExceptionHandler employeeExceptionHandler) {
+        return ResponseEntity.status(400).body(employeeExceptionHandler.getExMSg());
+    }
 
     @ExceptionHandler(LeaveBalanceExceptionHandler.class)
     public ResponseEntity<String> handleException(LeaveBalanceExceptionHandler leaveBalanceExceptionHandler) {

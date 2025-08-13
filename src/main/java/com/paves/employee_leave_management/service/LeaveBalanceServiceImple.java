@@ -39,9 +39,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     EmployeeRepo employeeRepo;
 
     @Override
-public void createLeaveBalanceForNewEmployee(String empId) {
-        Employee emp = employeeRepo.findById(empId)
-                .orElseThrow(() -> new EmployeeExceptionHandler("Employee not found: " + empId));
+    public void createLeaveBalanceForNewEmployee(String empId) {
+        Employee emp = employeeRepo.findById(empId).orElseThrow(() -> new EmployeeExceptionHandler("Employee not found: " + empId));
 
         int currentYear = LocalDate.now().getYear();
         List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
@@ -49,8 +48,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
         LocalDate hireDate = emp.getHireDate();
 
         for (LeaveType lt : leaveTypes) {
-            if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
-                    emp.getEmployeeId(), lt.getLeaveTypeId(), currentYear).isPresent()) {
+            if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(emp.getEmployeeId(), lt.getLeaveTypeId(), currentYear).isPresent()) {
                 continue;
             }
             if (emp.getGender() != null) {
@@ -94,7 +92,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
                         : hireDate;
                 accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, lt.getAccrualRate());
 
-                carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear,lt);
+                carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear, lt);
                 int currYear = Year.now().getValue();
 
                 if (hireDate.getYear() < currYear) {
@@ -122,7 +120,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
                 accruedLeaves = 0;
             }
 
-            double remainingLeaves = Math.max(0, (accruedLeaves+carriedForward) - usedLeaves);
+            double remainingLeaves = Math.max(0, (accruedLeaves + carriedForward) - usedLeaves);
 
             LeaveBalance balance = LeaveBalance.builder()
                     .employee(emp)
@@ -170,7 +168,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
         return months * ratePerMonth;
     }
 
-    private double calculateEarnedLeaveCarryForward(LocalDate hireDate, int currentYear,LeaveType lt) {
+    private double calculateEarnedLeaveCarryForward(LocalDate hireDate, int currentYear, LeaveType lt) {
         double totalCarried = 0;
         for (int year = hireDate.getYear(); year < currentYear; year++) {
             LocalDate yearStart = LocalDate.of(year, 1, 1);
@@ -210,8 +208,8 @@ public void createLeaveBalanceForNewEmployee(String empId) {
                     if(unused >= carryForward){
                         unused = unused - carryForward;
                         forward = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
-                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(),carryForward + forward);
-                    }else {
+                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), carryForward + forward);
+                    } else {
                         forward = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
                         carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), forward);
                     }
@@ -381,6 +379,7 @@ public void createLeaveBalanceForNewEmployee(String empId) {
     public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(List<LeaveBalance> leaveBalance) {
         return new ResponseEntity<>(leaveBalanceRepo.saveAll(leaveBalance), HttpStatus.OK);
     }
+
     @Override
     public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
         for (LeaveBalanceUpdateRequest.BalanceUpdate update : request.getBalances()) {

@@ -10,7 +10,9 @@ import java.util.List;
 public class UserDTO {
     private Long id;
     private String email;
+    private String name; // NEW
     private List<String> roles;
+    private List<String> permissions;
 
     // Getters and Setters
 }
