@@ -72,12 +72,30 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
             "AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})")
     List<LeaveRequest> findManagerRequestsByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
 
-    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} " +
-            "AND (:#{#queryDTO.status} IS NULL AND lr.status IN ('APPROVED', 'REJECTED', 'CANCELLED' , 'PENDING') OR lr.status = :#{#queryDTO.status}) " +
-            "AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId}) " +
-            "AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId}) " +
-            "AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})")
+
+    @Query("""
+    SELECT lr 
+    FROM LeaveRequest lr 
+    WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} 
+      AND (
+           (:#{#queryDTO.status} IS NULL 
+                AND lr.status IN ('APPROVED', 'REJECTED', 'CANCELLED', 'PENDING')
+           ) 
+           OR lr.status = :#{#queryDTO.status}
+      )
+      AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId})
+      AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId})
+      AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})
+      AND (:#{#queryDTO.year} IS NULL OR FUNCTION('YEAR', lr.startDate) = :#{#queryDTO.year})
+      AND (
+           :#{#queryDTO.month} IS NULL 
+           OR (
+                FUNCTION('MONTH', lr.startDate) = :#{#queryDTO.month}
+                AND (:#{#queryDTO.year} IS NULL OR FUNCTION('YEAR', lr.startDate) = :#{#queryDTO.year})
+              )
+      )""")
     List<LeaveRequest> findManagerHistoryByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
+
 
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.employeeId = :empId AND lr.startDate BETWEEN :startDate AND :endDate")

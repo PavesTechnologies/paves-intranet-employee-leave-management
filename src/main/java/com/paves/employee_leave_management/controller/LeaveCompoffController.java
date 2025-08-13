@@ -1,7 +1,10 @@
 package com.paves.employee_leave_management.controller;
 
+
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
+import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
+import com.paves.employee_leave_management.service.LeaveCompoffServiceImpl;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,13 +74,24 @@ public class LeaveCompoffController {
     }
 
     @PostMapping("/pending")
-    @PreAuthorize("hasAnyRole('MANAGER','GENERAL')")
     public ResponseEntity<ApiResponse<List<PendingCompoffResponseDTO>>> getPendingCompoffs(
             @RequestBody ManagerPendingCompoffDTO managerDTO) {
 
         String managerId = managerDTO.getManagerId();
         List<PendingCompoffResponseDTO> pendingCompoffs = compoffService.getPendingCompoffsForManager(managerId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending Compoffs fetched", pendingCompoffs));
+    }
+
+
+    @PutMapping("/cancel/{compOffId}")
+    public ResponseEntity<ApiResponse<String>> cancelPendingCompoff(@PathVariable Long compOffId) {
+        try {
+            compoffService.cancelPendingCompoff(compOffId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, "Cancellation failed: " + e.getMessage(), null));
+        }
     }
 
     @PutMapping("/employee/cancle")

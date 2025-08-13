@@ -6,12 +6,14 @@ import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import jdk.jfr.Description;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.Year;
 import java.util.List;
 
@@ -59,6 +61,11 @@ public class LeaveBalanceController {
         return leaveBalanceService.findByEmployeeId(employeeId);
     }
 
+    @PutMapping("/update-leave-balance-employee")
+    public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(@RequestBody List<LeaveBalance> leaveBalance) {
+        return leaveBalanceService.UpdateLeaveBalancesByEmployeeId(leaveBalance);
+    }
+
     @GetMapping("/type/{leaveTypeId}")
     @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByLeaveName(@PathVariable String leaveTypeId) {
@@ -72,7 +79,6 @@ public class LeaveBalanceController {
     }
 
     @PostMapping("/update-leave-balance")
-    @PreAuthorize("hasAnyRole('MANAGER')")
     public ResponseEntity<String> approveLeave(
             @RequestParam String employeeId,
             @RequestParam String leaveTypeId,

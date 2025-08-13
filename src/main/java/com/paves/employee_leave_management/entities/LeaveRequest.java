@@ -33,6 +33,10 @@ public class LeaveRequest {
         if(leaveId == null){
             leaveId = "LR"+ UUID.randomUUID().toString().replace("-","").substring(0,5).toUpperCase();
         }
+
+        if(year == null) {
+            year = requestDate.getYear();
+        }
     }
 
     @ManyToOne
@@ -80,6 +84,10 @@ public class LeaveRequest {
 
     @Column(name = "leave_name")
     private LocalDate leaveName;
+
+    @Column(name = "year")
+    private Integer year;
+
 
 
     // Custom constructor for essential fields
