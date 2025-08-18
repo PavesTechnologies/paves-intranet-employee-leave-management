@@ -25,4 +25,24 @@ public class EmployeeController {
     public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId, @RequestBody Employee employee) {
         return serviceInterface.updateEmployee(employeeId, employee);
     }
+
+    @PostMapping("test/Manager")
+    @PreAuthorize("hasAnyRole('Manager')")
+    public String testManager() {
+        return "manager access granted";
+    }
+
+    @PostMapping("test/HR")
+    @PreAuthorize("hasAnyRole('HR')")
+    public String testHR() {
+        return "hr access granted";
+    }
+
+    @PostMapping("test/General")
+    @PreAuthorize("hasAnyRole('General')")
+    public String testGeneral() {
+        return "general access granted";
+    }
+
+
 }

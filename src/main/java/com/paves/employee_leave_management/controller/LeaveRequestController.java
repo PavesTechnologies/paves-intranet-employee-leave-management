@@ -104,7 +104,7 @@ public class LeaveRequestController {
      * Get all leave requests for an employee
      */
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'GENERAL')")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> getEmployeeLeaveRequests(@PathVariable String employeeId) {
         try {
             List<LeaveRequest> leaveRequests = leaveRequestService.getLeaveRequestsByEmployee(employeeId);
