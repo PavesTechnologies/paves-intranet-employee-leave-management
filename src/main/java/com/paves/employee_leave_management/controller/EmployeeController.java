@@ -27,7 +27,7 @@ public class EmployeeController {
     }
 
     @PostMapping("test/Manager")
-    @PreAuthorize("hasAnyRole('Manager')")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     public String testManager() {
         return "manager access granted";
     }
@@ -39,7 +39,7 @@ public class EmployeeController {
     }
 
     @PostMapping("test/General")
-    @PreAuthorize("hasAnyRole('General')")
+    @PreAuthorize("hasAnyRole('GENERAL')")
     public String testGeneral() {
         return "general access granted";
     }
