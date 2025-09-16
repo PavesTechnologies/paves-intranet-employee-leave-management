@@ -27,12 +27,18 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     LeaveBalanceRepo leaveBalanceRepo;
 
     @Override
-    public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType) {
-        Optional<LeaveType> leaveRes = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
-        if(leaveRes.isEmpty()){
-            return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
+    public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
+        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
+        if(existingLeaveType.isPresent()){
+            return new ApiResponse<>(
+                    false,
+                    "Leave type with ID " + leaveType.getLeaveTypeId() + " already exists.",
+                    existingLeaveType.get()
+            );
         }
-        return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
+        else{
+            return new ApiResponse<>(true, "Leave type added successfully", leaveTypeRepo.save(leaveType));
+        }
     }
 
     @Override
