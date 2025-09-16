@@ -36,7 +36,7 @@ public class LeaveRequestController {
      * Apply for leave - Employee submits a new leave request
      */
     @PostMapping("/apply")
-    @PreAuthorize("hasRole('GENERAL','HR)")
+    @PreAuthorize("hasAnyRole('GENERAL','HR', 'MANAGER')")
     public ResponseEntity<ApiResponse<LeaveRequest>> applyLeave(@Valid @RequestBody LeaveRequestValidationDTO request) {
         try {
             // Validate the leave request
@@ -61,7 +61,7 @@ public class LeaveRequestController {
      * Update leave request by employee
      */
     @PutMapping("/employee/update")
-    @PreAuthorize("hasRole('GENERAL')")
+    @PreAuthorize("hasAnyRole('GENERAL', 'MANAGER', 'HR')")
     public ResponseEntity<ApiResponse<ValidationResultDTO>> updateLeaveRequest(@RequestBody LeaveRequestValidationDTO validationDTO) {
 
             // Get the employee and leave type entities
@@ -104,7 +104,7 @@ public class LeaveRequestController {
      * Get all leave requests for an employee
      */
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'GENERAL')")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> getEmployeeLeaveRequests(@PathVariable String employeeId) {
         try {
             List<LeaveRequest> leaveRequests = leaveRequestService.getLeaveRequestsByEmployee(employeeId);
@@ -134,7 +134,7 @@ public class LeaveRequestController {
      * Cancel leave request by employee
      */
     @PutMapping("/{leaveId}/cancel")
-    @PreAuthorize("hasAnyRole('GENERAL')")
+    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
     public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequest(
             @PathVariable String leaveId,
             @RequestParam String employeeId) {

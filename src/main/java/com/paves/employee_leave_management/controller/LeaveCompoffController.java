@@ -57,7 +57,7 @@ public class LeaveCompoffController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasRole('MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('MANAGER','GENERAL', 'HR')")
     public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByEmployee(@PathVariable String employeeId) {
         List<LeaveCompoff> compoffs = compoffService.getCompoffsByEmployee(employeeId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Compoff list fetched", compoffs));
@@ -81,7 +81,7 @@ public class LeaveCompoffController {
     }
 
     @PutMapping("/employee/cancle")
-    @PreAuthorize("hasRole('GENERAL')")
+    @PreAuthorize("hasAnyRole('GENERAL')")
     public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@RequestBody Long id){
         try{
             compoffService.cancelPendingCompOffByEmployee(id);

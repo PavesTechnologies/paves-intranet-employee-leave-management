@@ -26,8 +26,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors->{})
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/public/**")
+                        .requestMatchers("/public/**", "/api/**")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
@@ -54,12 +56,12 @@ public class SecurityConfig {
                     authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role.replace(" ", "_").toUpperCase()));
                 }
             }
-            List<String> permissions = jwt.getClaimAsStringList("permissions");
-            if (permissions != null) {
-                for (String perm : permissions) {
-                    authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(perm));
-                }
-            }
+//            List<String> permissions = jwt.getClaimAsStringList("permissions");
+//            if (permissions != null) {
+//                for (String perm : permissions) {
+//                    authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(perm));
+//                }
+//            }
             return authorities;
         });
         return converter;
