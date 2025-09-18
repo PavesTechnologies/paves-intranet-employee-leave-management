@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 public interface LeaveTypeServiceInterface {
-    public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType);
+    public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType);
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes();
 //    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId);
     @Transactional

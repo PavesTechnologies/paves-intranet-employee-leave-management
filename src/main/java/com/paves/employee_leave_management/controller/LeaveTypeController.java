@@ -37,7 +37,7 @@ public class LeaveTypeController {
 
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<LeaveType> addLeaveType(@RequestBody LeaveType leaveType){
+    public ApiResponse<LeaveType> addLeaveType(@RequestBody LeaveType leaveType){
         return service.addLeaveType(leaveType);
     }
 
