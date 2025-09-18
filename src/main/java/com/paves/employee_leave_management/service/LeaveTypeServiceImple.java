@@ -42,13 +42,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 //    }
     @Override
     @Transactional
-    public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType) {
+    public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
 
     // ✅ Configure for all existing employees
         leaveBalanceServiceInterface.createLeaveBalanceForAllEmployees(savedLeaveType);
 
-        return new ResponseEntity<>(savedLeaveType, HttpStatus.OK);
+        return new ApiResponse<>(true, "LeaveType added successfully", savedLeaveType);
     }
 
 
