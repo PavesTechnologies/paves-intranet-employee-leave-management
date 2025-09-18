@@ -543,7 +543,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         request.setStatus(LeaveStatus.CANCELLED);
         request.setResponseDate(LocalDate.now());
 //        request.set
-//        request.setManagerComment("Cancelled by employee");
+        request.setManagerComment("Cancelled by employee");
 
         leaveBalanceService.updateLeaveBalanceAfterRejected(
                 request.getEmployee().getEmployeeId(),
