@@ -21,7 +21,7 @@ public class LeaveCompoffController {
     LeaveCompoffSerivceInterface compoffService;
 
     @PostMapping("/request")
-    @PreAuthorize("hasRole('GENERAL')")
+    @PreAuthorize("hasRole('GENERAL', 'HR', 'MANAGER')")
     public ResponseEntity<ApiResponse<String>> requestCompoff(@RequestBody LeaveCompoffRequestDTO dto) {
         try {
             compoffService.requestCompoff(dto);
@@ -57,7 +57,7 @@ public class LeaveCompoffController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasRole('MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('MANAGER','GENERAL', 'HR')")
     public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByEmployee(@PathVariable String employeeId) {
         List<LeaveCompoff> compoffs = compoffService.getCompoffsByEmployee(employeeId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Compoff list fetched", compoffs));
@@ -71,7 +71,7 @@ public class LeaveCompoffController {
     }
 
     @PostMapping("/pending")
-    @PreAuthorize("hasAnyRole('MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('MANAGER')")
     public ResponseEntity<ApiResponse<List<PendingCompoffResponseDTO>>> getPendingCompoffs(
             @RequestBody ManagerPendingCompoffDTO managerDTO) {
 
@@ -80,11 +80,11 @@ public class LeaveCompoffController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending Compoffs fetched", pendingCompoffs));
     }
 
-    @PutMapping("/employee/cancle")
-    @PreAuthorize("hasRole('GENERAL')")
-    public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@RequestBody Long id){
+    @PutMapping("/employee/cancel/{compOffId}")
+    @PreAuthorize("hasAnyRole('GENERAL, 'HR', 'MANAGER')")
+    public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@PathVariable Long compOffId){
         try{
-            compoffService.cancelPendingCompOffByEmployee(id);
+            compoffService.cancelPendingCompOffByEmployee(compOffId);
             return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled", null));
         }    catch (Exception e){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

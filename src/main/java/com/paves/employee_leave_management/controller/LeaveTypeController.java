@@ -25,7 +25,7 @@ public class LeaveTypeController {
     LeaveTypeServiceInterface service;
 
     @GetMapping("/types")
-    @PreAuthorize("hasRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
     public List<Map<String, String>> getLeaveTypes() {
         return Arrays.stream(LeaveTypesEnum.values())
                 .map(type -> Map.of(
@@ -42,7 +42,7 @@ public class LeaveTypeController {
     }
 
     @GetMapping("/get-all-leave-types")
-    @PreAuthorize("hasRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes(){
         return service.getAllLeaveTypes();
     }
