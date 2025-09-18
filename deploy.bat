@@ -6,7 +6,7 @@
  REM ================================
  set VM_USER=pavesadmin
  set VM_PASS=paves@2025
- set VM_HOST=192.168.4.82
+ set VM_HOST=192.168.2.37
  set VM_TARGET_DIR=/home/pavesadmin/leavemanagement-app
  set JAR_PATH=target\employee-leave-management-0.0.1-SNAPSHOT.jar
 
