@@ -21,7 +21,7 @@ public class LeaveCompoffController {
     LeaveCompoffSerivceInterface compoffService;
 
     @PostMapping("/request")
-    @PreAuthorize("hasRole('GENERAL', 'HR', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
     public ResponseEntity<ApiResponse<String>> requestCompoff(@RequestBody LeaveCompoffRequestDTO dto) {
         try {
             compoffService.requestCompoff(dto);
@@ -80,11 +80,11 @@ public class LeaveCompoffController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending Compoffs fetched", pendingCompoffs));
     }
 
-    @PutMapping("/employee/cancel")
-    @PreAuthorize("hasAnyRole('GENERAL, 'HR', 'MANAGER')")
-    public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@RequestBody Long id){
+    @PutMapping("/employee/cancel/{compOffId}")
+    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
+    public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@PathVariable Long compOffId ){
         try{
-            compoffService.cancelPendingCompOffByEmployee(id);
+            compoffService.cancelPendingCompOffByEmployee(compOffId);
             return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled", null));
         }    catch (Exception e){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
