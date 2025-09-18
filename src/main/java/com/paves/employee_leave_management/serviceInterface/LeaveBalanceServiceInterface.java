@@ -1,9 +1,9 @@
 package com.paves.employee_leave_management.serviceInterface;
 
-import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
+import com.paves.employee_leave_management.entities.LeaveType;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 
@@ -35,4 +35,6 @@ public interface LeaveBalanceServiceInterface {
     ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(List<LeaveBalance> leaveBalance);
 
     ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request);
+
+    void createLeaveBalanceForAllEmployees(LeaveType leaveType);
 }

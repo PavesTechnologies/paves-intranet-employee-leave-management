@@ -7,6 +7,7 @@ import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,14 +27,30 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     @Autowired
     LeaveBalanceRepo leaveBalanceRepo;
 
+    @Autowired
+    LeaveBalanceServiceInterface leaveBalanceServiceInterface;
+
+//    @Override
+//    @Transactional
+//    public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType) {
+//        Optional<LeaveType> leaveRes = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
+//        if(leaveRes.isEmpty()){
+//            return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
+//            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+//        }
+//        return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
+//    }
     @Override
+    @Transactional
     public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType) {
-        Optional<LeaveType> leaveRes = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
-        if(leaveRes.isEmpty()){
-            return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
-        }
-        return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
+        LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
+
+    // ✅ Configure for all existing employees
+        leaveBalanceServiceInterface.createLeaveBalanceForAllEmployees(savedLeaveType);
+
+        return new ResponseEntity<>(savedLeaveType, HttpStatus.OK);
     }
+
 
     @Override
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes() {
