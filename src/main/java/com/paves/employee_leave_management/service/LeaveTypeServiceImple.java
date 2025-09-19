@@ -43,12 +43,23 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     @Override
     @Transactional
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
-        LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
+        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
 
-    // ✅ Configure for all existing employees
-        leaveBalanceServiceInterface.createLeaveBalanceForAllEmployees(savedLeaveType);
-
-        return new ApiResponse<>(true, "LeaveType added successfully", savedLeaveType);
+        if (existingLeaveType.isPresent()) {
+            // If already exists, return CONFLICT without saving again
+            return new ApiResponse<>(
+                    false,
+                    "Leave type with ID " + leaveType.getLeaveTypeId() + " already exists.",
+                    null
+                    );
+        } else {
+            LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
+            return new ApiResponse<>(
+                    true,
+                    "Leave type created successfully.",
+                    savedLeaveType
+            );
+        }
     }
 
 
