@@ -792,7 +792,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
                 .leaveId(request.getLeaveId())
                 .employeeId(request.getEmployee().getEmployeeId())
-                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
+                .leaveTypeId(updateRequest.getLeaveTypeId() != null ? updateRequest.getLeaveTypeId():updatedLeaveType.getLeaveTypeId())
 
                 // Use the new start date if provided, otherwise keep the old one
                 .startDate(updateRequest.getStartDate() != null ? updateRequest.getStartDate() : request.getStartDate())
@@ -826,7 +826,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 request.getEmployee().getEmployeeId(),
                 updateRequest.getLeaveTypeId(),
                 updateRequest.getDaysRequested(),
-                updateRequest.getRequestDate().getYear()
+//                updateRequest.getRequestDate().getYear()
+                request.getRequestDate().getYear()
         );
 
         // Save only if there are changes
