@@ -778,15 +778,35 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // Build validation DTO before applying changes
+//        LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
+//                .leaveId(request.getLeaveId())
+//                .employeeId(request.getEmployee().getEmployeeId())
+//                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
+//                .startDate(updateRequest.getStartDate())
+//                .endDate(updateRequest.getEndDate())
+//                .daysRequested(updateRequest.getDaysRequested())
+//                .reason(updateRequest.getReason())
+//                .driveLink(updateRequest.getDriveLink())
+//                .build();
+        // Build a complete validation DTO by merging new and old data
         LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
                 .leaveId(request.getLeaveId())
                 .employeeId(request.getEmployee().getEmployeeId())
                 .leaveTypeId(updatedLeaveType.getLeaveTypeId())
-                .startDate(updateRequest.getStartDate())
-                .endDate(updateRequest.getEndDate())
-                .daysRequested(updateRequest.getDaysRequested())
-                .reason(updateRequest.getReason())
-                .driveLink(updateRequest.getDriveLink())
+
+                // Use the new start date if provided, otherwise keep the old one
+                .startDate(updateRequest.getStartDate() != null ? updateRequest.getStartDate() : request.getStartDate())
+
+                // Use the new end date if provided, otherwise keep the old one
+                .endDate(updateRequest.getEndDate() != null ? updateRequest.getEndDate() : request.getEndDate())
+
+                // Use new days if provided, otherwise keep the old ones
+                .daysRequested(updateRequest.getDaysRequested() != null ? updateRequest.getDaysRequested() : request.getDaysRequested())
+
+                // Use the new reason if provided, otherwise keep the old one
+                .reason(updateRequest.getReason() != null ? updateRequest.getReason() : request.getReason())
+
+                .driveLink(updateRequest.getDriveLink() != null ? updateRequest.getDriveLink() : request.getDriveLink())
                 .build();
 
         // Validate proposed update
