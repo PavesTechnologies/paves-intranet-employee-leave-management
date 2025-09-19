@@ -99,10 +99,12 @@ public class LeaveType {
 
     @JsonIgnore
     @OneToMany(mappedBy = "leaveType", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @ToString.Exclude
     private List<LeaveBalance> leaveBalances;
 
 
     // Custom constructor with new field
+
     public LeaveType(String leaveName, String description, Boolean weekendsAndHolidaysAllowed) {
         this.leaveName = leaveName;
         this.description = description;
