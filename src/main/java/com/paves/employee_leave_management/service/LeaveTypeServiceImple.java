@@ -46,25 +46,56 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     @Override
     @Transactional
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
-        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
+        leaveType.generateId(); // ensure leaveTypeId is set
+
+        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findById(leaveType.getLeaveTypeId());
 
         if (existingLeaveType.isPresent()) {
-            // If already exists, return CONFLICT without saving again
-            return new ApiResponse<>(
-                    false,
-                    "Leave type with ID " + leaveType.getLeaveTypeId() + " already exists.",
-                    null
-                    );
-        } else {
-            LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
-            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
-            return new ApiResponse<>(
-                    true,
-                    "Leave type created successfully.",
-                    savedLeaveType
-            );
+            LeaveType dbLeaveType = existingLeaveType.get();
+
+            if (Boolean.TRUE.equals(dbLeaveType.getActive())) {
+                return new ApiResponse<>(false,
+                        "Leave type " + leaveType.getLeaveTypeId() + " already exists and is active.",
+                        null);
+            } else {
+                // Reactivate
+                dbLeaveType.setActive(true);
+                dbLeaveType.setLeaveName(leaveType.getLeaveName());
+                dbLeaveType.setDescription(leaveType.getDescription());
+                dbLeaveType.setAccrualRate(leaveType.getAccrualRate());
+                dbLeaveType.setAccrualFrequency(leaveType.getAccrualFrequency());
+                dbLeaveType.setAdvanceNoticeDays(leaveType.getAdvanceNoticeDays());
+                dbLeaveType.setWeekendsAndHolidaysAllowed(leaveType.getWeekendsAndHolidaysAllowed());
+                dbLeaveType.setAllowHalfDay(leaveType.getAllowHalfDay());
+                dbLeaveType.setMaxCarryForward(leaveType.getMaxCarryForward());
+                dbLeaveType.setMaxCarryForwardPerYear(leaveType.getMaxCarryForwardPerYear());
+                dbLeaveType.setNoticePeriodRestriction(leaveType.getNoticePeriodRestriction());
+                dbLeaveType.setPastDateLimitDays(leaveType.getPastDateLimitDays());
+                dbLeaveType.setRequiresDocumentation(leaveType.getRequiresDocumentation());
+                dbLeaveType.setWaitingPeriodDays(leaveType.getWaitingPeriodDays());
+                dbLeaveType.setAllowNegativeBalance(leaveType.getAllowNegativeBalance());
+                dbLeaveType.setExpiryDays(leaveType.getExpiryDays());
+                dbLeaveType.setMaxDaysPerYear(leaveType.getMaxDaysPerYear());
+
+                LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
+                leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
+
+                return new ApiResponse<>(true,
+                        "Leave type reactivated successfully.",
+                        reactivated);
+            }
         }
+
+        // Create new
+        LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
+        leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+        return new ApiResponse<>(true,
+                "Leave type created successfully.",
+                savedLeaveType);
     }
+
+
+
 
 
     @Override
@@ -73,7 +104,10 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         if (allLeaveTypes.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
-        return new ResponseEntity<>(allLeaveTypes, HttpStatus.OK);
+
+        List<LeaveType> activeLeaveTypes = leaveTypeRepo.findByActiveTrue();
+
+        return new ResponseEntity<>(activeLeaveTypes, HttpStatus.OK);
     }
 
 //    @Override
@@ -136,5 +170,16 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         return new ResponseEntity<>("Leave type deleted successfully", HttpStatus.OK);
     }
 
+    @Transactional
+    public ResponseEntity<String> deActiveLeaveType(String leaveTypeId) {
+        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(
+                ()->new RuntimeException("Leave Type Not Found"));
+
+        leaveType.setActive(false);
+        leaveTypeRepo.save(leaveType);
+
+        leaveBalanceRepo.deleteByLeaveType(leaveType);
+        return new ResponseEntity<>("Leave type deactivated successfully", HttpStatus.OK);
+    }
 
 }

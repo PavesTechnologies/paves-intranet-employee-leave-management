@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
 @SpringBootApplication
-public class EmployeeLeaveManagementApplication {
+public class  EmployeeLeaveManagementApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(EmployeeLeaveManagementApplication.class, args);

@@ -22,22 +22,18 @@ public class LeaveType {
 
     @PrePersist
     public void generateId() {
-        if (leaveTypeId == "" && leaveName != null) {
-            if (leaveName.equals(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
-                leaveTypeId = "L-ML";
-            } else if (leaveName.equals(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
-                leaveTypeId = "L-PL";
-            } else if (leaveName.equals(LeaveTypesEnum.SICK_LEAVE.toString())) {
-                leaveTypeId = "L-SL";
-            } else if (leaveName.equals(LeaveTypesEnum.EARNED_LEAVE.toString())) {
-                leaveTypeId = "L-EL";
-            } else if (leaveName.equals(LeaveTypesEnum.UNPAID_LEAVE.toString())) {
-                leaveTypeId = "L-UP";
-            } else if (leaveName.equals(LeaveTypesEnum.COMPENSATORY_LEAVE.toString())) {
-                leaveTypeId = "L-COMPOFF";
+        if ((leaveTypeId == null || leaveTypeId.isBlank()) && leaveName != null) {
+            switch (LeaveTypesEnum.valueOf(leaveName)) {
+                case MATERNITY_LEAVE -> leaveTypeId = "L-ML";
+                case PATERNITY_LEAVE -> leaveTypeId = "L-PL";
+                case SICK_LEAVE -> leaveTypeId = "L-SL";
+                case EARNED_LEAVE -> leaveTypeId = "L-EL";
+                case UNPAID_LEAVE -> leaveTypeId = "L-UP";
+                case COMPENSATORY_LEAVE -> leaveTypeId = "L-COMPOFF";
             }
         }
     }
+
 
     @Column(name = "leave_name", length = 50, nullable = false)
     private String leaveName;
@@ -101,6 +97,9 @@ public class LeaveType {
     @OneToMany(mappedBy = "leaveType", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     @ToString.Exclude
     private List<LeaveBalance> leaveBalances;
+
+    @Column(name = "active")
+    private Boolean active = true;
 
 
     // Custom constructor with new field
