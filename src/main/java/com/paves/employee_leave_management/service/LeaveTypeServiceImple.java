@@ -28,6 +28,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     LeaveBalanceRepo leaveBalanceRepo;
 
     @Autowired
+    LeaveBalanceServiceInterface leaveBalanceService;
+
+    @Autowired
     LeaveBalanceServiceInterface leaveBalanceServiceInterface;
 
 //    @Override
@@ -54,6 +57,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                     );
         } else {
             LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
+            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
             return new ApiResponse<>(
                     true,
                     "Leave type created successfully.",
