@@ -138,8 +138,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
      */
     private void validateDriveLinkRequirements(LeaveRequestValidationDTO request, ValidationResultDTO result, LeaveType leaveType) {
         // Check if leave type requires documentation
+        System.out.println("From ValidateDriveLinkRequirements");
         if (leaveType.getRequiresDocumentation() && !leaveType.getLeaveTypeId().equals("L-SL")) {
             // For leave types that require documentation, drive link should be provided
+            System.out.println("From ValidateDriveLinkRequirements inside");
             if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
                 result.addError("Drive link with supporting documents is required for " + leaveType.getLeaveName());
             } else {
@@ -149,9 +151,14 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // For sick leave specifically, check if drive link is required for longer durations
-        if ("Sick Leave".equalsIgnoreCase(leaveType.getLeaveName()) && request.getDaysRequested() > 3) {
+        if (leaveType.getLeaveTypeId().equals("L-SL") && request.getDaysRequested() > 3) {
+            System.out.println("sgfhd;j");
             if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
                 result.addError("Drive link with medical certificate is mandatory for sick leave exceeding 3 days");
+            }
+            else{
+                System.out.println("From ValidateDriveLinkRequirements -SL");
+                validateDriveLinkFormat(request.getDriveLink(), result);
             }
         }
     }
@@ -169,6 +176,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
      */
     private void validateDriveLinkFormat(String driveLink, ValidationResultDTO result) {
         // Step 1: Check if the link is null or empty. If so, add an error and stop.
+        System.out.println("From ValidateDriveLinkFormat");
         if (driveLink == null || driveLink.trim().isEmpty()) {
             result.addError("Drive link is required and cannot be empty.");
             return; // Stop further validation.
