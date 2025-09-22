@@ -28,7 +28,7 @@ public class LeaveCompoffController {
             return ResponseEntity.ok(new ApiResponse<>(true, "Compoff requested successfully.", null));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error: " + e.getMessage(), null));
+                    .body(new ApiResponse<>(false, " "+e.getMessage(), null));
         }
     }
 
