@@ -778,15 +778,37 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // Build validation DTO before applying changes
+//        LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
+//                .leaveId(request.getLeaveId())
+//                .employeeId(request.getEmployee().getEmployeeId())
+//                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
+//                .startDate(updateRequest.getStartDate())
+//                .endDate(updateRequest.getEndDate())
+//                .daysRequested(updateRequest.getDaysRequested())
+//                .reason(updateRequest.getReason())
+//                .driveLink(updateRequest.getDriveLink())
+//                .build();
+        // Build a complete validation DTO by merging new and old data
         LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
                 .leaveId(request.getLeaveId())
                 .employeeId(request.getEmployee().getEmployeeId())
-                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
-                .startDate(updateRequest.getStartDate())
-                .endDate(updateRequest.getEndDate())
-                .daysRequested(updateRequest.getDaysRequested())
-                .reason(updateRequest.getReason())
-                .driveLink(updateRequest.getDriveLink())
+//                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
+                .leaveTypeId(updateRequest.getLeaveTypeId() != null ? updateRequest.getLeaveTypeId():updatedLeaveType.getLeaveTypeId())
+
+                // Use the new start date if provided, otherwise keep the old one
+                .startDate(updateRequest.getStartDate() != null ? updateRequest.getStartDate() : request.getStartDate())
+
+                // Use the new end date if provided, otherwise keep the old one
+                .endDate(updateRequest.getEndDate() != null ? updateRequest.getEndDate() : request.getEndDate())
+
+                // Use new days if provided, otherwise keep the old ones
+                .daysRequested(updateRequest.getDaysRequested() != null ? updateRequest.getDaysRequested() : request.getDaysRequested())
+
+                // Use the new reason if provided, otherwise keep the old one
+                .reason(updateRequest.getReason() != null ? updateRequest.getReason() : request.getReason())
+
+                .driveLink(updateRequest.getDriveLink() != null ? updateRequest.getDriveLink() : request.getDriveLink())
+                .requestDate(request.getRequestDate())
                 .build();
 
         // Validate proposed update
@@ -796,17 +818,53 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // Track changes for notification
+//        StringBuilder changes = new StringBuilder();
+//        if (!updatedLeaveType.getLeaveTypeId().equals(request.getLeaveType().getLeaveTypeId())) {
+//            changes.append("Leave Type: ").append(request.getLeaveType().getLeaveName())
+//                    .append(" → ").append(updatedLeaveType.getLeaveName()).append("\n");
+//            request.setLeaveType(updatedLeaveType);
+//        }
         StringBuilder changes = new StringBuilder();
-        if (!updatedLeaveType.getLeaveTypeId().equals(request.getLeaveType().getLeaveTypeId())) {
+
+        // 1. Track and apply LeaveType update
+        if (updateRequest.getLeaveTypeId() != null && !updatedLeaveType.getLeaveTypeId().equals(request.getLeaveType().getLeaveTypeId())) {
             changes.append("Leave Type: ").append(request.getLeaveType().getLeaveName())
                     .append(" → ").append(updatedLeaveType.getLeaveName()).append("\n");
             request.setLeaveType(updatedLeaveType);
         }
+
+        // 2. Track and apply StartDate update
+        if (updateRequest.getStartDate() != null && !updateRequest.getStartDate().equals(request.getStartDate())) {
+            changes.append("Start Date: ").append(request.getStartDate())
+                    .append(" → ").append(updateRequest.getStartDate()).append("\n");
+            request.setStartDate(updateRequest.getStartDate());
+        }
+
+        // 3. Track and apply EndDate update
+        if (updateRequest.getEndDate() != null && !updateRequest.getEndDate().equals(request.getEndDate())) {
+            changes.append("End Date: ").append(request.getEndDate())
+                    .append(" → ").append(updateRequest.getEndDate()).append("\n");
+            request.setEndDate(updateRequest.getEndDate());
+        }
+
+        // 4. Track and apply DaysRequested update
+        if (updateRequest.getDaysRequested() != null && !updateRequest.getDaysRequested().equals(request.getDaysRequested())) {
+            changes.append("Days Requested: ").append(request.getDaysRequested())
+                    .append(" → ").append(updateRequest.getDaysRequested()).append("\n");
+            request.setDaysRequested(updateRequest.getDaysRequested());
+        }
+
+        // 5. Track and apply Reason update
+        if (updateRequest.getReason() != null && !updateRequest.getReason().equals(request.getReason())) {
+            changes.append("Reason has been updated.\n");
+            request.setReason(updateRequest.getReason());
+        }
+
         leaveBalanceService.updateLeaveBalanceAfterApproval(
                 request.getEmployee().getEmployeeId(),
                 updateRequest.getLeaveTypeId(),
                 updateRequest.getDaysRequested(),
-                updateRequest.getRequestDate().getYear()
+                request.getRequestDate().getYear()
         );
 
         // Save only if there are changes

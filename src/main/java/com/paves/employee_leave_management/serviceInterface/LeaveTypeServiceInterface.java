@@ -18,4 +18,6 @@ public interface LeaveTypeServiceInterface {
     ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId);
 
     ResponseEntity<String> deleteLeaveType(String leaveTypeId);
+
+    public ResponseEntity<String> deActiveLeaveType(String leaveTypeId);
 }

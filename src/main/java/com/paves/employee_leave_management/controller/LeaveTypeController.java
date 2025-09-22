@@ -57,6 +57,6 @@ public class LeaveTypeController {
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> deleteLeaveType(@PathVariable String leaveTypeId){
-        return service.deleteLeaveType(leaveTypeId);
+        return service.deActiveLeaveType(leaveTypeId);
     }
 }
