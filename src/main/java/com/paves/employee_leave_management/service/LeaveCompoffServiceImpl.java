@@ -33,7 +33,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         Employee manager = employee.getManager();
 
         if (manager == null) {
-            throw new RuntimeException("No manager assigned for employee: " + dto.getEmployeeId());
+            throw new RuntimeException("No manager assigned for employee");
         }
         String managerId = employee.getManager().getEmployeeId();
 
