@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,6 +49,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Autowired
     private EmailServiceInterface emailService;
+
+    private static final Pattern GOOGLE_DRIVE_URL_PATTERN = Pattern.compile(
+            "^https?://(drive|docs)\\.google\\.com/(file/d/|folders/|spreadsheets/d/|document/d/|open\\?id=)([a-zA-Z0-9_-]+)(/.*)?$"
+    );
 
     // ==================== VALIDATION METHODS ====================
 
@@ -154,25 +159,47 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     /**
      * Validates the format of the drive link URL
      */
+
+
+    /**
+     * Validates that a link is a correctly formatted Google Drive URL.
+     * A null or empty link will now be considered an error.
+     * @param driveLink The string URL to validate.
+     * @param result The DTO to add errors to.
+     */
     private void validateDriveLinkFormat(String driveLink, ValidationResultDTO result) {
-        if (driveLink != null && !driveLink.trim().isEmpty()) {
-            String trimmedLink = driveLink.trim();
+        // Step 1: Check if the link is null or empty. If so, add an error and stop.
+        if (driveLink == null || driveLink.trim().isEmpty()) {
+            result.addError("Drive link is required and cannot be empty.");
+            return; // Stop further validation.
+        }
 
-            // Basic URL format validation
-            if (!trimmedLink.startsWith("http://") && !trimmedLink.startsWith("https://")) {
-                result.addError("Drive link must be a valid URL starting with http:// or https://");
-                return;
-            }
+        String trimmedLink = driveLink.trim();
 
-            // Check if it's a Google Drive link (optional - can be any cloud storage)
-            if (trimmedLink.contains("drive.google.com") || trimmedLink.contains("docs.google.com")) {
-                // Additional validation for Google Drive links if needed
-                if (!trimmedLink.contains("/") || trimmedLink.length() < 20) {
-                    result.addError("Invalid Google Drive link format");
-                }
-            }
+        // Step 2: Match the link against the strict Google Drive pattern.
+        if (!GOOGLE_DRIVE_URL_PATTERN.matcher(trimmedLink).matches()) {
+            result.addError("Link must be a valid Google Drive URL format (e.g., drive.google.com/file/d/...).");
         }
     }
+//    private void validateDriveLinkFormat(String driveLink, ValidationResultDTO result) {
+//        if (driveLink != null && !driveLink.trim().isEmpty()) {
+//            String trimmedLink = driveLink.trim();
+//
+//            // Basic URL format validation
+//            if (!trimmedLink.startsWith("http://") && !trimmedLink.startsWith("https://")) {
+//                result.addError("Drive link must be a valid URL starting with http:// or https://");
+//                return;
+//            }
+//
+//            // Check if it's a Google Drive link (optional - can be any cloud storage)
+//            if (trimmedLink.contains("drive.google.com") || trimmedLink.contains("docs.google.com")) {
+//                // Additional validation for Google Drive links if needed
+//                if (!trimmedLink.contains("/") || trimmedLink.length() < 20) {
+//                    result.addError("Invalid Google Drive link format");
+//                }
+//            }
+//        }
+//    }
 
     /**
      * Validates basic date constraints that apply to ALL leave types
