@@ -6,8 +6,10 @@ import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.HolidayRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Autowired
     EmployeeRepo employeeRepo;
+
+    @Autowired
+    HolidaysServiceInterface holidayService;
 
     @Override
     public void createLeaveBalanceForNewEmployee(String empId) {
@@ -253,6 +258,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Scheduled(cron = "0 0 0 1 1 *")
     public void scheduleYearEndProcessing() {
         processYearEndCarryForward();
+        holidayService.createHolidaysForCurrentYear();
+        holidayService.deleteHolidaysThreeYearsAgo();
     }
 
     @Scheduled(cron = "0 5 0 1 * *")
