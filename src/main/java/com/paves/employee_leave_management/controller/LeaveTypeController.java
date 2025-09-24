@@ -48,7 +48,7 @@ public class LeaveTypeController {
     }
 
 //    @PatchMapping("/update-leave-type/{leaveTypeId}")
-    @PatchMapping("/update-leave-type/")
+    @PatchMapping("/update-leave-type")
     @PreAuthorize("hasRole('HR')")
     public void updateLeave(@RequestBody LeaveType leaveTypeDto){
          service.updateLeaveType(leaveTypeDto);
