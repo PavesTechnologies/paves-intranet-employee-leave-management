@@ -9,7 +9,7 @@ import java.util.List;
 public interface HolidaysServiceInterface {
     ResponseEntity<List<Holidays>> getAllHolidays();
     ResponseEntity<Holidays> getHolidayById(Long id);
-    ResponseEntity<String> addHoliday(Holidays holidays);
+    ResponseEntity<String> addHoliday(List<Holidays> holidays);
     ResponseEntity<String> updateHoliday(Holidays holidays);
     ResponseEntity<String> deleteHoliday(Long id);
 
