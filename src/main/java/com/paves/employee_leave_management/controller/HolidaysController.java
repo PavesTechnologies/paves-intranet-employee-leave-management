@@ -18,7 +18,7 @@ public class HolidaysController {
 
     // 🔹 Get all holidays
     @GetMapping("/all")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasRole('HR','GENERAL','MANAGER')")
     public ResponseEntity<List<Holidays>> getAllHolidays() {
         return holidaysService.getAllHolidays();
     }
@@ -33,7 +33,7 @@ public class HolidaysController {
     // 🔹 Add new holiday
     @PostMapping("/add")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<String> addHoliday(@RequestBody Holidays holidays) {
+    public ResponseEntity<String> addHoliday(@RequestBody List<Holidays> holidays) {
         return holidaysService.addHoliday(holidays);
     }
 
