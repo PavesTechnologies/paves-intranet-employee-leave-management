@@ -17,6 +17,8 @@ public class LeaveRequestValidationDTO {
     private LocalDate startDate;
     private LocalDate endDate;
     private double daysRequested;
+    private String startSession;
+    private String endSession;
     private String reason;
     private String driveLink;
     private LocalDate requestDate;

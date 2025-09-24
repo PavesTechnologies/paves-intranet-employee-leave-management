@@ -36,15 +36,25 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     }
 
     @Override
-    public ResponseEntity<String> addHoliday(Holidays holidays) {
-        boolean exists = holidayRepo.existsByHolidayDateAndStateAndYear(holidays.getHolidayDate(), holidays.getState(),holidays.getYear());
-        if (exists) {
-            throw new HolidayExceptionHandler("Holiday already exists for this date and state and year");
+    public ResponseEntity<String> addHoliday(List<Holidays> holidays) {
+        for (Holidays holiday : holidays) {
+            boolean exists = holidayRepo.existsByHolidayDateAndStateAndYear(
+                    holiday.getHolidayDate(),
+                    holiday.getState(),
+                    holiday.getYear()
+            );
+
+            if (exists) {
+                throw new HolidayExceptionHandler("Holiday already exists for date: "
+                        + holiday.getHolidayDate() + ", state: " + holiday.getState()
+                        + ", year: " + holiday.getYear());
+            }
         }
 
-        holidayRepo.save(holidays);
-        return ResponseEntity.ok("Holiday added successfully");
+        holidayRepo.saveAll(holidays);
+        return ResponseEntity.ok("Holidays added successfully");
     }
+
 
     @Override
     public ResponseEntity<String> updateHoliday(Holidays holidays) {

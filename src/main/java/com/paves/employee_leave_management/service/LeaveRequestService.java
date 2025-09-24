@@ -502,6 +502,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .reason(request.getReason())
                 .driveLink(request.getDriveLink())
                 .status(LeaveStatus.PENDING)
+                .startSession(request.getStartSession())
+                .endSession(request.getEndSession())
                 .requestDate(LocalDate.now())
                 .build();
 
@@ -901,7 +903,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 updateRequest.getDaysRequested(),
                 request.getRequestDate().getYear()
         );
-
+        request.setStartSession(updateRequest.getStartSession());
+        request.setEndSession(updateRequest.getEndSession());
         // Save only if there are changes
         LeaveRequest updatedRequest = leaveRequestRepo.save(request);
 
@@ -1001,6 +1004,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     existingRequest.setDaysRequested(request.getDaysRequested());
                     existingRequest.setReason(request.getReason());
                     existingRequest.setDriveLink(request.getDriveLink());
+                    existingRequest.setStartSession(request.getStartSession());
+                    existingRequest.setEndSession(request.getEndSession());
 
                     // Reset approval fields
                     existingRequest.setApprovedBy(null);
