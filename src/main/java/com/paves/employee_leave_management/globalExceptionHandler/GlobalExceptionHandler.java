@@ -27,4 +27,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiResponse<>(false, "Duplicate entry: leave type already exists", null));
     }
+
+    @ExceptionHandler(HolidayExceptionHandler.class)
+    public ResponseEntity<String> handleException(HolidayExceptionHandler holidayExceptionHandler) {
+        return ResponseEntity.status(400).body(holidayExceptionHandler.getExMsg());
+    }
 }
