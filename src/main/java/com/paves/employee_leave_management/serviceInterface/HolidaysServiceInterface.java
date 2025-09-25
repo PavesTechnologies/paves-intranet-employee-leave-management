@@ -3,7 +3,9 @@ package com.paves.employee_leave_management.serviceInterface;
 import com.paves.employee_leave_management.entities.HolidayType;
 import com.paves.employee_leave_management.entities.Holidays;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 public interface HolidaysServiceInterface {
@@ -20,4 +22,6 @@ public interface HolidaysServiceInterface {
     ResponseEntity<String> createHolidaysForCurrentYear();
 
     ResponseEntity<String> deleteHolidaysThreeYearsAgo();
+
+    void importHolidaysFromExcel(MultipartFile file) throws IOException, IOException;
 }
