@@ -62,6 +62,12 @@ public class LeaveRequest {
     @Column(name = "drive_link", columnDefinition = "TEXT")
     private String driveLink;
 
+    @Column(name = "start_session",columnDefinition = "TEXT")
+    private String startSession;
+
+    @Column(name = "end_session",columnDefinition = "TEXT")
+    private String endSession;
+
     @Column(name = "manager_comment", columnDefinition = "TEXT")
     private String managerComment;
 

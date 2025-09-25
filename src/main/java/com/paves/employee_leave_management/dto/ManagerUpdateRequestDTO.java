@@ -26,6 +26,8 @@ public class ManagerUpdateRequestDTO {
     // Optional fields for update
     private String leaveTypeId;
     private LocalDate startDate;
+    private String startSession;
+    private String endSession;
     private LocalDate endDate;
     private Double daysRequested;
     private LocalDate requestDate;
