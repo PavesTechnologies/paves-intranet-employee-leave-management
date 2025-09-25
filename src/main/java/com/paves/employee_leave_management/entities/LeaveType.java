@@ -56,8 +56,9 @@ public class LeaveType {
     @Column(name = "requires_documentation", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean requiresDocumentation = false;
 
-    @Column(name = "accrual_rate")
-    private Double accrualRate;
+    @Builder.Default
+    @Column(name = "accrual_rate", nullable = true, columnDefinition = "DOUBLE PRECISION DEFAULT 0.0")
+    private Double accrualRate = 0.0;
 
     @Column(name = "accrual_frequency", length = 20)
     private String accrualFrequency;
