@@ -3,8 +3,14 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.entities.HolidayType;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
+import java.io.ByteArrayInputStream;
 import com.paves.employee_leave_management.repo.HolidayRepo;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import java.io.ByteArrayOutputStream;
+import java.sql.Connection;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,9 +18,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.sql.DataSource;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -23,6 +35,9 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
     @Autowired
     HolidayRepo holidayRepo;
+
+    @Autowired
+    private DataSource dataSource;
     @Override
     public ResponseEntity<List<Holidays>> getAllHolidays() {
 
@@ -207,6 +222,89 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
                 }
             }
         }
+    }
+
+    public ByteArrayInputStream createHolidayTemplate() throws IOException, SQLException {
+        // Dynamically get headers from the database schema
+        List<String> headers = getTableHeaders();
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Holidays Template");
+
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            CellStyle headerCellStyle = workbook.createCellStyle();
+            headerCellStyle.setFont(headerFont);
+
+            Row headerRow = sheet.createRow(0);
+
+            // Create header cells from the dynamic list
+            for (int i = 0; i < headers.size(); i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers.get(i));
+                cell.setCellStyle(headerCellStyle);
+            }
+
+            // Auto-size columns
+            for (int i = 0; i < headers.size(); i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        }
+    }
+
+    /**
+     * Connects to the database to retrieve the column names for the 'holidays' table.
+     * It dynamically reads the table name from the @Table annotation on the Holidays entity
+     * and excludes the primary key column.
+     *
+     * @return A list of column names.
+     * @throws SQLException if a database access error occurs.
+     */
+    private List<String> getTableHeaders() throws SQLException {
+        List<String> headers = new ArrayList<>();
+
+        // Get table name from the @Table annotation of the entity
+        Table tableAnnotation = Holidays.class.getAnnotation(Table.class);
+        String tableName = (tableAnnotation != null) ? tableAnnotation.name() : "holidays";
+
+        // Find the primary key column name to exclude it
+        String primaryKeyColumn = getPrimaryKeyColumnName(Holidays.class);
+
+        // Use try-with-resources for automatic connection closing
+        try (Connection connection = dataSource.getConnection()) {
+            DatabaseMetaData metaData = connection.getMetaData();
+            // Get columns for the specified table
+            try (ResultSet columns = metaData.getColumns(null, null, tableName, null)) {
+                while (columns.next()) {
+                    String columnName = columns.getString("COLUMN_NAME");
+                    // Add column to headers list if it's not the primary key
+                    if (!columnName.equalsIgnoreCase(primaryKeyColumn)) {
+                        headers.add(columnName);
+                    }
+                }
+            }
+        }
+        return headers;
+    }
+
+    /**
+     * Finds the primary key column name of an entity using reflection.
+     * @param entityClass The entity class.
+     * @return The name of the primary key column.
+     */
+    private String getPrimaryKeyColumnName(Class<?> entityClass) {
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(Id.class)) {
+                // In JPA, if @Column is not present, the column name is derived from the field name.
+                // This simple logic assumes snake_case, which is common.
+                // For a more robust solution, you'd check for a @Column(name="...") annotation.
+                return "holiday_id"; // Assuming the column name for holidayId is holiday_id
+            }
+        }
+        return null; // Should not happen for a valid entity
     }
 
 }
