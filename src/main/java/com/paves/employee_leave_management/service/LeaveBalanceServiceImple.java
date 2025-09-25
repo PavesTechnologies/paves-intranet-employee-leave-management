@@ -261,7 +261,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Scheduled(cron = "0 0 0 1 1 *")
     public void scheduleYearEndProcessing() {
         processYearEndCarryForward();
-        holidayService.createHolidaysForCurrentYear();
+        //holidayService.createHolidaysForCurrentYear();
         holidayService.deleteHolidaysThreeYearsAgo();
     }
 
