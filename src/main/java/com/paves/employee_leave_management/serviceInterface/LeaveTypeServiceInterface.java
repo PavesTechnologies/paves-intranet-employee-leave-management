@@ -13,7 +13,7 @@ public interface LeaveTypeServiceInterface {
     public ResponseEntity<List<LeaveType>> getAllLeaveTypes();
 //    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId);
     @Transactional
-    ResponseEntity<LeaveType> updateLeaveType(LeaveType updatedLeaveType);
+    ApiResponse<LeaveType> updateLeaveType(LeaveType updatedLeaveType, String leaveTypeId);
 
     ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId);
 

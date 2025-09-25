@@ -141,7 +141,8 @@ public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
         target.setActive(true);
         target.setLeaveName(source.getLeaveName());
         target.setDescription(source.getDescription());
-        target.setAccrualRate(source.getAccrualRate());
+        double accrualRate = ((double)source.getMaxDaysPerYear()/12.0);
+        source.setAccrualRate(accrualRate);
         target.setAccrualFrequency(source.getAccrualFrequency());
         target.setAdvanceNoticeDays(source.getAdvanceNoticeDays());
         target.setWeekendsAndHolidaysAllowed(source.getWeekendsAndHolidaysAllowed());
@@ -180,10 +181,12 @@ public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
 
     @Transactional
     @Override
-    public ResponseEntity<LeaveType> updateLeaveType(LeaveType updatedLeaveType) {
-        Optional<LeaveType> existingOpt = leaveTypeRepo.findByLeaveTypeId(updatedLeaveType.getLeaveTypeId());
+    public ApiResponse<LeaveType> updateLeaveType(LeaveType updatedLeaveType, String leaveTypeId) {
+        Optional<LeaveType> existingOpt = leaveTypeRepo.findByLeaveTypeId(leaveTypeId);
         if (existingOpt.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return new ApiResponse<>(false,
+                    "Leave type " + leaveTypeId + " not found.",
+                    null);
         }
 //        LeaveType existingLeaveType = existingOpt.get();
         double newAccrualRate = updatedLeaveType.getAccrualRate();
@@ -213,7 +216,9 @@ public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
 
         leaveBalanceRepo.saveAll(affectedBalances);
 
-        return new ResponseEntity<>(savedLeaveType, HttpStatus.ACCEPTED);
+        return new ApiResponse<>(true,
+                "Leave type updated successfully.",
+                savedLeaveType);
     }
 
 
