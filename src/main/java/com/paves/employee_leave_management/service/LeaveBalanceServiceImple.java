@@ -482,61 +482,128 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 .build();
     }
 
+//    @Transactional
+//    public void createLeaveBalanceForAllEmployees(LeaveType leaveType) {
+//        int currentYear = LocalDate.now().getYear();
+//        LocalDate today = LocalDate.now();
+//
+//        // Calculate first accrual date → 1st of next month
+//        LocalDate firstAccrualDate = today.plusMonths(1).withDayOfMonth(1);
+//
+//        List<Employee> employees = employeeRepo.findAll();
+//        for (Employee emp : employees) {
+//            // Skip if balance already exists
+//            if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
+//                    emp.getEmployeeId(), leaveType.getLeaveTypeId(), currentYear).isPresent()) {
+//                continue;
+//            }
+//
+//            // Gender-specific validation
+//            if (emp.getGender() != null) {
+//                if (emp.getGender().equalsIgnoreCase("male") &&
+//                        leaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString()))
+//                    continue;
+//                if (emp.getGender().equalsIgnoreCase("female") &&
+//                        leaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString()))
+//                    continue;
+//            }
+//
+//            // Initialize values
+//            double accruedLeaves = 0;  // Start fresh
+//            double totalLeaves = leaveType.getMaxDaysPerYear() != null ? leaveType.getMaxDaysPerYear() : 0;
+//
+//            // Example: if it’s Sick/Earned leave → accrual from next month
+//            if (leaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())
+//                    || leaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
+//                accruedLeaves = 0; // will start accruing from next month
+//            } else {
+//                accruedLeaves = totalLeaves; // e.g. maternity/paternity → lump sum, still assign full
+//            }
+//
+//            LeaveBalance balance = LeaveBalance.builder()
+//                    .employee(emp)
+//                    .leaveType(leaveType)
+//                    .year(currentYear)
+//                    .accruedLeaves(accruedLeaves)
+//                    .carriedForward(0)
+//                    .encashedLeaves(0)
+//                    .expiredLeaves(0.0)
+//                    .lastAccrualDate(firstAccrualDate)  // ✅ accrual starts from next month
+//                    .usedLeaves(0)
+//                    .remainingLeaves(totalLeaves)
+//                    .totalLeaves(totalLeaves)
+//                    .build();
+//
+//            leaveBalanceRepo.save(balance);
+//        }
     @Transactional
     public void createLeaveBalanceForAllEmployees(LeaveType leaveType) {
-        int currentYear = LocalDate.now().getYear();
-        LocalDate today = LocalDate.now();
-
-        // Calculate first accrual date → 1st of next month
-        LocalDate firstAccrualDate = today.plusMonths(1).withDayOfMonth(1);
+        int year = LocalDate.now().getYear();
+        LocalDate createdDate = LocalDate.now();
 
         List<Employee> employees = employeeRepo.findAll();
-        for (Employee emp : employees) {
-            // Skip if balance already exists
-            if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
-                    emp.getEmployeeId(), leaveType.getLeaveTypeId(), currentYear).isPresent()) {
-                continue;
-            }
 
-            // Gender-specific validation
-            if (emp.getGender() != null) {
-                if (emp.getGender().equalsIgnoreCase("male") &&
-                        leaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString()))
-                    continue;
-                if (emp.getGender().equalsIgnoreCase("female") &&
-                        leaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString()))
-                    continue;
-            }
+        List<LeaveBalance> newBalances = employees.stream()
+            .filter(emp -> leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
+                    emp.getEmployeeId(),
+                    leaveType.getLeaveTypeId(),
+                    year
+            ).isEmpty())
+            .map(emp -> buildLeaveBalance(emp, leaveType, createdDate, true))
+            .toList();
 
-            // Initialize values
-            double accruedLeaves = 0;  // Start fresh
-            double totalLeaves = leaveType.getMaxDaysPerYear() != null ? leaveType.getMaxDaysPerYear() : 0;
+        if (!newBalances.isEmpty()) {
+        leaveBalanceRepo.saveAll(newBalances);
+    }
+}
 
-            // Example: if it’s Sick/Earned leave → accrual from next month
-            if (leaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())
-                    || leaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
-                accruedLeaves = 0; // will start accruing from next month
-            } else {
-                accruedLeaves = totalLeaves; // e.g. maternity/paternity → lump sum, still assign full
-            }
+    private LeaveBalance buildLeaveBalance(Employee emp, LeaveType lt, LocalDate referenceDate, boolean isNewLeaveType) {
+        int currentYear = referenceDate.getYear();
+        LocalDate hireDate = emp.getHireDate();
 
-            LeaveBalance balance = LeaveBalance.builder()
-                    .employee(emp)
-                    .leaveType(leaveType)
-                    .year(currentYear)
-                    .accruedLeaves(accruedLeaves)
-                    .carriedForward(0)
-                    .encashedLeaves(0)
-                    .expiredLeaves(0.0)
-                    .lastAccrualDate(firstAccrualDate)  // ✅ accrual starts from next month
-                    .usedLeaves(0)
-                    .remainingLeaves(totalLeaves)
-                    .totalLeaves(totalLeaves)
-                    .build();
+    double accruedLeaves = 0;
+    double totalLeaves = 0;
+    double carriedForward = 0;
+    double usedLeaves = 0;
 
-            leaveBalanceRepo.save(balance);
+    if (lt.getAccrualRate() != null && lt.getAccrualRate() > 0) {
+        int monthsLeft = isNewLeaveType
+                ? calculateRemainingMonths(referenceDate)
+                : calculateRemainingMonths(hireDate.isAfter(referenceDate) ? hireDate : referenceDate);
+
+        totalLeaves = lt.getAccrualRate() * monthsLeft;
+        accruedLeaves = isNewLeaveType ? 0 : getAccruedLeaves(hireDate, referenceDate, lt.getAccrualRate());
+
+        if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString()) && !isNewLeaveType) {
+            carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear, lt);
         }
+    } else {
+        totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+        accruedLeaves = totalLeaves;
     }
 
+    double remainingLeaves = Math.max(0, accruedLeaves + carriedForward - usedLeaves);
+    LocalDate firstAccrualDate = referenceDate.plusMonths(1).withDayOfMonth(1);
 
+    return LeaveBalance.builder()
+            .employee(emp)
+            .leaveType(lt)
+            .year(currentYear)
+            .accruedLeaves(accruedLeaves)
+            .carriedForward(carriedForward)
+            .encashedLeaves(0)
+            .expiredLeaves(0.0)
+            .lastAccrualDate(firstAccrualDate)
+            .usedLeaves(usedLeaves)
+            .remainingLeaves(remainingLeaves)
+            .totalLeaves(totalLeaves)
+            .build();
 }
+
+    private int calculateRemainingMonths(LocalDate fromDate) {
+        int monthsLeft = 12 - fromDate.getMonthValue();
+        if (fromDate.getDayOfMonth() < 15) monthsLeft += 1;
+        return monthsLeft;
+    }
+    }
+
