@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 
@@ -37,4 +38,6 @@ public interface LeaveBalanceServiceInterface {
     ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request);
 
     void createLeaveBalanceForAllEmployees(LeaveType leaveType);
+
+    CompletableFuture<Void> createLeaveBalanceForAllEmployeesAsync(LeaveType savedLeaveType, String jobId);
 }

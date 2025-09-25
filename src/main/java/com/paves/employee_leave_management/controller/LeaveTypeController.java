@@ -2,8 +2,10 @@ package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
+import com.paves.employee_leave_management.entities.BackgroundJob;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.entities.LeaveTypesEnum;
+import com.paves.employee_leave_management.repo.BackgroundJobRepository;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -35,10 +37,23 @@ public class LeaveTypeController {
                 .toList();
     }
 
+//    @PostMapping("/add-leave-type")
+//    @PreAuthorize("hasRole('HR')")
+//    public ApiResponse<LeaveType> addLeaveType(@RequestBody LeaveType leaveType){
+//        return service.addLeaveType(leaveType);
+//    }
+
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasRole('HR')")
-    public ApiResponse<LeaveType> addLeaveType(@RequestBody LeaveType leaveType){
-        return service.addLeaveType(leaveType);
+    public ResponseEntity<ApiResponse<Object>> addLeaveType(@RequestBody LeaveType leaveType) {
+        ApiResponse<Object> response = service.addLeaveType(leaveType);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @GetMapping("/jobs/{jobId}")
+    public ResponseEntity<BackgroundJob> getJobStatus(@PathVariable String jobId) {
+        return ResponseEntity.ok(service.getJobStatus(jobId));
     }
 
     @GetMapping("/get-all-leave-types")

@@ -1,10 +1,12 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
+import com.paves.employee_leave_management.dto.JobProgressDTO;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
+import com.paves.employee_leave_management.repo.BackgroundJobRepository;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
@@ -14,29 +16,37 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
-    @Autowired
-    LeaveBalanceDAO leaveBalanceDao;
+    private final LeaveBalanceDAO leaveBalanceDao;
+    private final LeaveTypeRepo leaveTypeRepo;
+    private final LeaveBalanceRepo leaveBalanceRepo;
+    private final EmployeeRepo employeeRepo;
+    private final BackgroundJobRepository jobRepo;
+    private final RedisMessagePublisher redisMessagePublisher;
 
     @Autowired
-    LeaveTypeRepo leaveTypeRepo;
-
-    @Autowired
-    LeaveBalanceRepo leaveBalanceRepo;
-
-    @Autowired
-    EmployeeRepo employeeRepo;
+    public LeaveBalanceServiceImple(LeaveBalanceDAO leaveBalanceDao, LeaveTypeRepo leaveTypeRepo, LeaveBalanceRepo leaveBalanceRepo, EmployeeRepo employeeRepo, BackgroundJobRepository jobRepo, RedisMessagePublisher redisMessagePublisher) {
+        this.leaveBalanceDao = leaveBalanceDao;
+        this.leaveTypeRepo = leaveTypeRepo;
+        this.leaveBalanceRepo = leaveBalanceRepo;
+        this.employeeRepo = employeeRepo;
+        this.jobRepo = jobRepo;
+        this.redisMessagePublisher = redisMessagePublisher;
+    }
 
     @Override
     public void createLeaveBalanceForNewEmployee(String empId) {
@@ -473,7 +483,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     .carriedForward(0)
                     .encashedLeaves(0)
                     .expiredLeaves(0.0)
-                    .lastAccrualDate(firstAccrualDate)  // ✅ accrual starts from next month
+                    .lastAccrualDate(firstAccrualDate)  // accrual starts from next month
                     .usedLeaves(0)
                     .remainingLeaves(totalLeaves)
                     .totalLeaves(totalLeaves)
@@ -483,5 +493,110 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
     }
 
+    @Async
+    @Transactional
+    public CompletableFuture<Void> createLeaveBalanceForAllEmployeesAsync(LeaveType leaveType, String jobId) {
+        BackgroundJob job = jobRepo.findById(jobId).orElseThrow(() -> new IllegalStateException("Job not found"));
 
+        try {
+            job.setStatus("IN_PROGRESS");
+            jobRepo.save(job);
+            redisMessagePublisher.publish(new JobProgressDTO(jobId, 0, "IN_PROGRESS", null));
+
+            List<Employee> employees = employeeRepo.findAll();
+            int total = employees.size();
+            int processed = 0;
+            int batchSize = 50;
+            List<LeaveBalance> batch = new ArrayList<>();
+
+            for (Employee emp : employees) {
+                if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
+                        emp.getEmployeeId(), leaveType.getLeaveTypeId(), job.getCreatedAt().getYear()).isPresent()) {
+                    processed++;
+                    continue;
+                }
+
+                LeaveBalance balance = buildLeaveBalance(emp, leaveType, job.getCreatedAt().toLocalDate(), true);
+                batch.add(balance);
+
+                if (batch.size() >= batchSize) {
+                    leaveBalanceRepo.saveAll(batch);
+                    batch.clear();
+                }
+
+                processed++;
+                int percent = (int) (((double) processed / total) * 100);
+                System.out.println(processed+" processed : percent"+percent);
+//                redisMessagePublisher.publish(new JobProgressDTO(jobId, percent, "IN_PROGRESS", null));
+            }
+
+            if (!batch.isEmpty()) {
+                leaveBalanceRepo.saveAll(batch);
+            }
+
+            job.setStatus("COMPLETED");
+            job.setProgress(100);
+            job.setUpdatedAt(LocalDateTime.now());
+            jobRepo.save(job);
+            redisMessagePublisher.publish(new JobProgressDTO(jobId, 100, "COMPLETED", null));
+
+        } catch (Exception e) {
+            job.setStatus("FAILED");
+            job.setDetails(e.getMessage());
+            job.setUpdatedAt(LocalDateTime.now());
+            jobRepo.save(job);
+            redisMessagePublisher.publish(new JobProgressDTO(jobId, job.getProgress(), "FAILED", e.getMessage()));
+        }
+
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private LeaveBalance buildLeaveBalance(Employee emp, LeaveType lt, LocalDate referenceDate, boolean isNewLeaveType) {
+        int currentYear = referenceDate.getYear();
+        LocalDate hireDate = emp.getHireDate();
+
+        double accruedLeaves = 0;
+        double totalLeaves = 0;
+        double carriedForward = 0;
+        double usedLeaves = 0;
+
+        if (lt.getAccrualRate() != null && lt.getAccrualRate() > 0) {
+            int monthsLeft = isNewLeaveType
+                    ? calculateRemainingMonths(referenceDate)
+                    : calculateRemainingMonths(hireDate.isAfter(referenceDate) ? hireDate : referenceDate);
+
+            totalLeaves = lt.getAccrualRate() * monthsLeft;
+            accruedLeaves = isNewLeaveType ? 0 : getAccruedLeaves(hireDate, referenceDate, lt.getAccrualRate());
+
+            if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString()) && !isNewLeaveType) {
+                carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear, lt);
+            }
+        } else {
+            totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+            accruedLeaves = totalLeaves;
+        }
+
+        double remainingLeaves = Math.max(0, accruedLeaves + carriedForward - usedLeaves);
+        LocalDate firstAccrualDate = referenceDate.plusMonths(1).withDayOfMonth(1);
+
+        return LeaveBalance.builder()
+                .employee(emp)
+                .leaveType(lt)
+                .year(currentYear)
+                .accruedLeaves(accruedLeaves)
+                .carriedForward(carriedForward)
+                .encashedLeaves(0)
+                .expiredLeaves(0.0)
+                .lastAccrualDate(firstAccrualDate)
+                .usedLeaves(usedLeaves)
+                .remainingLeaves(remainingLeaves)
+                .totalLeaves(totalLeaves)
+                .build();
+    }
+
+    private int calculateRemainingMonths(LocalDate fromDate) {
+        int monthsLeft = 12 - fromDate.getMonthValue();
+        if (fromDate.getDayOfMonth() < 15) monthsLeft += 1;
+        return monthsLeft;
+    }
 }
