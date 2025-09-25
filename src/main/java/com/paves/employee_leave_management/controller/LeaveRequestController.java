@@ -86,6 +86,8 @@ public class LeaveRequestController {
                     .startDate(validationDTO.getStartDate())
                     .endDate(validationDTO.getEndDate())
                     .daysRequested(validationDTO.getDaysRequested())
+                    .startSession(validationDTO.getStartSession())
+                    .endSession(validationDTO.getEndSession())
                     .reason(validationDTO.getReason())
                     .requestDate(LocalDate.now())
                     .build();
