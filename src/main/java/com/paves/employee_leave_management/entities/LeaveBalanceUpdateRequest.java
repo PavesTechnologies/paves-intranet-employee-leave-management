@@ -11,6 +11,7 @@ import java.util.List;
 public class LeaveBalanceUpdateRequest {
     private String employeeId;
     private List<BalanceUpdate> balances;
+    private String performedBy;
 
 
     @Data

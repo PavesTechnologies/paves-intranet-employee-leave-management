@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -62,7 +63,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 dbLeaveType.setActive(true);
                 dbLeaveType.setLeaveName(leaveType.getLeaveName());
                 dbLeaveType.setDescription(leaveType.getDescription());
-                dbLeaveType.setAccrualRate(leaveType.getAccrualRate());
+                double accrualRate = ((double)leaveType.getMaxDaysPerYear()/12);
+                dbLeaveType.setAccrualRate(accrualRate);
                 dbLeaveType.setAccrualFrequency(leaveType.getAccrualFrequency());
                 dbLeaveType.setAdvanceNoticeDays(leaveType.getAdvanceNoticeDays());
                 dbLeaveType.setWeekendsAndHolidaysAllowed(leaveType.getWeekendsAndHolidaysAllowed());
@@ -87,6 +89,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         // Create new
+        double accrualRate = ((double)leaveType.getMaxDaysPerYear()/12.0);
+        leaveType.setAccrualRate(accrualRate);
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
         leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
         return new ApiResponse<>(true,
@@ -140,6 +144,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         for (LeaveBalance balance : affectedBalances) {
             double accruedLeaves = balance.getAccruedLeaves(); // leaves_till_now
             double recalculatedTotal = accruedLeaves + (remainingMonths * newAccrualRate);
+
 
             balance.setTotalLeaves(recalculatedTotal);
 
