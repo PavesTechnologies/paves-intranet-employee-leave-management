@@ -3,9 +3,11 @@ package com.paves.employee_leave_management.controller;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.service.HolidaysServiceImple;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -62,6 +64,18 @@ public class HolidaysController {
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> deleteHolidaysByYear(@PathVariable int year) {
         return holidaysService.deleteHolidaysByYear(year);
+    }
+
+    @PostMapping("/upload")
+    @PreAuthorize("hasRole('HR')")
+    public ResponseEntity<String> uploadExcel(@RequestParam("file") MultipartFile file) {
+        try {
+            holidaysService.importHolidaysFromExcel(file);
+            return ResponseEntity.ok("Holidays imported successfully!");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
+                    .body("Failed to import: " + e.getMessage());
+        }
     }
 
 }

@@ -16,7 +16,7 @@ import java.time.LocalDate;
         })
 public class Holidays {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    //@GeneratedValue(strategy = GenerationType.IDENTITY)
     private long holidayId;
 
     @Column(nullable = false)
@@ -32,6 +32,9 @@ public class Holidays {
 
     @Column(nullable = false)
     private String state;
+
+    @Column(nullable = false)
+    private String country;
 
     @Column(nullable = false)
     private int year;
