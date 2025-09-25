@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.*;
@@ -37,6 +38,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Autowired
     EmployeeRepo employeeRepo;
+
+    @Autowired
+    AuditLogService auditLogService;
 
     @Override
     public void createLeaveBalanceForNewEmployee(String empId) {
@@ -380,6 +384,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         return new ResponseEntity<>(leaveBalanceRepo.saveAll(leaveBalance), HttpStatus.OK);
     }
 
+
+    // without Audit
+    @Auditable
+    @Transactional
     @Override
     public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
         for (LeaveBalanceUpdateRequest.BalanceUpdate update : request.getBalances()) {
@@ -403,6 +411,47 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
         return ResponseEntity.ok("Leave balances updated successfully.");
     }
+
+
+//    @Override
+//    public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
+//        for (LeaveBalanceUpdateRequest.BalanceUpdate update : request.getBalances()) {
+//            LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+//                    request.getEmployeeId(),
+//                    update.getLeaveTypeId(),
+//                    update.getYear()
+//            );
+//
+//            if (balance == null) {
+//                throw new RuntimeException(
+//                        "Leave Balance not found for employeeId: " + request.getEmployeeId() +
+//                                ", leaveTypeId: " + update.getLeaveTypeId() +
+//                                ", year: " + update.getYear()
+//                );
+//            }
+//
+//            // ✅ Capture old value (only the field you care about, or full object)
+//            double oldRemaining = balance.getRemainingLeaves();
+//
+//            // ✅ Update with new value
+//            balance.setRemainingLeaves(update.getRemainingLeaves());
+//            LeaveBalance updatedBalance = leaveBalanceRepo.save(balance);
+//
+//            // ✅ Log the change (assuming you inject AuditService in this class)
+//            auditLogService.logAudit(
+//                    "UPDATE_LEAVE_BALANCE",
+//                    "LeaveBalance",
+//                    balance.getBalanceId(),                     // entityId
+//                    request.getPerformedBy(),            // HR username/employeeId → include in request or extract from JWT
+//                    oldRemaining,                        // oldValue (just remaining leaves here)
+//                    update.getRemainingLeaves().toString(),         // newValue
+//                    "HR updated leave balance via bulk update" // reason (optional, or pass from request)
+//            );
+//        }
+//
+//        return ResponseEntity.ok("Leave balances updated successfully.");
+//    }
+
 
 
 
