@@ -4,6 +4,7 @@ import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,16 +35,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     @Autowired
     LeaveBalanceServiceInterface leaveBalanceServiceInterface;
 
-//    @Override
-//    @Transactional
-//    public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType) {
-//        Optional<LeaveType> leaveRes = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
-//        if(leaveRes.isEmpty()){
-//            return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
-//            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
-//        }
-//        return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
-//    }
     @Override
     @Transactional
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
@@ -76,6 +68,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 dbLeaveType.setAllowNegativeBalance(leaveType.getAllowNegativeBalance());
                 dbLeaveType.setExpiryDays(leaveType.getExpiryDays());
                 dbLeaveType.setMaxDaysPerYear(leaveType.getMaxDaysPerYear());
+                dbLeaveType.setPolicyDocument(leaveType.getPolicyDocument());
 
                 LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
                 leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
@@ -182,4 +175,52 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         return new ResponseEntity<>("Leave type deactivated successfully", HttpStatus.OK);
     }
 
+    @Override
+    public void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception {
+        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
+                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+
+        // Only accept PDF or Word files
+        String contentType = file.getContentType();
+        if (!contentType.equalsIgnoreCase("application/pdf") &&
+                !contentType.equalsIgnoreCase("application/msword") &&
+                !contentType.equalsIgnoreCase("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+            throw new RuntimeException("Only PDF and Word documents are allowed");
+        }
+
+        leaveType.setPolicyDocument(file.getBytes());
+        leaveTypeRepo.save(leaveType);
+    }
+
+    @Override
+    public byte[] viewDocument(String leaveTypeName, String fileType) throws Exception {
+        LeaveType leaveType = leaveTypeRepo.findByLeaveName(leaveTypeName)
+                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+
+        if (leaveType.getPolicyDocument() == null) {
+            throw new LeaveTypeException("No document uploaded for this leave type");
+        }
+
+        return leaveType.getPolicyDocument();
+    }
+
+    @Override
+    public void deleteDocument(String leaveTypeId) throws Exception {
+        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
+                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+
+        leaveType.setPolicyDocument(null);
+        leaveTypeRepo.save(leaveType);
+    }
+
+    // Helper to get MIME type from extension
+    @Override
+    public String getMimeType(String fileType) {
+        return switch (fileType.toLowerCase()) {
+            case "pdf" -> "application/pdf";
+            case "doc" -> "application/msword";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default -> "application/octet-stream";
+        };
+    }
 }

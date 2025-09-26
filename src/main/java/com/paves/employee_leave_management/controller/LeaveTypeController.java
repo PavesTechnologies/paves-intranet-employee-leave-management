@@ -4,13 +4,19 @@ import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.entities.LeaveTypesEnum;
+import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +29,9 @@ public class LeaveTypeController {
 
     @Autowired
     LeaveTypeServiceInterface service;
+
+    @Autowired
+    LeaveTypeRepo leaveTypeRepo;
 
     @GetMapping("/types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
@@ -59,4 +68,37 @@ public class LeaveTypeController {
     public ResponseEntity<String> deleteLeaveType(@PathVariable String leaveTypeId){
         return service.deActiveLeaveType(leaveTypeId);
     }
+    // Upload document
+    @PreAuthorize("hasRole('HR')")
+    @PostMapping("/{leaveTypeId}/upload-document")
+    public ResponseEntity<String> uploadDocument(@PathVariable String leaveTypeId,
+                                                 @RequestParam("file") MultipartFile file) throws Exception {
+        service.uploadDocument(leaveTypeId, file);
+        return ResponseEntity.ok("Document uploaded successfully");
+    }
+
+    // View document
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    @GetMapping("/{leaveTypeName}/document")
+    public ResponseEntity<ByteArrayResource> viewDocument(@PathVariable String leaveTypeName,
+                                                          @RequestParam(defaultValue = "pdf") String fileType) throws Exception {
+        byte[] data = service.viewDocument(leaveTypeName, fileType);
+
+        ByteArrayResource resource = new ByteArrayResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"policy." + fileType + "\"")
+                .contentType(MediaType.parseMediaType(service.getMimeType(fileType)))
+                .contentLength(data.length)
+                .body(resource);
+    }
+
+    // Delete document
+    @PreAuthorize("hasRole('HR')")
+    @DeleteMapping("/{leaveTypeId}/document")
+    public ResponseEntity<String> deleteDocument(@PathVariable String leaveTypeId) throws Exception {
+        service.deleteDocument(leaveTypeId);
+        return ResponseEntity.ok("Document deleted successfully");
+    }
+
 }
