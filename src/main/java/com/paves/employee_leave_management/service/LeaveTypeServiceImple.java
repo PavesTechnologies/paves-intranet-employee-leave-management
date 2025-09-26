@@ -4,7 +4,6 @@ import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
-import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -16,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -111,10 +111,12 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Transactional
     @Override
-    public ResponseEntity<LeaveType> updateLeaveType(LeaveType updatedLeaveType) {
-        Optional<LeaveType> existingOpt = leaveTypeRepo.findByLeaveTypeId(updatedLeaveType.getLeaveTypeId());
+    public ApiResponse<LeaveType> updateLeaveType(LeaveType updatedLeaveType, String leaveTypeId) {
+        Optional<LeaveType> existingOpt = leaveTypeRepo.findByLeaveTypeId(leaveTypeId);
         if (existingOpt.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return new ApiResponse<>(false,
+                    "Leave type " + leaveTypeId + " not found.",
+                    null);
         }
 //        LeaveType existingLeaveType = existingOpt.get();
         double newAccrualRate = updatedLeaveType.getAccrualRate();
@@ -143,7 +145,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
         leaveBalanceRepo.saveAll(affectedBalances);
 
-        return new ResponseEntity<>(savedLeaveType, HttpStatus.ACCEPTED);
+        return new ApiResponse<>(true,
+                "Leave type updated successfully.",
+                savedLeaveType);
     }
 
 

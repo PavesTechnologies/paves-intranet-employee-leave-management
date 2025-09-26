@@ -57,10 +57,10 @@ public class LeaveTypeController {
     }
 
 //    @PatchMapping("/update-leave-type/{leaveTypeId}")
-    @PatchMapping("/update-leave-type")
+    @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
-    public void updateLeave(@RequestBody LeaveType leaveTypeDto){
-         service.updateLeaveType(leaveTypeDto);
+    public ApiResponse<LeaveType> updateLeave(@RequestBody LeaveType leaveTypeDto, @PathVariable String leaveTypeId){
+         return service.updateLeaveType(leaveTypeDto, leaveTypeId);
     }
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")

@@ -1,20 +1,23 @@
 package com.paves.employee_leave_management.dto;
 
+import compoffvalidation.ValidCompoffRequest;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.time.LocalDate;
 
 @Data
+@ValidCompoffRequest
 public class LeaveCompoffRequestDTO {
     @NotBlank(message = "EmployeeId is required")
     private String employeeId;
     private String managerId;
-    @NotBlank(message = "StartDate is required")
+    @NotNull(message = "StartDate is required")
     private LocalDate startDate;
-    @NotBlank(message = "endDate is required")
+    @NotNull(message = "endDate is required")
     private LocalDate endDate;
-    @NotBlank(message = "days are required")
+    @NotNull(message = "days are required")
     private double duration;
     @NotBlank(message = "note is required")
     private String note;
