@@ -102,6 +102,11 @@ public class LeaveType {
     @Column(name = "active")
     private Boolean active = true;
 
+    @Lob
+    @Column(name = "policy_document", columnDefinition = "LONGBLOB",nullable = false)
+    private byte[] policyDocument;
+
+
 
     // Custom constructor with new field
 
