@@ -3,12 +3,18 @@ package com.paves.employee_leave_management.controller;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.service.HolidaysServiceImple;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 
 @RestController
@@ -76,6 +82,23 @@ public class HolidaysController {
             return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
                     .body("Failed to import: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/template/download")
+    public ResponseEntity<InputStreamResource> downloadTemplate() throws IOException, SQLException {
+        String filename = "holidays_template.xlsx";
+        ByteArrayInputStream inputStream = holidaysService.createHolidayTemplate();
+
+        HttpHeaders headers = new HttpHeaders();
+        // This header tells the browser to download the file with the given filename
+        headers.add("Content-Disposition", "attachment; filename=" + filename);
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                // This content type is for modern .xlsx Excel files
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(inputStream));
     }
 
 }
