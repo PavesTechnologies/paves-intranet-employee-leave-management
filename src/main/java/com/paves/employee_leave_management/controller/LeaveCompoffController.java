@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.controller;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,7 +23,7 @@ public class LeaveCompoffController {
 
     @PostMapping("/request")
     @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
-    public ResponseEntity<ApiResponse<String>> requestCompoff(@RequestBody LeaveCompoffRequestDTO dto) {
+    public ResponseEntity<ApiResponse<String>> requestCompoff(@Valid @RequestBody LeaveCompoffRequestDTO dto) {
         try {
             compoffService.requestCompoff(dto);
             return ResponseEntity.ok(new ApiResponse<>(true, "Compoff requested successfully.", null));
