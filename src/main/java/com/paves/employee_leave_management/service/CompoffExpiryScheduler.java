@@ -21,7 +21,8 @@ public class CompoffExpiryScheduler {
     private final LeaveBalanceRepo leaveBalanceRepo;
 
     @Scheduled(cron = "0 0 2 * * ?") // Runs every day at 2 AM
-    public void expireUnusedCompoffs() {
+//@Scheduled(cron = "0 6 16 * * ?")
+public void expireUnusedCompoffs() {
         List<LeaveCompoff> compoffs = leaveCompoffRepo.findByStatus(LeaveStatusCompoff.APPROVED);
 
         for (LeaveCompoff compoff : compoffs) {
