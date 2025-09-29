@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.HolidayCheckResponse;
+import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.repo.HolidayRepo;
 import com.paves.employee_leave_management.service.HolidaysServiceImple;
@@ -34,7 +35,7 @@ public class HolidaysController {
 
     // 🔹 Get all holidays
     @GetMapping("/all")
-    @PreAuthorize("hasRole('HR','GENERAL','MANAGER')")
+    @PreAuthorize("hasAnyRole('HR','GENERAL','MANAGER')")
     public ResponseEntity<List<Holidays>> getAllHolidays() {
         return holidaysService.getAllHolidays();
     }
@@ -93,6 +94,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/template/download")
+    @PreAuthorize("hasRole('HR')")
     public ResponseEntity<InputStreamResource> downloadTemplate() throws IOException, SQLException {
         String filename = "holidays_template.xlsx";
         ByteArrayInputStream inputStream = holidaysService.createHolidayTemplate();
@@ -129,5 +131,13 @@ public class HolidaysController {
             );
         }
     }
+    @GetMapping("/by-location")
+    @PreAuthorize("hasAnyRole('GENERAL','HR','MANAGER')")
+    public ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(
+            @RequestParam("state") String state,
+            @RequestParam("country") String country) {
+        return holidaysService.getHolidaysByStateAndCountry(state, country);
+    }
+
 }
 

@@ -14,4 +14,6 @@ public interface HolidayRepo extends JpaRepository<Holidays, Long> {
     boolean existsByHolidayDateAndStateAndYear(LocalDate holidayDate, String state,int year);
 
     Optional<Holidays> findByHolidayDateAndYear(LocalDate date, int year);
+    List<Holidays> findByStateAndCountryAndYear(String state, String country,int year);
+
 }

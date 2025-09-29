@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.serviceInterface;
 
+import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.HolidayType;
 import com.paves.employee_leave_management.entities.Holidays;
 import org.springframework.http.ResponseEntity;
@@ -24,4 +25,6 @@ public interface HolidaysServiceInterface {
     ResponseEntity<String> deleteHolidaysThreeYearsAgo();
 
     void importHolidaysFromExcel(MultipartFile file) throws IOException, IOException;
+    ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(String state, String country);
+
 }
