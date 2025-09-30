@@ -112,7 +112,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/check")
-    @PreAuthorize("hasRole('GENERAL')")
+//    @PreAuthorize("hasRole('GENERAL')")
     public ResponseEntity<?> checkHoliday(
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
