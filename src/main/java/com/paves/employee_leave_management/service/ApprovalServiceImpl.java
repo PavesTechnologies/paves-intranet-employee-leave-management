@@ -2,17 +2,18 @@ package com.paves.employee_leave_management.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paves.employee_leave_management.dto.ApprovalRequestResponseDto;
 import com.paves.employee_leave_management.dto.ApproveRequestDto;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.dto.RejectRequestDto;
-import com.paves.employee_leave_management.entities.ApprovalRequest;
-import com.paves.employee_leave_management.entities.ApprovalRule;
-import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.ActionType;
+import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.RequestStatus;
-import com.paves.employee_leave_management.repository.ApprovalRequestRepository;
-import com.paves.employee_leave_management.repository.ApprovalRuleRepository;
+import com.paves.employee_leave_management.repo.ApprovalRequestRepository;
+import com.paves.employee_leave_management.repo.ApprovalRuleRepository;
+import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.FunctionalApproverRepository;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class ApprovalServiceImpl implements ApprovalService {
@@ -31,6 +33,12 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Autowired
     private ApprovalRequestRepository approvalRequestRepository;
+
+    @Autowired
+    private FunctionalApproverRepository functionalApproverRepository;
+
+    @Autowired
+    private EmployeeRepo employeeRepo;
 
     @Autowired
     private LeaveTypeServiceInterface leaveTypeService;
@@ -43,10 +51,12 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Override
     @Transactional
-    public void submitForApproval(MCApprovalRequestDto dto, Employee maker) {
-        String makerRole = "HR-Manager"; // Example role
-
+    public void submitForApproval(MCApprovalRequestDto dto, Employee maker, String makerRole) {
         List<ApprovalRule> rules = approvalRuleRepository.findByActionTypeAndMakerRole(dto.getActionType(), makerRole);
+
+        if (rules.isEmpty()) {
+            throw new IllegalStateException("No approval rule found for action: " + dto.getActionType() + " and maker role: " + makerRole);
+        }
 
         for (ApprovalRule rule : rules) {
             ApprovalRequest request = new ApprovalRequest();
@@ -54,8 +64,8 @@ public class ApprovalServiceImpl implements ApprovalService {
             request.setMakerId(Long.parseLong(maker.getEmployeeId()));
             request.setCreatedAt(LocalDateTime.now());
 
-            // For now, we'll leave the approver null. This will be determined by the rule.
-            // request.setApproverId(determineApprover(rule, maker));
+            Long approverId = determineApproverId(rule, maker);
+            request.setApproverId(approverId);
 
             if (rule.getApprovalLevel() == 1) {
                 request.setStatus(RequestStatus.PENDING);
@@ -73,10 +83,62 @@ public class ApprovalServiceImpl implements ApprovalService {
         }
     }
 
-    @Override
-    public List<ApprovalRequest> getPendingApprovalsForUser(Employee approver) {
-        return approvalRequestRepository.findByApproverIdAndStatus(Long.parseLong(approver.getEmployeeId()), RequestStatus.PENDING);
+    private Long determineApproverId(ApprovalRule rule, Employee maker) {
+        ApproverType approverType = rule.getApproverType();
+
+        switch (approverType) {
+            case DIRECT_MAPPING:
+                String fieldName = rule.getCheckerRole();
+                switch (fieldName) {
+                    case "manager":
+                        Employee manager = maker.getManager();
+                        if (manager == null) {
+                            throw new IllegalStateException("Approval Error: Employee " + maker.getFullName() + " does not have a manager assigned.");
+                        }
+                        return Long.parseLong(manager.getEmployeeId());
+                    case "hr_administrator":
+                        Employee hrAdmin = maker.getHrAdministrator();
+                        if (hrAdmin == null) {
+                            throw new IllegalStateException("Approval Error: Employee " + maker.getFullName() + " does not have an HR Administrator assigned.");
+                        }
+                        return Long.parseLong(hrAdmin.getEmployeeId());
+                    default:
+                        throw new IllegalStateException("Configuration Error: Unsupported checker role for DIRECT_MAPPING: " + fieldName);
+                }
+
+            default:
+                throw new UnsupportedOperationException("The approver type '" + approverType + "' is not currently supported.");
+        }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ApprovalRequestResponseDto> getPendingApprovalsForUser(Employee approver) {
+        List<ApprovalRequest> requests = approvalRequestRepository.findByApproverIdAndStatus(Long.parseLong(approver.getEmployeeId()), RequestStatus.PENDING);
+
+        return requests.stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    private ApprovalRequestResponseDto mapToDto(ApprovalRequest request) {
+        ApprovalRequestResponseDto dto = new ApprovalRequestResponseDto();
+        dto.setId(request.getId());
+        dto.setActionType(request.getRule().getActionType());
+        dto.setStatus(request.getStatus());
+        dto.setPayload(request.getPayload());
+        dto.setCreatedAt(request.getCreatedAt());
+
+        // Fetch maker details. This could be optimized to avoid N+1 queries.
+        Employee maker = employeeRepo.findById(String.valueOf(request.getMakerId()))
+                .orElse(null);
+        if (maker != null) {
+            dto.setMakerName(maker.getFullName());
+        }
+
+        return dto;
+    }
+
 
     @Override
     @Transactional
@@ -84,21 +146,20 @@ public class ApprovalServiceImpl implements ApprovalService {
         ApprovalRequest request = approvalRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Approval request not found"));
 
-        // Basic validation
         if (request.getStatus() != RequestStatus.PENDING) {
             throw new IllegalStateException("Request is not in a pending state.");
         }
-        // More validation needed here to check if 'checker' is the correct approver
+        if (!request.getApproverId().equals(Long.parseLong(checker.getEmployeeId()))) {
+            throw new IllegalStateException("You are not authorized to approve this request.");
+        }
 
         request.setStatus(RequestStatus.APPROVED);
         request.setResolvedAt(LocalDateTime.now());
 
-        // Execute business logic based on action type
         executeBusinessLogic(request);
 
         approvalRequestRepository.save(request);
 
-        // Activate next level of approval if it exists
         activateNextApprovalLevel(request);
     }
 
@@ -111,6 +172,9 @@ public class ApprovalServiceImpl implements ApprovalService {
         if (request.getStatus() != RequestStatus.PENDING) {
             throw new IllegalStateException("Request is not in a pending state.");
         }
+        if (!request.getApproverId().equals(Long.parseLong(checker.getEmployeeId()))) {
+            throw new IllegalStateException("You are not authorized to reject this request.");
+        }
 
         request.setStatus(RequestStatus.REJECTED);
         request.setRejectionReason(dto.getReason());
@@ -118,7 +182,6 @@ public class ApprovalServiceImpl implements ApprovalService {
 
         approvalRequestRepository.save(request);
 
-        // Cancel any subsequent WAITING requests in the same workflow
         cancelSubsequentApprovals(request);
     }
 
@@ -129,23 +192,24 @@ public class ApprovalServiceImpl implements ApprovalService {
         try {
             switch (actionType) {
                 case CREATE_LEAVE_TYPE:
-                    LeaveType newLeaveType = objectMapper.readValue(payload, LeaveType.class);
+                    Map<String, Object> createPayload = objectMapper.readValue(payload, Map.class);
+                    LeaveType newLeaveType = objectMapper.convertValue(createPayload.get("newData"), LeaveType.class);
                     leaveTypeService.addLeaveType(newLeaveType);
                     break;
                 case UPDATE_LEAVE_TYPE:
-                    // Assuming payload contains the full updated LeaveType object
-                    LeaveType updatedLeaveType = objectMapper.readValue(payload, LeaveType.class);
+                    Map<String, Object> updatePayload = objectMapper.readValue(payload, Map.class);
+                    LeaveType updatedLeaveType = objectMapper.convertValue(updatePayload.get("after"), LeaveType.class);
                     leaveTypeService.updateLeaveType(updatedLeaveType, updatedLeaveType.getLeaveTypeId());
                     break;
                 case DEACTIVATE_LEAVE_TYPE:
-                    // Assuming payload contains a map with "leaveTypeId"
                     Map<String, String> deactivatePayload = objectMapper.readValue(payload, Map.class);
                     leaveTypeService.deActiveLeaveType(deactivatePayload.get("leaveTypeId"));
                     break;
-                // case UPDATE_EMPLOYEE_LEAVE_BALANCE:
-                //     LeaveBalanceUpdateRequest balanceUpdateRequest = objectMapper.readValue(payload, LeaveBalanceUpdateRequest.class);
-                //     leaveBalanceService.updateLeaveBalancesFromHr(balanceUpdateRequest);
-                //     break;
+                case UPDATE_EMPLOYEE_LEAVE_BALANCE:
+                    Map<String, Object> balanceUpdatePayload = objectMapper.readValue(payload, Map.class);
+                    LeaveBalanceUpdateRequest balanceUpdateRequest = objectMapper.convertValue(balanceUpdatePayload.get("newData"), LeaveBalanceUpdateRequest.class);
+                    leaveBalanceService.updateLeaveBalancesFromHr(balanceUpdateRequest);
+                    break;
                 default:
                     throw new IllegalStateException("Unsupported action type: " + actionType);
             }
@@ -155,11 +219,10 @@ public class ApprovalServiceImpl implements ApprovalService {
     }
 
     private void activateNextApprovalLevel(ApprovalRequest approvedRequest) {
-        // Find if there is a rule for the next level
-        // This is a simplified example. A more robust implementation would be needed.
+        // Future implementation: Find the rule for the next approval level and update its corresponding request to PENDING.
     }
 
     private void cancelSubsequentApprovals(ApprovalRequest rejectedRequest) {
-        // Find and cancel any WAITING requests that are part of the same workflow
+        // Future implementation: Find and cancel any WAITING requests that are part of the same workflow.
     }
 }

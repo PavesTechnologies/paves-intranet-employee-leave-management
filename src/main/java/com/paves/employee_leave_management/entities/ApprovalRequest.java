@@ -2,9 +2,14 @@ package com.paves.employee_leave_management.entities;
 
 import com.paves.employee_leave_management.enums.RequestStatus;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "approval_requests")
 public class ApprovalRequest {
@@ -37,75 +42,4 @@ public class ApprovalRequest {
 
     // Getters and Setters
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public ApprovalRule getRule() {
-        return rule;
-    }
-
-    public void setRule(ApprovalRule rule) {
-        this.rule = rule;
-    }
-
-    public Long getMakerId() {
-        return makerId;
-    }
-
-    public void setMakerId(Long makerId) {
-        this.makerId = makerId;
-    }
-
-    public Long getApproverId() {
-        return approverId;
-    }
-
-    public void setApproverId(Long approverId) {
-        this.approverId = approverId;
-    }
-
-    public RequestStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(RequestStatus status) {
-        this.status = status;
-    }
-
-    public String getPayload() {
-        return payload;
-    }
-
-    public void setPayload(String payload) {
-        this.payload = payload;
-    }
-
-    public String getRejectionReason() {
-        return rejectionReason;
-    }
-
-    public void setRejectionReason(String rejectionReason) {
-        this.rejectionReason = rejectionReason;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getResolvedAt() {
-        return resolvedAt;
-    }
-
-    public void setResolvedAt(LocalDateTime resolvedAt) {
-        this.resolvedAt = resolvedAt;
-    }
 }

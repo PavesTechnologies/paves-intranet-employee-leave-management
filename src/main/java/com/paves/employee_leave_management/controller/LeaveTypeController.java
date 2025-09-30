@@ -5,7 +5,7 @@ import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.entities.LeaveTypesEnum;
 import com.paves.employee_leave_management.enums.ActionType;
-import com.paves.employee_leave_management.repository.EmployeeRepo;
+import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.service.ApprovalService;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -15,6 +15,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -40,6 +43,30 @@ public class LeaveTypeController {
     @Autowired
     private EmployeeRepo employeeRepo;
 
+    // This is a placeholder for getting the user from the JWT token
+    private Employee getAuthenticatedUser() {
+        // In a real application, you would extract the user details from the Spring Security Context.
+        // For now, we'll fetch a hardcoded user to simulate this.
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("No authenticated user found");
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof Jwt jwt) {
+            // You can fetch using email or user_id depending on your DB
+//            String email = jwt.getClaim("email");  // "employee1@example.com"
+             Integer userId = jwt.getClaim("user_id"); // If needed
+
+            return employeeRepo.findByEmployeeId(String.valueOf(userId))
+                    .orElseThrow(() -> new RuntimeException("Employee not found for id: " + userId));
+        }
+
+        throw new RuntimeException("Invalid authentication principal");
+    }
+
     @GetMapping("/types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
     public List<Map<String, String>> getLeaveTypes() {
@@ -54,8 +81,10 @@ public class LeaveTypeController {
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> addLeaveType(@RequestBody LeaveType leaveType) {
-        // In a real app, get the maker from the security context.
-        Employee maker = employeeRepo.findById("PAVEMP45179").orElseThrow(() -> new RuntimeException("Maker not found"));
+        Employee maker = getAuthenticatedUser();
+        // Assuming the role is stored in the jobTitle field for now
+        // String makerRole = maker.getJobTitle();
+        String makerRole = "HR";
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.CREATE_LEAVE_TYPE);
@@ -64,7 +93,7 @@ public class LeaveTypeController {
         payload.put("newData", leaveType);
         dto.setPayload(payload);
 
-        approvalService.submitForApproval(dto, maker);
+        approvalService.submitForApproval(dto, maker, makerRole);
 
         return ResponseEntity.ok("Request to add leave type has been submitted for approval.");
     }
@@ -78,7 +107,9 @@ public class LeaveTypeController {
     @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> updateLeave(@RequestBody LeaveType updatedLeaveType, @PathVariable String leaveTypeId) {
-        Employee maker = employeeRepo.findById("PAVEMP45179").orElseThrow(() -> new RuntimeException("Maker not found"));
+        Employee maker = getAuthenticatedUser();
+//        String makerRole = maker.getJobTitle();
+        String makerRole = "HR";
         LeaveType oldLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(() -> new RuntimeException("LeaveType not found"));
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
@@ -90,7 +121,7 @@ public class LeaveTypeController {
         payload.put("after", updatedLeaveType);
         dto.setPayload(payload);
 
-        approvalService.submitForApproval(dto, maker);
+        approvalService.submitForApproval(dto, maker, makerRole);
 
         return ResponseEntity.ok("Request to update leave type has been submitted for approval.");
     }
@@ -98,7 +129,9 @@ public class LeaveTypeController {
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> deleteLeaveType(@PathVariable String leaveTypeId) {
-        Employee maker = employeeRepo.findById("PAVEMP45179").orElseThrow(() -> new RuntimeException("Maker not found"));
+        Employee maker = getAuthenticatedUser();
+//        String makerRole = maker.getJobTitle();
+        String makerRole = "HR";
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.DEACTIVATE_LEAVE_TYPE);
@@ -108,12 +141,12 @@ public class LeaveTypeController {
         payload.put("leaveTypeId", leaveTypeId);
         dto.setPayload(payload);
 
-        approvalService.submitForApproval(dto, maker);
+        approvalService.submitForApproval(dto, maker, makerRole);
 
         return ResponseEntity.ok("Request to deactivate leave type has been submitted for approval.");
     }
 
-    // Document management endpoints remain unchanged as they are not part of the approval workflow
+    // Document management endpoints remain unchanged
 
     @PreAuthorize("hasRole('HR')")
     @PostMapping("/{leaveTypeId}/upload-document")
