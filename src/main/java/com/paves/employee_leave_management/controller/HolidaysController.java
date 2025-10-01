@@ -25,6 +25,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/holidays")
+@CrossOrigin
 public class HolidaysController {
 
     @Autowired
@@ -62,7 +63,7 @@ public class HolidaysController {
     }
 
     // 🔹 Delete holiday
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> deleteHoliday(@PathVariable Long id) {
         return holidaysService.deleteHoliday(id);

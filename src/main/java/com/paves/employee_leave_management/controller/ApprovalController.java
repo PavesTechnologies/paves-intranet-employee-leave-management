@@ -9,7 +9,6 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.service.ApprovalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -41,7 +40,7 @@ public class ApprovalController {
         if (principal instanceof Jwt jwt) {
             // You can fetch using email or user_id depending on your DB
 //            String email = jwt.getClaim("email");  // "employee1@example.com"
-            Integer userId = jwt.getClaim("user_id"); // If needed
+            Long userId = jwt.getClaim("user_id"); // If needed
 
             return employeeRepo.findByEmployeeId(String.valueOf(userId))
                     .orElseThrow(() -> new RuntimeException("Employee not found for id: " + userId));
@@ -79,10 +78,12 @@ public class ApprovalController {
 //        return ResponseEntity.ok(pendingRequests);
 //    }
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'GENERAL', 'HR_ADMINISTRATOR')") // Roles that can be approvers
+//    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'GENERAL', 'HR_ADMINISTRATOR')") // Roles that can be approvers
     public ResponseEntity<List<ApprovalRequestResponseDto>> getPendingRequests() {
         Employee checker = getAuthenticatedUser();
+        System.out.println(checker);
         List<ApprovalRequestResponseDto> pendingRequests = approvalService.getPendingApprovalsForUser(checker);
+        System.out.println(pendingRequests);
         return ResponseEntity.ok(pendingRequests);
     }
 }

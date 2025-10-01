@@ -2,6 +2,8 @@ package com.paves.employee_leave_management.dto;
 
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.RequestStatus;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -9,6 +11,8 @@ import java.time.LocalDateTime;
  * DTO for returning ApprovalRequest data to the client.
  * This prevents serialization issues with Hibernate proxies.
  */
+@Setter
+@Getter
 public class ApprovalRequestResponseDto {
 
     private Long id;
@@ -20,51 +24,4 @@ public class ApprovalRequestResponseDto {
 
     // Getters and Setters
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public ActionType getActionType() {
-        return actionType;
-    }
-
-    public void setActionType(ActionType actionType) {
-        this.actionType = actionType;
-    }
-
-    public RequestStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(RequestStatus status) {
-        this.status = status;
-    }
-
-    public String getPayload() {
-        return payload;
-    }
-
-    public void setPayload(String payload) {
-        this.payload = payload;
-    }
-
-    public String getMakerName() {
-        return makerName;
-    }
-
-    public void setMakerName(String makerName) {
-        this.makerName = makerName;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
 }
