@@ -1,5 +1,7 @@
 package com.paves.employee_leave_management.service;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
@@ -20,14 +22,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.Year;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
+
+    @Autowired
+    ElasticsearchClient client;
 
     @Autowired
     LeaveBalanceDAO leaveBalanceDao;
@@ -377,6 +384,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     public void updateLeaveBalanceAfterRejected(String employeeId, String leaveTypeId, double daysRequested, int year) {
         LeaveBalance balance = leaveBalanceRepo
                 .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+        System.out.println("used Leaves "+balance.getUsedLeaves());
+        System.out.println("remaining Leaves "+balance.getRemainingLeaves());
+        System.out.println("accrued Leaves "+balance.getAccruedLeaves());
+        System.out.println("daysRequested "+daysRequested);
+        System.out.println("year "+year);
 
         balance.setUsedLeaves(balance.getUsedLeaves() - daysRequested);
         if (!leaveTypeId.equalsIgnoreCase("L-UP")) {
@@ -557,6 +569,40 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 }
 
+    @Override
+    public List<String> autocomplete(String query) {
+        try {
+            // Search in leave_balance index
+            SearchResponse<LeaveBalance> response = client.search(s -> s
+                            .index("leave_balance") // your ES index
+                            .size(5) // max 5 suggestions
+                            .query(q -> q
+                                    .multiMatch(m -> m
+                                            .fields("employee.employeeId", "employee.firstName", "employee.lastName")
+                                            .query(query)
+                                            .fuzziness("AUTO")
+                                    )
+                            ),
+                    LeaveBalance.class
+            );
+
+            // Map hits to "E123 - John Doe"
+            return response.hits().hits().stream()
+                    .map(hit -> {
+                        Employee e = hit.source().getEmployee();
+                        return e.getEmployeeId() + " - " + e.getFirstName() + " " + e.getLastName();
+                    })
+                    .distinct()
+                    .collect(Collectors.toList());
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return Collections.emptyList();
+        }
+    }
+
+
+
     private LeaveBalance buildLeaveBalance(Employee emp, LeaveType lt, LocalDate referenceDate, boolean isNewLeaveType) {
         int currentYear = referenceDate.getYear();
         LocalDate hireDate = emp.getHireDate();
@@ -605,5 +651,21 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         if (fromDate.getDayOfMonth() < 15) monthsLeft += 1;
         return monthsLeft;
     }
+
+    @Override
+    public List<LeaveBalance> searchLeaveBalances(String query) {
+        if (query == null || query.isBlank()) {
+            return leaveBalanceRepo.findAll();
+        }
+        return leaveBalanceRepo.searchByEmployee(query);
     }
+
+    @Override
+    public List<String> autocompleteEmployee(String query) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        return leaveBalanceRepo.autocompleteEmployee(query);
+    }
+}
 

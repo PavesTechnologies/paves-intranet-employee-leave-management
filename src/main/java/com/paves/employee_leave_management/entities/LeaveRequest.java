@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.entities;
 
+import com.paves.employee_leave_management.audit.AuditEntityListener;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -11,6 +12,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -22,6 +25,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EntityListeners(AuditEntityListener.class)
 public class LeaveRequest {
 
     @Id
@@ -93,6 +97,15 @@ public class LeaveRequest {
 
     @Column(name = "year")
     private Integer year;
+
+
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDate createdAt;
+
+    @LastModifiedDate
+    @Column(name = "last_updated_at", insertable = false)
+    private LocalDate lastUpdatedAt;
 
 
 

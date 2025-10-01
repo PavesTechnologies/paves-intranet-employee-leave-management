@@ -324,4 +324,32 @@ public class LeaveRequestController {
         return ResponseEntity.ok(leaveRequestService.getLeaveHistoryByYear(employeeId, startDate, endDate));
     }
 
+    @GetMapping("employee/pendingAndApproved-leave/{employeeId}")
+    @PreAuthorize("hasAnyRole('MANAGER')")
+    public ResponseEntity<ApiResponse<List<PendingAndApprovedLeaveRequestsDTO>>> getPendingLeaveAndApprovedLeaveByEmployeeId(@PathVariable String employeeId,@RequestParam LocalDate startDate,@RequestParam LocalDate endDate) {
+        try {
+            List<PendingAndApprovedLeaveRequestsDTO> leaveRequests = leaveRequestService.getPendingLeaveAndApprovedLeaveByEmployeeId(employeeId,startDate,endDate);
+            return ResponseEntity.ok(new ApiResponse<>(
+                    true,
+                    "Leave requests retrieved successfully",
+                    leaveRequests
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
+        }
+    }
+
+    @PutMapping("/cancel")
+    @PreAuthorize("hasAnyRole('MANAGER')")
+    public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest){
+        try{
+            LeaveRequest cancelledRequest = leaveRequestService.rejectRequest(rejectionRequest);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request cancelled successfully", cancelledRequest));
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error cancelling request: " + e.getMessage(), null));
+        }
+    }
+
 }

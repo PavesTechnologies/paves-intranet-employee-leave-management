@@ -1,8 +1,11 @@
 package com.paves.employee_leave_management.entities;
 
 
+import com.paves.employee_leave_management.audit.AuditEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDate;
 
@@ -14,6 +17,7 @@ import java.time.LocalDate;
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"holiday_date", "state", "year"})
         })
+@EntityListeners(AuditEntityListener.class)
 public class Holidays {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,4 +42,12 @@ public class Holidays {
 
     @Column(nullable = false)
     private int year;
+
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDate createdAt;
+
+    @LastModifiedDate
+    @Column(name = "last_updated_at", insertable = false)
+    private LocalDate lastUpdatedAt;
 }

@@ -37,4 +37,10 @@ public interface LeaveBalanceServiceInterface {
     ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request);
 
     void createLeaveBalanceForAllEmployees(LeaveType leaveType);
+
+    List<String> autocomplete(String query);
+
+    List<LeaveBalance> searchLeaveBalances(String query);
+    List<String> autocompleteEmployee(String query);
 }
+

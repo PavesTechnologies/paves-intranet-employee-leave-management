@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.Year;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -101,4 +102,18 @@ public class LeaveBalanceController {
         leaveBalanceService.triggerMonthlyLeaveAccrual();
         return ResponseEntity.ok("Monthly process triggered successfully.");
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<LeaveBalance>> search(@RequestParam(value = "query", required = false) String query) {
+        List<LeaveBalance> results = leaveBalanceService.searchLeaveBalances(query);
+        return ResponseEntity.ok(results);
+    }
+
+
+    @GetMapping("/autocomplete")
+    public ResponseEntity<List<String>> autocomplete(@RequestParam("query") String query) {
+        List<String> suggestions = leaveBalanceService.autocompleteEmployee(query);
+        return ResponseEntity.ok(suggestions);
+    }
+
 }
