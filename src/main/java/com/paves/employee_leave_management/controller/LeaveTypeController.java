@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -80,7 +81,7 @@ public class LeaveTypeController {
 
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<String> addLeaveType(@RequestBody LeaveType leaveType) {
+    public ResponseEntity<ApiResponse<Object>> addLeaveType(@RequestBody LeaveType leaveType) {
         Employee maker = getAuthenticatedUser();
         // Assuming the role is stored in the jobTitle field for now
         // String makerRole = maker.getJobTitle();
@@ -95,7 +96,7 @@ public class LeaveTypeController {
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
-        return ResponseEntity.ok("Request to add leave type has been submitted for approval.");
+        return ResponseEntity.ok(new ApiResponse<>(true,"Request to add leave type has been submitted for approval.",null));
     }
 
     @GetMapping("/get-all-leave-types")
@@ -106,7 +107,7 @@ public class LeaveTypeController {
 
     @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<String> updateLeave(@RequestBody LeaveType updatedLeaveType, @PathVariable String leaveTypeId) {
+    public ResponseEntity<ApiResponse<Object>> updateLeave(@RequestBody LeaveType updatedLeaveType, @PathVariable String leaveTypeId) {
         Employee maker = getAuthenticatedUser();
 //        String makerRole = maker.getJobTitle();
         String makerRole = "HR";
@@ -123,12 +124,12 @@ public class LeaveTypeController {
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
-        return ResponseEntity.ok("Request to update leave type has been submitted for approval.");
+        return ResponseEntity.ok(new ApiResponse<>(true,"Request to update leave type has been submitted for approval.",null));
     }
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<String> deleteLeaveType(@PathVariable String leaveTypeId) {
+    public ResponseEntity<ApiResponse<Object>> deleteLeaveType(@PathVariable String leaveTypeId) {
         Employee maker = getAuthenticatedUser();
 //        String makerRole = maker.getJobTitle();
         String makerRole = "HR";
@@ -143,7 +144,7 @@ public class LeaveTypeController {
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
-        return ResponseEntity.ok("Request to deactivate leave type has been submitted for approval.");
+        return ResponseEntity.ok(new ApiResponse<>(true,"Request to deactivate leave type has been submitted for approval.",null));
     }
 
     // Document management endpoints remain unchanged
@@ -173,8 +174,8 @@ public class LeaveTypeController {
 
     @PreAuthorize("hasRole('HR')")
     @DeleteMapping("/{leaveTypeId}/document")
-    public ResponseEntity<String> deleteDocument(@PathVariable String leaveTypeId) throws Exception {
+    public ResponseEntity<ApiResponse<Object>> deleteDocument(@PathVariable String leaveTypeId) throws Exception {
         service.deleteDocument(leaveTypeId);
-        return ResponseEntity.ok("Document deleted successfully");
+        return ResponseEntity.ok(new ApiResponse<>(true,"Document deleted successfully",null));
     }
 }

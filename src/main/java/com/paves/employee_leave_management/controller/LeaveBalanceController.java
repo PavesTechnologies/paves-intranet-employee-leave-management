@@ -1,10 +1,13 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.enums.ActionType;
+import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.service.ApprovalService;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
@@ -34,6 +37,9 @@ public class LeaveBalanceController {
 
     @Autowired
     private EmployeeRepo employeeRepo;
+
+    @Autowired
+    LeaveBalanceDAO leaveBalanceDao;
 
     // This is a placeholder for getting the user from the JWT token
     private Employee getAuthenticatedUser() {
@@ -117,10 +123,19 @@ public class LeaveBalanceController {
 
     @PutMapping("/update")
     @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<String> updateLeave(@RequestBody LeaveBalanceUpdateRequest request) {
+    public ResponseEntity<ApiResponse<Object>> updateLeave(@RequestBody LeaveBalanceUpdateRequest request) {
         Employee maker = getAuthenticatedUser();
 //        String makerRole = maker.getJobTitle();
         String makerRole = "HR";// Assuming role is in jobTitle
+
+        List<LeaveBalance> beforeBalances = leaveBalanceDao.findByEmployeeId(request.getEmployeeId());
+
+        if (beforeBalances == null || beforeBalances.isEmpty()) {
+            throw new LeaveBalanceExceptionHandler(
+                    "Leave Balances not found for employee: " + request.getEmployeeId()
+            );
+        }
+
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.UPDATE_EMPLOYEE_LEAVE_BALANCE);
@@ -128,12 +143,13 @@ public class LeaveBalanceController {
         Map<String, Object> payload = new HashMap<>();
         // For now, we just pass the request data. A more advanced implementation
         // would fetch the 'before' state of the balances for a better audit trail.
+        payload.put("beforeData", beforeBalances);
         payload.put("newData", request);
         dto.setPayload(payload);
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
-        return ResponseEntity.ok("Request to update leave balances has been submitted for approval.");
+        return ResponseEntity.ok(new ApiResponse<>(true,"Request to update leave balances has been submitted for approval.",null));
     }
 
     @PostMapping("/trigger-monthly-process")

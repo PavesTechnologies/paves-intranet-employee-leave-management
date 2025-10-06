@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.ApprovalRequestResponseDto;
 import com.paves.employee_leave_management.dto.ApproveRequestDto;
 import com.paves.employee_leave_management.dto.RejectRequestDto;
@@ -51,20 +52,20 @@ public class ApprovalController {
 
     @PostMapping("/{requestId}/approve")
 //    @PreAuthorize("hasRole('HR')") // Or a more specific checker role
-    public ResponseEntity<String> approveRequest(@PathVariable Long requestId, @RequestBody ApproveRequestDto dto) {
+    public ResponseEntity<ApiResponse<Object>> approveRequest(@PathVariable Long requestId, @RequestBody ApproveRequestDto dto) {
         Employee checker = getAuthenticatedUser();
 
         approvalService.approveRequest(requestId, dto, checker);
-        return ResponseEntity.ok("Request approved successfully.");
+        return ResponseEntity.ok(new ApiResponse<>(true,"Request approved successfully.",null));
     }
 
     @PostMapping("/{requestId}/reject")
 //    @PreAuthorize("hasRole('HR')") // Or a more specific checker role
-    public ResponseEntity<String> rejectRequest(@PathVariable Long requestId, @RequestBody RejectRequestDto dto) {
+    public ResponseEntity<ApiResponse<Object>> rejectRequest(@PathVariable Long requestId, @RequestBody RejectRequestDto dto) {
         Employee checker = getAuthenticatedUser();
 
         approvalService.rejectRequest(requestId, dto, checker);
-        return ResponseEntity.ok("Request rejected successfully.");
+        return ResponseEntity.ok(new ApiResponse<>(true,"Request rejected successfully.",null));
     }
 
 //
@@ -72,18 +73,18 @@ public class ApprovalController {
 //    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'GENERAL', 'HR_ADMINISTRATOR')") // Roles that can be approvers
 //    public ResponseEntity<List<ApprovalRequest>> getPendingRequests() {
 //        Employee checker = getAuthenticatedUser();
-    ////        System.out.println(checker);
-    ////        System.out.println("eyuuuuuuuuuuu");
+    /// /        System.out.println(checker);
+    /// /        System.out.println("eyuuuuuuuuuuu");
 //        List<ApprovalRequest> pendingRequests = approvalService.getPendingApprovalsForUser(checker);
 //        return ResponseEntity.ok(pendingRequests);
 //    }
     @GetMapping("/pending")
 //    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'GENERAL', 'HR_ADMINISTRATOR')") // Roles that can be approvers
-    public ResponseEntity<List<ApprovalRequestResponseDto>> getPendingRequests() {
+    public ResponseEntity<ApiResponse<List<ApprovalRequestResponseDto>>> getPendingRequests() {
         Employee checker = getAuthenticatedUser();
         System.out.println(checker);
         List<ApprovalRequestResponseDto> pendingRequests = approvalService.getPendingApprovalsForUser(checker);
         System.out.println(pendingRequests);
-        return ResponseEntity.ok(pendingRequests);
+        return ResponseEntity.ok(new ApiResponse<>(true,"Pending Requests",pendingRequests));
     }
 }
