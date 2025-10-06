@@ -57,4 +57,9 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+
+    @ExceptionHandler(LeaveTypeException.class)
+    public ResponseEntity<String> handleException(LeaveTypeException leaveTypeException) {
+        return ResponseEntity.status(400).body(leaveTypeException.getExMsg());
+    }
 }

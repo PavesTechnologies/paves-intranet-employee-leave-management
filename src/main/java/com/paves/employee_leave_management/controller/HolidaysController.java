@@ -1,9 +1,13 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.dto.HolidayCheckResponse;
+import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.Holidays;
+import com.paves.employee_leave_management.repo.HolidayRepo;
 import com.paves.employee_leave_management.service.HolidaysServiceImple;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,7 +19,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/holidays")
@@ -23,11 +29,14 @@ import java.util.List;
 public class HolidaysController {
 
     @Autowired
+    private HolidayRepo holidayRepo;
+
+    @Autowired
     private HolidaysServiceImple holidaysService;
 
     // 🔹 Get all holidays
     @GetMapping("/all")
-    @PreAuthorize("hasRole('HR','GENERAL','MANAGER')")
+    @PreAuthorize("hasAnyRole('HR','GENERAL','MANAGER')")
     public ResponseEntity<List<Holidays>> getAllHolidays() {
         return holidaysService.getAllHolidays();
     }
@@ -86,6 +95,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/template/download")
+    @PreAuthorize("hasRole('HR')")
     public ResponseEntity<InputStreamResource> downloadTemplate() throws IOException, SQLException {
         String filename = "holidays_template.xlsx";
         ByteArrayInputStream inputStream = holidaysService.createHolidayTemplate();
@@ -100,6 +110,34 @@ public class HolidaysController {
                 // This content type is for modern .xlsx Excel files
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(new InputStreamResource(inputStream));
+    }
+
+    @GetMapping("/check")
+    @PreAuthorize("hasRole('GENERAL')")
+    public ResponseEntity<?> checkHoliday(
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        int year = date.getYear();
+
+        Optional<Holidays> holidayOpt = holidayRepo.findByHolidayDateAndYear(date,year);
+
+        if (holidayOpt.isPresent()) {
+            Holidays holiday = holidayOpt.get();
+            return ResponseEntity.ok(
+                    new HolidayCheckResponse("yes", holiday.getHolidayName(),date)
+            );
+        } else {
+            return ResponseEntity.ok(
+                    new HolidayCheckResponse("no", "Not a holiday",date)
+            );
+        }
+    }
+    @GetMapping("/by-location")
+    @PreAuthorize("hasAnyRole('GENERAL','HR','MANAGER')")
+    public ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(
+            @RequestParam("state") String state,
+            @RequestParam("country") String country) {
+        return holidaysService.getHolidaysByStateAndCountry(state, country);
     }
 
 }

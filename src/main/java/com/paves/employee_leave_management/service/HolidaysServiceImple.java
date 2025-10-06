@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.HolidayType;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
@@ -306,5 +307,22 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
         }
         return null; // Should not happen for a valid entity
     }
+
+    @Override
+    public ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(String state, String country) {
+        int year = LocalDate.now().getYear();
+        List<Holidays> holidays = holidayRepo.findByStateAndCountryAndYear(state, country,year);
+
+        if (holidays.isEmpty()) {
+            throw new HolidayExceptionHandler("No holidays found for state: " + state + " and country: " + country);
+        }
+
+        List<HolidayNameDateDto> result = holidays.stream()
+                .map(h -> new HolidayNameDateDto(h.getHolidayName(), h.getHolidayDate()))
+                .toList();
+
+        return ResponseEntity.ok(result);
+    }
+
 
 }

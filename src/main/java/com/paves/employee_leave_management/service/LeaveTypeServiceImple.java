@@ -4,6 +4,7 @@ import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -13,9 +14,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,134 +32,66 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     @Autowired
     LeaveBalanceRepo leaveBalanceRepo;
 
-//    @Autowired
-//    LeaveBalanceServiceInterface leaveBalanceService;
+    @Autowired
+    LeaveBalanceServiceInterface leaveBalanceService;
 
     @Autowired
     LeaveBalanceServiceInterface leaveBalanceServiceInterface;
 
-//    @Override
-//    @Transactional
-//    public ResponseEntity<LeaveType> addLeaveType(LeaveType leaveType) {
-//        Optional<LeaveType> leaveRes = leaveTypeRepo.findByLeaveTypeId(leaveType.getLeaveTypeId());
-//        if(leaveRes.isEmpty()){
-//            return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
-//            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
-//        }
-//        return new ResponseEntity<>(leaveTypeRepo.save(leaveType), HttpStatus.OK);
-//    }
-//    @Override
-//    @Transactional
-//    public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
-//        leaveType.generateId(); // ensure leaveTypeId is set
-//
-//        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findById(leaveType.getLeaveTypeId());
-//
-//        if (existingLeaveType.isPresent()) {
-//            LeaveType dbLeaveType = existingLeaveType.get();
-//
-//            if (Boolean.TRUE.equals(dbLeaveType.getActive())) {
-//                return new ApiResponse<>(false,
-//                        "Leave type " + leaveType.getLeaveTypeId() + " already exists and is active.",
-//                        null);
-//            } else {
-//                // Reactivate
-//                dbLeaveType.setActive(true);
-//                dbLeaveType.setLeaveName(leaveType.getLeaveName());
-//                dbLeaveType.setDescription(leaveType.getDescription());
-//                double accrualRate = ((double)leaveType.getMaxDaysPerYear()/12);
-//                dbLeaveType.setAccrualRate(accrualRate);
-//                dbLeaveType.setAccrualFrequency(leaveType.getAccrualFrequency());
-//                dbLeaveType.setAdvanceNoticeDays(leaveType.getAdvanceNoticeDays());
-//                dbLeaveType.setWeekendsAndHolidaysAllowed(leaveType.getWeekendsAndHolidaysAllowed());
-//                dbLeaveType.setAllowHalfDay(leaveType.getAllowHalfDay());
-//                dbLeaveType.setMaxCarryForward(leaveType.getMaxCarryForward());
-//                dbLeaveType.setMaxCarryForwardPerYear(leaveType.getMaxCarryForwardPerYear());
-//                dbLeaveType.setNoticePeriodRestriction(leaveType.getNoticePeriodRestriction());
-//                dbLeaveType.setPastDateLimitDays(leaveType.getPastDateLimitDays());
-//                dbLeaveType.setRequiresDocumentation(leaveType.getRequiresDocumentation());
-//                dbLeaveType.setWaitingPeriodDays(leaveType.getWaitingPeriodDays());
-//                dbLeaveType.setAllowNegativeBalance(leaveType.getAllowNegativeBalance());
-//                dbLeaveType.setExpiryDays(leaveType.getExpiryDays());
-//                dbLeaveType.setMaxDaysPerYear(leaveType.getMaxDaysPerYear());
-//
-//                LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
-//                leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
-//
-//                return new ApiResponse<>(true,
-//                        "Leave type reactivated successfully.",
-//                        reactivated);
-//            }
-//        }
-//
-//        // Create new
-//        double accrualRate = ((double)leaveType.getMaxDaysPerYear()/12.0);
-//        leaveType.setAccrualRate(accrualRate);
-//        LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
-//        leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
-//        return new ApiResponse<>(true,
-//                "Leave type created successfully.",
-//                savedLeaveType);
-//    }
-@Override
-@Transactional
-public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
-    leaveType.generateId(); // ensure leaveTypeId is set
 
-    Optional<LeaveType> existingLeaveType = leaveTypeRepo.findById(leaveType.getLeaveTypeId());
+    @Override
+    @Transactional
+    public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
+        leaveType.generateId(); // ensure leaveTypeId is set
 
-    if (existingLeaveType.isPresent()) {
-        LeaveType dbLeaveType = existingLeaveType.get();
+        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findById(leaveType.getLeaveTypeId());
 
-        if (Boolean.TRUE.equals(dbLeaveType.getActive())) {
-            // Case 1: Already exists and is active
-            return new ApiResponse<>(false,
-                    "Leave type " + leaveType.getLeaveTypeId() + " already exists and is active.",
-                    null);
-        } else {
-            // Case 2: Reactivating an existing leave type
-            updateLeaveTypeFields(dbLeaveType, leaveType);
-            LeaveType savedLeaveType = leaveTypeRepo.save(dbLeaveType);
+        if (existingLeaveType.isPresent()) {
+            LeaveType dbLeaveType = existingLeaveType.get();
 
-            // Directly create leave balances (no background job)
-            leaveBalanceServiceInterface.createLeaveBalanceForAllEmployees(savedLeaveType);
+            if (Boolean.TRUE.equals(dbLeaveType.getActive())) {
+                return new ApiResponse<>(false,
+                        "Leave type " + leaveType.getLeaveTypeId() + " already exists and is active.",
+                        null);
+            } else {
+                // Reactivate
+                dbLeaveType.setActive(true);
+                dbLeaveType.setLeaveName(leaveType.getLeaveName());
+                dbLeaveType.setDescription(leaveType.getDescription());
+                dbLeaveType.setAccrualRate(leaveType.getAccrualRate());
+                dbLeaveType.setAccrualFrequency(leaveType.getAccrualFrequency());
+                dbLeaveType.setAdvanceNoticeDays(leaveType.getAdvanceNoticeDays());
+                dbLeaveType.setWeekendsAndHolidaysAllowed(leaveType.getWeekendsAndHolidaysAllowed());
+                dbLeaveType.setAllowHalfDay(leaveType.getAllowHalfDay());
+                dbLeaveType.setMaxCarryForward(leaveType.getMaxCarryForward());
+                dbLeaveType.setMaxCarryForwardPerYear(leaveType.getMaxCarryForwardPerYear());
+                dbLeaveType.setNoticePeriodRestriction(leaveType.getNoticePeriodRestriction());
+                dbLeaveType.setPastDateLimitDays(leaveType.getPastDateLimitDays());
+                dbLeaveType.setRequiresDocumentation(leaveType.getRequiresDocumentation());
+                dbLeaveType.setWaitingPeriodDays(leaveType.getWaitingPeriodDays());
+                dbLeaveType.setAllowNegativeBalance(leaveType.getAllowNegativeBalance());
+                dbLeaveType.setExpiryDays(leaveType.getExpiryDays());
+                dbLeaveType.setMaxDaysPerYear(leaveType.getMaxDaysPerYear());
+                dbLeaveType.setPolicyDocument(leaveType.getPolicyDocument());
+                dbLeaveType.setCreateAt(LocalDateTime.now());
 
-            return new ApiResponse<>(true,
-                    "Leave type reactivated successfully. Leave balances created for employees.",
-                    savedLeaveType);
+                dbLeaveType.setLastUpdatedAt(null);
+                LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
+                leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
+
+                return new ApiResponse<>(true,
+                        "Leave type reactivated successfully.",
+                        reactivated);
+            }
         }
-    }
 
-    // Case 3: Creating a brand new leave type
-    LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
-
-    // Directly create leave balances (no background job)
-    leaveBalanceServiceInterface.createLeaveBalanceForAllEmployees(savedLeaveType);
-
-    return new ApiResponse<>(true,
-            "Leave type created successfully. Leave balances created for employees.",
-            savedLeaveType);
-}
-
-    private void updateLeaveTypeFields(LeaveType target, LeaveType source) {
-        target.setActive(true);
-        target.setLeaveName(source.getLeaveName());
-        target.setDescription(source.getDescription());
-        double accrualRate = ((double)source.getMaxDaysPerYear()/12.0);
-        source.setAccrualRate(accrualRate);
-        target.setAccrualFrequency(source.getAccrualFrequency());
-        target.setAdvanceNoticeDays(source.getAdvanceNoticeDays());
-        target.setWeekendsAndHolidaysAllowed(source.getWeekendsAndHolidaysAllowed());
-        target.setAllowHalfDay(source.getAllowHalfDay());
-        target.setMaxCarryForward(source.getMaxCarryForward());
-        target.setMaxCarryForwardPerYear(source.getMaxCarryForwardPerYear());
-        target.setNoticePeriodRestriction(source.getNoticePeriodRestriction());
-        target.setPastDateLimitDays(source.getPastDateLimitDays());
-        target.setRequiresDocumentation(source.getRequiresDocumentation());
-        target.setWaitingPeriodDays(source.getWaitingPeriodDays());
-        target.setAllowNegativeBalance(source.getAllowNegativeBalance());
-        target.setExpiryDays(source.getExpiryDays());
-        target.setMaxDaysPerYear(source.getMaxDaysPerYear());
+        // Create new
+        leaveType.setCreateAt(LocalDateTime.now());
+        LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
+        leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+        return new ApiResponse<>(true,
+                "Leave type created successfully.",
+                savedLeaveType);
     }
 
 
@@ -189,8 +125,18 @@ public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
                     null);
         }
 //        LeaveType existingLeaveType = existingOpt.get();
-        double newAccrualRate = updatedLeaveType.getAccrualRate();
+        double newAccrualRate = 0;
+        if(updatedLeaveType.getLeaveTypeId() == "L-EL" || updatedLeaveType.getLeaveTypeId() == "L-SL"){
+            newAccrualRate = (double)updatedLeaveType.getMaxDaysPerYear()/12;
+            newAccrualRate = new BigDecimal(newAccrualRate)
+                    .setScale(2, RoundingMode.HALF_UP)
+                    .doubleValue();
+            updatedLeaveType.setAccrualRate(newAccrualRate);
+        }else{
+            updatedLeaveType.setAccrualRate(newAccrualRate);
+        }
         // Save updated LeaveType
+        updatedLeaveType.setLastUpdatedAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(updatedLeaveType);
 
         // Get remaining months in the year (excluding current month)
@@ -205,7 +151,6 @@ public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
         for (LeaveBalance balance : affectedBalances) {
             double accruedLeaves = balance.getAccruedLeaves(); // leaves_till_now
             double recalculatedTotal = accruedLeaves + (remainingMonths * newAccrualRate);
-
 
             balance.setTotalLeaves(recalculatedTotal);
 
@@ -250,4 +195,52 @@ public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
         return new ResponseEntity<>("Leave type deactivated successfully", HttpStatus.OK);
     }
 
+    @Override
+    public void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception {
+        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
+                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+
+        // Only accept PDF or Word files
+        String contentType = file.getContentType();
+        if (!contentType.equalsIgnoreCase("application/pdf") &&
+                !contentType.equalsIgnoreCase("application/msword") &&
+                !contentType.equalsIgnoreCase("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+            throw new RuntimeException("Only PDF and Word documents are allowed");
+        }
+
+        leaveType.setPolicyDocument(file.getBytes());
+        leaveTypeRepo.save(leaveType);
+    }
+
+    @Override
+    public byte[] viewDocument(String leaveTypeName, String fileType) throws Exception {
+        LeaveType leaveType = leaveTypeRepo.findByLeaveName(leaveTypeName)
+                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+
+        if (leaveType.getPolicyDocument() == null) {
+            throw new LeaveTypeException("No document uploaded for this leave type");
+        }
+
+        return leaveType.getPolicyDocument();
+    }
+
+    @Override
+    public void deleteDocument(String leaveTypeId) throws Exception {
+        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
+                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+
+        leaveType.setPolicyDocument(null);
+        leaveTypeRepo.save(leaveType);
+    }
+
+    // Helper to get MIME type from extension
+    @Override
+    public String getMimeType(String fileType) {
+        return switch (fileType.toLowerCase()) {
+            case "pdf" -> "application/pdf";
+            case "doc" -> "application/msword";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default -> "application/octet-stream";
+        };
+    }
 }

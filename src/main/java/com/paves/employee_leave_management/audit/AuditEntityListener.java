@@ -88,16 +88,17 @@ public class AuditEntityListener {
             BeanUtils.copyProperties(h, audit);
             if (h.getType() != null) audit.setType(h.getType().name());
             return audit;
-        } else if(entity instanceof LeaveType lt){
-            LeaveTypeAudit audit = new LeaveTypeAudit();
-
-            if(lt.getSnapShot() != null){
-                BeanUtils.copyProperties(lt.getSnapShot(), audit);
-            }else{
-                BeanUtils.copyProperties(lt, audit);
-            }
-            return audit;
         }
+//        else if(entity instanceof LeaveType lt){
+//            LeaveTypeAudit audit = new LeaveTypeAudit();
+//
+//            if(lt.getSnapShot() != null){
+//                BeanUtils.copyProperties(lt.getSnapShot(), audit);
+//            }else{
+//                BeanUtils.copyProperties(lt, audit);
+//            }
+//            return audit;
+//        }
 
         // Add more mappings for other entities
         return null;

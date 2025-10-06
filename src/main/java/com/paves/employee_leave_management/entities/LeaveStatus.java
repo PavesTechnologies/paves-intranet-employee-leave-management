@@ -1,15 +1,8 @@
 package com.paves.employee_leave_management.entities;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
-// Enum for Leave Status
-@Getter
-@AllArgsConstructor
 public enum LeaveStatus {
-    PENDING("Pending"),
-    APPROVED("Approved"),
-    REJECTED("Rejected"),
-    CANCELLED("Cancelled");
-    private final String displayName;
+    PENDING,    // When leave is submitted but not yet reviewed
+    APPROVED,   // When leave is approved by manager
+    REJECTED,   // When leave is rejected by manager
+    CANCELLED   // When leave is cancelled by employee
 }
