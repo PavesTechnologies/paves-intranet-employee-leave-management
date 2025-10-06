@@ -18,6 +18,9 @@ public class ApprovalRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private String workflowId;
+
     @ManyToOne
     @JoinColumn(name = "rule_id", nullable = false)
     private ApprovalRule rule;

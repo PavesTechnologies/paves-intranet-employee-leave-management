@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,8 +59,11 @@ public class ApprovalServiceImpl implements ApprovalService {
             throw new IllegalStateException("No approval rule found for action: " + dto.getActionType() + " and maker role: " + makerRole);
         }
 
+        String workflowId = UUID.randomUUID().toString();
+
         for (ApprovalRule rule : rules) {
             ApprovalRequest request = new ApprovalRequest();
+            request.setWorkflowId(workflowId);
             request.setRule(rule);
             request.setMakerId(Long.parseLong(maker.getEmployeeId()));
             request.setCreatedAt(LocalDateTime.now());
@@ -129,7 +133,6 @@ public class ApprovalServiceImpl implements ApprovalService {
         dto.setPayload(request.getPayload());
         dto.setCreatedAt(request.getCreatedAt());
 
-        // Fetch maker details. This could be optimized to avoid N+1 queries.
         Employee maker = employeeRepo.findById(String.valueOf(request.getMakerId()))
                 .orElse(null);
         if (maker != null) {
@@ -156,11 +159,20 @@ public class ApprovalServiceImpl implements ApprovalService {
         request.setStatus(RequestStatus.APPROVED);
         request.setResolvedAt(LocalDateTime.now());
 
-        executeBusinessLogic(request);
+        // Check if this is the final approval level before executing the business logic
+        boolean isFinalApproval = approvalRequestRepository
+                .findByWorkflowIdAndRule_ApprovalLevel(request.getWorkflowId(), request.getRule().getApprovalLevel() + 1)
+                .isEmpty();
+
+        if (isFinalApproval) {
+            executeBusinessLogic(request);
+        }
 
         approvalRequestRepository.save(request);
 
-        activateNextApprovalLevel(request);
+        if (!isFinalApproval) {
+            activateNextApprovalLevel(request);
+        }
     }
 
     @Override
@@ -219,14 +231,24 @@ public class ApprovalServiceImpl implements ApprovalService {
     }
 
     private void activateNextApprovalLevel(ApprovalRequest approvedRequest) {
-        // Future implementation: Find the rule for the next approval level and update its corresponding request to PENDING.
+        int nextLevel = approvedRequest.getRule().getApprovalLevel() + 1;
+        approvalRequestRepository
+                .findByWorkflowIdAndRule_ApprovalLevel(approvedRequest.getWorkflowId(), nextLevel)
+                .ifPresent(nextRequest -> {
+                    if (nextRequest.getStatus() == RequestStatus.WAITING) {
+                        nextRequest.setStatus(RequestStatus.PENDING);
+                        approvalRequestRepository.save(nextRequest);
+                    }
+                });
     }
 
     private void cancelSubsequentApprovals(ApprovalRequest rejectedRequest) {
-        // Future implementation: Find and cancel any WAITING requests that are part of the same workflow.
+        List<ApprovalRequest> waitingRequests = approvalRequestRepository
+                .findByWorkflowIdAndStatus(rejectedRequest.getWorkflowId(), RequestStatus.WAITING);
+
+        for (ApprovalRequest request : waitingRequests) {
+            request.setStatus(RequestStatus.CANCELED);
+            approvalRequestRepository.save(request);
+        }
     }
-
-
-
-
 }
