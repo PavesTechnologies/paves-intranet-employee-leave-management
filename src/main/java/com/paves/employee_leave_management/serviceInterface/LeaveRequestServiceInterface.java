@@ -37,4 +37,7 @@ public interface LeaveRequestServiceInterface {
     List<LeaveRequest> approveMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
 
     List<LeaveRequest> rejectMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
+
+    List<PendingAndApprovedLeaveRequestsDTO> getPendingLeaveAndApprovedLeaveByEmployeeId(String employeeId, LocalDate startDate, LocalDate endDate);
 }
+

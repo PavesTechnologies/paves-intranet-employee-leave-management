@@ -15,15 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -739,6 +735,24 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return leaveRequestRepo.saveAll(approvedRequests);
     }
 
+    @Override
+    public List<PendingAndApprovedLeaveRequestsDTO> getPendingLeaveAndApprovedLeaveByEmployeeId(String employeeId, LocalDate startDate, LocalDate endDate) {
+        List<LeaveRequest> leaveRequests = leaveRequestRepo.findPendingOrApprovedByEmployee(employeeId);
+        if(leaveRequests.isEmpty()){
+            return Collections.emptyList();
+        }
+        return leaveRequests.stream()
+                .filter(l -> (l.getStartDate().isEqual(startDate) || l.getStartDate().isAfter(startDate)|| l.getStartDate().isBefore(startDate))
+                    && (l.getEndDate().equals(endDate) || l.getEndDate().isBefore(endDate) || l.getEndDate().isAfter(endDate))
+                ).map(l -> new PendingAndApprovedLeaveRequestsDTO(
+                        l.getEmployee().getEmployeeId(),
+                        l.getEmployee().getFirstName()+" "+l.getEmployee().getLastName(),
+                        l.getStartDate(),
+                        l.getEndDate(),
+                        l.getStatus().toString()
+                )).toList();
+    }
+
 
     /**
      * Reject a leave request using DTO
@@ -754,7 +768,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         Employee manager = employeeRepo.findById(rejectionRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + rejectionRequest.getManagerId()));
 
-        request.setStatus(LeaveStatus.REJECTED);
+        if(request.getStatus() == LeaveStatus.APPROVED){
+            request.setStatus(LeaveStatus.CANCELLED);
+        }else{
+            request.setStatus(LeaveStatus.REJECTED);
+        }
         request.setApprovedBy(manager);
         request.setResponseDate(LocalDate.now());
         request.setManagerComment(rejectionRequest.getComment());

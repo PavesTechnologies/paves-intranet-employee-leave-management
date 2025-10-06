@@ -11,6 +11,7 @@ import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceEx
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.service.ApprovalService;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,13 +21,18 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Year;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @author paves
+ */
 @CrossOrigin
 @RestController
 @RequestMapping("/api/leave-balance")
+@RequiredArgsConstructor
 public class LeaveBalanceController {
 
     @Autowired
@@ -98,6 +104,11 @@ public class LeaveBalanceController {
         return leaveBalanceService.findByEmployeeId(employeeId);
     }
 
+//    @PutMapping("/update-leave-balance-employee")
+//    public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(@RequestBody List<LeaveBalance> leaveBalance) {
+//        return leaveBalanceService.UpdateLeaveBalancesByEmployeeId(leaveBalance);
+//    }
+
     @GetMapping("/type/{leaveTypeId}")
     @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByLeaveName(@PathVariable String leaveTypeId) {
@@ -158,4 +169,18 @@ public class LeaveBalanceController {
         leaveBalanceService.triggerMonthlyLeaveAccrual();
         return ResponseEntity.ok("Monthly process triggered successfully.");
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<LeaveBalance>> search(@RequestParam(value = "query", required = false) String query) {
+        List<LeaveBalance> results = leaveBalanceService.searchLeaveBalances(query);
+        return ResponseEntity.ok(results);
+    }
+
+
+    @GetMapping("/autocomplete")
+    public ResponseEntity<List<String>> autocomplete(@RequestParam("query") String query) {
+        List<String> suggestions = leaveBalanceService.autocompleteEmployee(query);
+        return ResponseEntity.ok(suggestions);
+    }
+
 }

@@ -58,7 +58,7 @@ public class LeaveTypeController {
 
         if (principal instanceof Jwt jwt) {
             // You can fetch using email or user_id depending on your DB
-//            String email = jwt.getClaim("email");  // "employee1@example.com"
+            //String email = jwt.getClaim("email");  // "employee1@example.com"
              Long userId = jwt.getClaim("user_id"); // If needed
 
             return employeeRepo.findByEmployeeId(String.valueOf(userId))

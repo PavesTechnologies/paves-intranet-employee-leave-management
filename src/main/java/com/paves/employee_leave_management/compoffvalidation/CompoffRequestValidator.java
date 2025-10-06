@@ -1,4 +1,4 @@
-package compoffvalidation;
+package com.paves.employee_leave_management.compoffvalidation;
 
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
