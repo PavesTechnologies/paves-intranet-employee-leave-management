@@ -1,22 +1,27 @@
 package com.paves.employee_leave_management.controller;
 
-import com.paves.employee_leave_management.dto.ApiResponse;
+import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
-
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
+import com.paves.employee_leave_management.enums.ActionType;
+import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.service.ApprovalService;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
-import jdk.jfr.Description;
-import lombok.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.Year;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author paves
@@ -28,7 +33,38 @@ import java.util.List;
 public class LeaveBalanceController {
 
     @Autowired
-    LeaveBalanceServiceInterface leaveBalanceService;
+    private LeaveBalanceServiceInterface leaveBalanceService;
+
+    @Autowired
+    private ApprovalService approvalService;
+
+    @Autowired
+    private EmployeeRepo employeeRepo;
+
+    // This is a placeholder for getting the user from the JWT token
+    private Employee getAuthenticatedUser() {
+        // In a real application, you would extract the user details from the Spring Security Context.
+        // For now, we'll fetch a hardcoded user to simulate this.
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("No authenticated user found");
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof Jwt jwt) {
+            // You can fetch using email or user_id depending on your DB
+//            String email = jwt.getClaim("email");  // "employee1@example.com"
+            Long userId = jwt.getClaim("user_id"); // If needed
+
+            return employeeRepo.findByEmployeeId(String.valueOf(userId))
+                    .orElseThrow(() -> new RuntimeException("Employee not found for id: " + userId));
+        }
+
+        throw new RuntimeException("Invalid authentication principal");
+    }
+
 
     @PostMapping("/generate/{employeeId}")
     @PreAuthorize("hasAnyRole('HR')")
@@ -92,8 +128,23 @@ public class LeaveBalanceController {
 
     @PutMapping("/update")
     @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<String> updateLeave(@RequestBody LeaveBalanceUpdateRequest request){
-        return leaveBalanceService.updateLeaveBalancesFromHr(request);
+    public ResponseEntity<String> updateLeave(@RequestBody LeaveBalanceUpdateRequest request) {
+        Employee maker = getAuthenticatedUser();
+//        String makerRole = maker.getJobTitle();
+        String makerRole = "HR";// Assuming role is in jobTitle
+
+        MCApprovalRequestDto dto = new MCApprovalRequestDto();
+        dto.setActionType(ActionType.UPDATE_EMPLOYEE_LEAVE_BALANCE);
+
+        Map<String, Object> payload = new HashMap<>();
+        // For now, we just pass the request data. A more advanced implementation
+        // would fetch the 'before' state of the balances for a better audit trail.
+        payload.put("newData", request);
+        dto.setPayload(payload);
+
+        approvalService.submitForApproval(dto, maker, makerRole);
+
+        return ResponseEntity.ok("Request to update leave balances has been submitted for approval.");
     }
 
     @PostMapping("/trigger-monthly-process")

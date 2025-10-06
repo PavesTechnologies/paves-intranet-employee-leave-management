@@ -3,6 +3,10 @@ package com.paves.employee_leave_management.entities;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -13,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+// LeaveBalance Entity
 @Entity
 @Table(name = "leave_balance")
 @Data
@@ -21,6 +26,8 @@ import java.util.UUID;
 @Builder
 @EntityListeners({AuditingEntityListener.class})
 //@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+@ToString
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class LeaveBalance {
 
     @Id
@@ -30,37 +37,43 @@ public class LeaveBalance {
     @PrePersist
     public void generateId(){
         if (balanceId == null){
-            balanceId = "BAL"+ UUID.randomUUID().toString().replace("-","").substring(0,5).toUpperCase();
+            balanceId = "BAL"+UUID.randomUUID().toString().replace("-","").substring(0,5).toUpperCase();
         }
     }
 
     @ManyToOne
+    @JsonManagedReference
+//    @JsonIgnore
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
     @ManyToOne
     @JoinColumn(name = "leave_type_id", nullable = false)
-//    @JsonIgnoreProperties({"leaveBalances"}) // include LeaveType but ignore its leaveBalances
     private LeaveType leaveType;
 
     @Column(name = "total_leaves", nullable = false)
     private double totalLeaves;
 
+    @Builder.Default
     @Column(name = "accrued_leaves")
     private double accruedLeaves = 0;
 
+    @Builder.Default
     @Column(name = "used_leaves")
     private double usedLeaves = 0;
 
     @Column(name = "remaining_leaves", nullable = false)
     private double remainingLeaves;
 
+    @Builder.Default
     @Column(name = "carried_forward")
     private double carriedForward = 0;
 
+    @Builder.Default
     @Column(name = "expired_leaves")
     private double expiredLeaves = 0;
 
+    @Builder.Default
     @Column(name = "encashed_leaves")
     private Integer encashedLeaves = 0;
 
@@ -70,15 +83,16 @@ public class LeaveBalance {
     @Column(name = "last_accrual_date")
     private LocalDate lastAccrualDate;
 
-    @CreatedDate
+ //   @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createAt;
 
-    @LastModifiedDate
+   // @LastModifiedDate
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
 
     public void updateRemainingLeaves() {
-        this.remainingLeaves = (accruedLeaves + carriedForward) - usedLeaves;
+        this.remainingLeaves = (accruedLeaves+carriedForward) - usedLeaves;
     }
 }
+

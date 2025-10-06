@@ -63,7 +63,7 @@ public class HolidaysController {
     }
 
     // 🔹 Delete holiday
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> deleteHoliday(@PathVariable Long id) {
         return holidaysService.deleteHoliday(id);
@@ -113,7 +113,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/check")
-    @PreAuthorize("hasRole('GENERAL')")
+//    @PreAuthorize("hasRole('GENERAL')")
     public ResponseEntity<?> checkHoliday(
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 

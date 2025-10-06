@@ -115,14 +115,16 @@ import java.util.UUID;
         "leaveRequests",
         "approvedRequests",
         "leaveBalances",
-        "manager" // ✅ Prevents recursive loop in toString()
+        "manager",
+        "hrAdministrator"// ✅ Prevents recursive loop in toString()
 })
 @EqualsAndHashCode(exclude = {
         "subordinates",
         "leaveRequests",
         "approvedRequests",
         "leaveBalances",
-        "manager" // ✅ Prevents recursive loop in equals/hashCode
+        "manager" ,
+        "hrAdministrator"// ✅ Prevents recursive loop in equals/hashCode
 })
 public class Employee {
 
@@ -166,6 +168,13 @@ public class Employee {
     @JoinColumn(name = "manager_id")
     @JsonManagedReference
     private Employee manager;
+
+    @ManyToOne(fetch=FetchType.EAGER)
+    @JsonIgnore
+    @JoinColumn(name = "hr_administrator_id")
+    private Employee hrAdministrator;
+
+
 
     @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
