@@ -89,16 +89,12 @@ public class AuditEntityListener {
             if (h.getType() != null) audit.setType(h.getType().name());
             return audit;
         }
-//        else if(entity instanceof LeaveType lt){
-//            LeaveTypeAudit audit = new LeaveTypeAudit();
-//
-//            if(lt.getSnapShot() != null){
-//                BeanUtils.copyProperties(lt.getSnapShot(), audit);
-//            }else{
-//                BeanUtils.copyProperties(lt, audit);
-//            }
-//            return audit;
-//        }
+        else if(entity instanceof LeaveType lt){
+            LeaveTypeAudit audit = new LeaveTypeAudit();
+            BeanUtils.copyProperties(lt, audit);
+            if(lt.getLeaveTypeId() != null) audit.setLeaveTypeId(lt.getLeaveTypeId());
+            return audit;
+        }
 
         // Add more mappings for other entities
         return null;
@@ -123,7 +119,7 @@ public class AuditEntityListener {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
             // Replace "userId" with the actual claim name in your JWT
-            Object claim = jwt.getClaim("userId");
+            Object claim = jwt.getClaim("user_id");
             if (claim != null) {
                 return Long.parseLong(claim.toString());
             }

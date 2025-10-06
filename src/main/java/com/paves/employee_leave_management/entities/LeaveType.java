@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.paves.employee_leave_management.audit.AuditEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -131,7 +132,7 @@ public class LeaveType {
 //        this.snapShot = new LeaveType();
 //        BeanUtils.copyProperties(this, snapShot);
 //    }
-//
+
 //    public LeaveType getSnapShot() {
 //        return snapShot;
 //    }
