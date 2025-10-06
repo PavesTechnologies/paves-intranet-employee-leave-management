@@ -20,6 +20,7 @@ import com.paves.employee_leave_management.entities.LeaveBalance;
 
 // >>>>>>> main
 import lombok.*;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.*;
 
 import java.util.List;
@@ -65,6 +66,11 @@ public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
         return leaveBalanceRepo.findByLeaveTypeLeaveTypeId(leaveId);
     }
 
+    @Override
+    public List<LeaveBalance> findByEmployeeIdAndYear(String employeeId, int currentYear) {
+        return leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId,currentYear);
+    }
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -86,4 +92,5 @@ public class LeaveBalanceDAOImple implements LeaveBalanceDAO {
             return Optional.empty();
         }
     }
+
 }

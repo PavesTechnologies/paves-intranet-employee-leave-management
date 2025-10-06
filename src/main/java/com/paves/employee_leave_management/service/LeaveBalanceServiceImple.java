@@ -667,5 +667,12 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
         return leaveBalanceRepo.autocompleteEmployee(query);
     }
+
+    public List<LeaveBalance> getCurrentYearBalances(String employeeId) {
+        int currentYear = java.time.Year.now().getValue();
+        return leaveBalanceDao.findByEmployeeIdAndYear(employeeId, currentYear);
+    }
+
+
 }
 

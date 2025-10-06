@@ -48,4 +48,6 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
             "WHERE LOWER(lb.employee.employeeId) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(lb.employee.firstName) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(lb.employee.lastName) LIKE LOWER(CONCAT('%', :query, '%'))")
-    List<String> autocompleteEmployee(@Param("query") String query);}
+    List<String> autocompleteEmployee(@Param("query") String query);
+    List<LeaveBalance> findByEmployee_EmployeeIdAndYear(String employeeId, Integer year);
+}
