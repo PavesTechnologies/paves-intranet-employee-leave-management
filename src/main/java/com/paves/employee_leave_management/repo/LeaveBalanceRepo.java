@@ -35,4 +35,17 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
     @Query("SELECT lb FROM LeaveBalance lb JOIN FETCH lb.leaveType WHERE lb.employee.employeeId = :employeeId")
     List<LeaveBalance> findByEmployeeEmployeeIdWithLeaveType(@Param("employeeId") String employeeId);
 //    Optional<LeaveBalance> findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
-}
+
+    // Search leave balances by employeeId, firstName, or lastName
+    @Query("SELECT lb FROM LeaveBalance lb " +
+            "WHERE LOWER(lb.employee.employeeId) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(lb.employee.firstName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(lb.employee.lastName) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<LeaveBalance> searchByEmployee(@Param("query") String query);
+
+    // Autocomplete for names or employeeIds
+    @Query("SELECT DISTINCT lb.employee.employeeId FROM LeaveBalance lb " +
+            "WHERE LOWER(lb.employee.employeeId) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(lb.employee.firstName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+            "OR LOWER(lb.employee.lastName) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<String> autocompleteEmployee(@Param("query") String query);}

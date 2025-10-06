@@ -1,13 +1,20 @@
 package com.paves.employee_leave_management.entities;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 // LeaveBalance Entity
@@ -17,6 +24,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EntityListeners({AuditingEntityListener.class})
+//@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 @ToString
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class LeaveBalance {
@@ -74,6 +83,13 @@ public class LeaveBalance {
     @Column(name = "last_accrual_date")
     private LocalDate lastAccrualDate;
 
+ //   @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createAt;
+
+   // @LastModifiedDate
+    @Column(name = "last_updated_at", insertable = false)
+    private LocalDateTime lastUpdatedAt;
 
     public void updateRemainingLeaves() {
         this.remainingLeaves = (accruedLeaves+carriedForward) - usedLeaves;

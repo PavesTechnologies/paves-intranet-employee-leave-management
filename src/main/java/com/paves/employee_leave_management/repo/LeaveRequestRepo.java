@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.repo;
 
 import aj.org.objectweb.asm.commons.Remapper;
 import com.paves.employee_leave_management.dto.ManagerQueryDTO;
+import com.paves.employee_leave_management.dto.PendingAndApprovedLeaveRequestsDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveStatus;
@@ -102,4 +103,12 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     List<LeaveRequest> findLeaveHistory(@Param("empId") String empId,
                                         @Param("startDate") LocalDate startDate,
                                         @Param("endDate") LocalDate endDate);
+
+
+
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE (:employeeId IS NULL OR lr.employee.employeeId = :employeeId) " +
+            "AND lr.status IN ('PENDING', 'APPROVED')")
+    List<LeaveRequest> findPendingOrApprovedByEmployee(@Param("employeeId") String employeeId);
 }

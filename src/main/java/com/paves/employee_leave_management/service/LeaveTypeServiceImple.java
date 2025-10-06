@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,6 +37,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Autowired
     LeaveBalanceServiceInterface leaveBalanceServiceInterface;
+
 
     @Override
     @Transactional
@@ -70,7 +73,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 dbLeaveType.setExpiryDays(leaveType.getExpiryDays());
                 dbLeaveType.setMaxDaysPerYear(leaveType.getMaxDaysPerYear());
                 dbLeaveType.setPolicyDocument(leaveType.getPolicyDocument());
+                dbLeaveType.setCreateAt(LocalDateTime.now());
 
+                dbLeaveType.setLastUpdatedAt(null);
                 LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
                 leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
 
@@ -81,13 +86,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         // Create new
+        leaveType.setCreateAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
         leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
         return new ApiResponse<>(true,
                 "Leave type created successfully.",
                 savedLeaveType);
     }
-
 
 
 
@@ -120,8 +125,18 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                     null);
         }
 //        LeaveType existingLeaveType = existingOpt.get();
-        double newAccrualRate = updatedLeaveType.getAccrualRate();
+        double newAccrualRate = 0;
+        if(updatedLeaveType.getLeaveTypeId() == "L-EL" || updatedLeaveType.getLeaveTypeId() == "L-SL"){
+            newAccrualRate = (double)updatedLeaveType.getMaxDaysPerYear()/12;
+            newAccrualRate = new BigDecimal(newAccrualRate)
+                    .setScale(2, RoundingMode.HALF_UP)
+                    .doubleValue();
+            updatedLeaveType.setAccrualRate(newAccrualRate);
+        }else{
+            updatedLeaveType.setAccrualRate(newAccrualRate);
+        }
         // Save updated LeaveType
+        updatedLeaveType.setLastUpdatedAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(updatedLeaveType);
 
         // Get remaining months in the year (excluding current month)

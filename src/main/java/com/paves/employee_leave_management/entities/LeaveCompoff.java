@@ -3,8 +3,11 @@ package com.paves.employee_leave_management.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name="leave_compoff")
@@ -54,5 +57,14 @@ public class LeaveCompoff {
 
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
+
+
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "last_updated_at", insertable = false)
+    private LocalDateTime lastUpdatedAt;
 
 }

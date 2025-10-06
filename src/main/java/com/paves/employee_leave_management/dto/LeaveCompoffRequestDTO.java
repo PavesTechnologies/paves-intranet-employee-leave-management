@@ -1,6 +1,6 @@
 package com.paves.employee_leave_management.dto;
 
-import compoffvalidation.ValidCompoffRequest;
+import com.paves.employee_leave_management.compoffvalidation.ValidCompoffRequest;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

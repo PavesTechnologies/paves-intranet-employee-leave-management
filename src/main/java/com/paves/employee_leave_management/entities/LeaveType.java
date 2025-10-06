@@ -1,12 +1,14 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.paves.employee_leave_management.audit.AuditEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Table(name = "leave_type")
@@ -14,6 +16,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+//@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+@EntityListeners({AuditEntityListener.class, AuditingEntityListener.class})
 public class LeaveType {
 
     @Id
@@ -33,6 +37,8 @@ public class LeaveType {
             }
         }
     }
+
+
 
 
     @Column(name = "leave_name", length = 50, nullable = false)
@@ -107,12 +113,26 @@ public class LeaveType {
     private byte[] policyDocument;
 
 
+//    @CreatedDate
+    @Column(name = "created_at")
+    private LocalDateTime createAt;
 
-    // Custom constructor with new field
+//    @LastModifiedDate
+    @Column(name = "last_updated_at", insertable = false)
+    private LocalDateTime lastUpdatedAt;
 
-    public LeaveType(String leaveName, String description, Boolean weekendsAndHolidaysAllowed) {
-        this.leaveName = leaveName;
-        this.description = description;
-        this.weekendsAndHolidaysAllowed = weekendsAndHolidaysAllowed;
-    }
+
+
+//    @Transient
+//    private LeaveType snapShot;
+//
+//    @PostLoad
+//    public void storeSnapShot() {
+//        this.snapShot = new LeaveType();
+//        BeanUtils.copyProperties(this, snapShot);
+//    }
+//
+//    public LeaveType getSnapShot() {
+//        return snapShot;
+//    }
 }
