@@ -19,5 +19,6 @@ public interface LeaveBalanceDAO {
     List<LeaveBalance> findByEmployeeId(String employeeId);
     List<LeaveBalance> findByLeaveId(String leaveId);
 
+    List<LeaveBalance> findByEmployeeIdAndYear(String employeeId, int currentYear);
 }
 
