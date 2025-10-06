@@ -169,7 +169,7 @@ public class Employee {
     @JsonManagedReference
     private Employee manager;
 
-    @ManyToOne(fetch=FetchType.LAZY)
+    @ManyToOne(fetch=FetchType.EAGER)
     @JsonIgnore
     @JoinColumn(name = "hr_administrator_id")
     private Employee hrAdministrator;
