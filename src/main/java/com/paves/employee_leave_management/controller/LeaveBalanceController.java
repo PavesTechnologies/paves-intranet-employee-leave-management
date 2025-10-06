@@ -44,8 +44,8 @@ public class LeaveBalanceController {
     @Autowired
     private EmployeeRepo employeeRepo;
 
-    @Autowired
-    LeaveBalanceDAO leaveBalanceDao;
+//    @Autowired
+//    LeaveBalanceDAO leaveBalanceDao;
 
     // This is a placeholder for getting the user from the JWT token
     private Employee getAuthenticatedUser() {
@@ -139,12 +139,13 @@ public class LeaveBalanceController {
 //        String makerRole = maker.getJobTitle();
         String makerRole = "HR";// Assuming role is in jobTitle
 
-        List<LeaveBalance> beforeBalances = leaveBalanceDao.findByEmployeeId(request.getEmployeeId());
+        ResponseEntity<List<LeaveBalance>> beforeBalancesResponse =
+                leaveBalanceService.findByEmployeeId(request.getEmployeeId());
+
+        List<LeaveBalance> beforeBalances = beforeBalancesResponse.getBody();
 
         if (beforeBalances == null || beforeBalances.isEmpty()) {
-            throw new LeaveBalanceExceptionHandler(
-                    "Leave Balances not found for employee: " + request.getEmployeeId()
-            );
+            throw new LeaveBalanceExceptionHandler("Leave Balances not found for employee: " + request.getEmployeeId());
         }
 
 
