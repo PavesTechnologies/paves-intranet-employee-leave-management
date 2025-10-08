@@ -55,10 +55,12 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                         null);
             } else {
                 // Reactivate
+                double newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
+                newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
                 dbLeaveType.setActive(true);
                 dbLeaveType.setLeaveName(leaveType.getLeaveName());
                 dbLeaveType.setDescription(leaveType.getDescription());
-                dbLeaveType.setAccrualRate(leaveType.getAccrualRate());
+                dbLeaveType.setAccrualRate(newAccrualRate);
                 dbLeaveType.setAccrualFrequency(leaveType.getAccrualFrequency());
                 dbLeaveType.setAdvanceNoticeDays(leaveType.getAdvanceNoticeDays());
                 dbLeaveType.setWeekendsAndHolidaysAllowed(leaveType.getWeekendsAndHolidaysAllowed());
@@ -86,6 +88,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         // Create new
+        double newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
+        newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
+        leaveType.setAccrualRate(newAccrualRate);
         leaveType.setCreateAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
         leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
