@@ -7,7 +7,7 @@ import com.paves.employee_leave_management.dto.RejectRequestDto;
 //import com.paves.employee_leave_management.entities.ApprovalRequest;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
-import com.paves.employee_leave_management.service.ApprovalService;
+import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,7 +21,7 @@ import java.util.List;
 public class ApprovalController {
 
     @Autowired
-    private ApprovalService approvalService;
+    private EmailServiceInterface.ApprovalService approvalService;
 
     @Autowired
     private EmployeeRepo employeeRepo;

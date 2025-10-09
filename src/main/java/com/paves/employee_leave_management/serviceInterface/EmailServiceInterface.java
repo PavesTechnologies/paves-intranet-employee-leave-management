@@ -1,6 +1,9 @@
 package com.paves.employee_leave_management.serviceInterface;
 
-import com.paves.employee_leave_management.dto.EmailDTO;
+import com.paves.employee_leave_management.dto.*;
+import com.paves.employee_leave_management.entities.Employee;
+
+import java.util.List;
 
 /**
  * Email service interface for sending notifications
@@ -96,4 +99,15 @@ public interface EmailServiceInterface {
      */
     boolean sendLeaveCancellationNotification(String managerEmail, String employeeName,
                                             String leaveType, String startDate, String endDate);
+
+    interface ApprovalService {
+
+        void submitForApproval(MCApprovalRequestDto dto, Employee maker, String makerRole);
+
+        List<ApprovalRequestResponseDto> getPendingApprovalsForUser(Employee approver);
+
+        void approveRequest(Long requestId, ApproveRequestDto dto, Employee checker);
+
+        void rejectRequest(Long requestId, RejectRequestDto dto, Employee checker);
+    }
 }

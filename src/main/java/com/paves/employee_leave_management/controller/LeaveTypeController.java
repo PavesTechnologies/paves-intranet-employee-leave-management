@@ -8,7 +8,7 @@ import com.paves.employee_leave_management.entities.LeaveTypesEnum;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
-import com.paves.employee_leave_management.service.ApprovalService;
+import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
@@ -39,7 +39,7 @@ public class LeaveTypeController {
     private LeaveTypeRepo leaveTypeRepo;
 
     @Autowired
-    private ApprovalService approvalService;
+    private EmailServiceInterface.ApprovalService approvalService;
 
     @Autowired
     private EmployeeRepo employeeRepo;
