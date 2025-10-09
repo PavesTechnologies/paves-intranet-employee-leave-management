@@ -111,4 +111,6 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
             "WHERE (:employeeId IS NULL OR lr.employee.employeeId = :employeeId) " +
             "AND lr.status IN ('PENDING', 'APPROVED')")
     List<LeaveRequest> findPendingOrApprovedByEmployee(@Param("employeeId") String employeeId);
+
+    List<LeaveRequest> findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
 }
