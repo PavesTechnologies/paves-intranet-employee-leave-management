@@ -44,7 +44,7 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
     List<LeaveBalance> searchByEmployee(@Param("query") String query);
 
     // Autocomplete for names or employeeIds
-    @Query("SELECT DISTINCT lb.employee.employeeId FROM LeaveBalance lb " +
+    @Query("SELECT DISTINCT CONCAT(lb.employee.firstName, ' ', lb.employee.lastName) FROM LeaveBalance lb " +
             "WHERE LOWER(lb.employee.employeeId) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(lb.employee.firstName) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(lb.employee.lastName) LIKE LOWER(CONCAT('%', :query, '%'))")
