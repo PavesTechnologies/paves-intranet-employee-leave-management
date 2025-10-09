@@ -1,6 +1,10 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.entities.LeaveBalance;
+import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.RecordLock;
+import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
+import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.RecordLockRepository;
 import com.paves.employee_leave_management.serviceInterface.RecordLockServiceInterface;
 import jakarta.annotation.PostConstruct;
@@ -10,22 +14,26 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class RecordLockServiceImple implements RecordLockServiceInterface {
+
     private final RecordLockRepository lockRepository;
     private final JdbcTemplate jdbcTemplate;
     private final DataSource dataSource;
+    private final LeaveBalanceRepo leaveBalanceRepo;
+    private final LeaveRequestRepo leaveRequestRepo;
 
     private final Map<String, String> tablePkMap = new HashMap<>();
     private static final long LOCK_EXPIRY_MINUTES = 10;
@@ -38,10 +46,7 @@ public class RecordLockServiceImple implements RecordLockServiceInterface {
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
                 ResultSet pkRs = connection.getMetaData().getPrimaryKeys(null, null, tableName);
-                if (pkRs.next()) {
-                    String pkColumn = pkRs.getString("COLUMN_NAME");
-                    tablePkMap.put(tableName.toLowerCase(), pkColumn);
-                }
+                if (pkRs.next()) tablePkMap.put(tableName.toLowerCase(), pkRs.getString("COLUMN_NAME"));
             }
         }
         System.out.println("Primary keys loaded: " + tablePkMap);
@@ -49,66 +54,107 @@ public class RecordLockServiceImple implements RecordLockServiceInterface {
 
     @Override
     public synchronized String lockRecord(String tableName, String recordId, String lockedBy) {
-        if (!recordExists(tableName, recordId)) return "Record does not exist";
+        // 1️⃣ Get the record from DB
+        Map<String, Object> record = getRecord(tableName, recordId);
+        if (record == null) return "Record does not exist";
 
-        Optional<RecordLock> existingLockOpt = lockRepository.findByTableNameAndRecordId(tableName, recordId);
+        // 2️⃣ Dependency check: leave_request → leave_balance
+        if ("leave_request".equalsIgnoreCase(tableName)) {
+            String employeeId = (String) record.get("employee_id");
+            String leaveTypeId = (String) record.get("leave_type_id");
+            int year = LocalDate.now().getYear();
 
-        if (existingLockOpt.isPresent()) {
-            RecordLock existingLock = existingLockOpt.get();
-            if (!existingLock.isExpired()) {
-                return "Record is currently being edited by " + existingLock.getLockedBy();
-            } else {
-                lockRepository.delete(existingLock); // remove expired lock
+            LeaveBalance balance = leaveBalanceRepo
+                    .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
+            if (balance != null && isLocked("leave_balance", balance.getBalanceId())) {
+                return "Cannot apply/edit leave. Leave balance is being edited by "
+                        + getLockedBy("leave_balance", balance.getBalanceId());
             }
         }
 
-        RecordLock newLock = RecordLock.builder()
+        // 3️⃣ Dependency check: leave_balance → leave_request
+        if ("leave_balance".equalsIgnoreCase(tableName)) {
+            String employeeId = (String) record.get("employee_id");
+            String leaveTypeId = (String) record.get("leave_type_id");
+            int year = (Integer) record.get("year");
+
+            // Check if any related leave_request is locked
+            List<Map<String, Object>> requests = jdbcTemplate.queryForList(
+                    "SELECT leave_id FROM leave_request WHERE employee_id = ? AND leave_type_id = ? AND year = ?",
+                    employeeId, leaveTypeId, year
+            );
+
+            for (Map<String, Object> req : requests) {
+                String leaveId = (String) req.get("leave_id");
+                if (isLocked("leave_request", leaveId)) {
+                    return "Cannot edit leave balance. Leave request " + leaveId
+                            + " is being edited by " + getLockedBy("leave_request", leaveId);
+                }
+            }
+        }
+
+        // 4️⃣ Check if this record is already locked
+        Optional<RecordLock> existingLockOpt = lockRepository.findByTableNameAndRecordId(tableName, recordId);
+        if (existingLockOpt.isPresent()) {
+            RecordLock lock = existingLockOpt.get();
+            if (!lock.isExpired()) {
+                return "Record is currently being edited by " + lock.getLockedBy();
+            }
+            lockRepository.delete(lock); // remove expired lock
+        }
+
+        // 5️⃣ Acquire new lock
+        lockRepository.save(RecordLock.builder()
                 .tableName(tableName)
                 .recordId(recordId)
                 .lockedBy(lockedBy)
                 .lockedAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusMinutes(LOCK_EXPIRY_MINUTES))
-                .build();
+                .build());
 
-        lockRepository.save(newLock);
         return "Lock acquired successfully";
     }
 
+
     @Override
     public synchronized void releaseLock(String tableName, String recordId, String lockedBy) {
-        Optional<RecordLock> existingLockOpt = lockRepository.findByTableNameAndRecordId(tableName, recordId);
-        existingLockOpt.ifPresent(lock -> {
-            if (lock.getLockedBy().equals(lockedBy) || lock.isExpired()) {
-                lockRepository.delete(lock);
-            }
-        });
+        lockRepository.findByTableNameAndRecordId(tableName, recordId)
+                .filter(lock -> lock.getLockedBy().equals(lockedBy) || lock.isExpired())
+                .ifPresent(lockRepository::delete);
     }
+
 
     @Override
     public boolean isLocked(String tableName, String recordId) {
-        Optional<RecordLock> existingLockOpt = lockRepository.findByTableNameAndRecordId(tableName, recordId);
-        return existingLockOpt.isPresent() && !existingLockOpt.get().isExpired();
+        return lockRepository.findByTableNameAndRecordId(tableName, recordId)
+                .map(lock -> !lock.isExpired())
+                .orElse(false);
     }
+
 
     @Override
     public String getLockedBy(String tableName, String recordId) {
-        Optional<RecordLock> existingLockOpt = lockRepository.findByTableNameAndRecordId(tableName, recordId);
-        return existingLockOpt.map(RecordLock::getLockedBy).orElse(null);
+        return lockRepository.findByTableNameAndRecordId(tableName, recordId)
+                .map(RecordLock::getLockedBy)
+                .orElse(null);
     }
 
-    private boolean recordExists(String tableName, String recordId) {
+
+    private Map<String, Object> getRecord(String tableName, String recordId) {
         String pkColumn = tablePkMap.get(tableName.toLowerCase());
-        if (pkColumn == null) throw new RuntimeException("Unknown table: " + tableName);
+        if (pkColumn == null)
+            throw new RuntimeException("Unknown table: " + tableName);
 
-        String sql = String.format("SELECT COUNT(*) FROM %s WHERE %s = ?", tableName, pkColumn);
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, recordId);
-        return count != null && count > 0;
+        List<Map<String, Object>> results = jdbcTemplate.queryForList(
+                String.format("SELECT * FROM %s WHERE %s = ?", tableName, pkColumn), recordId);
+        return results.isEmpty() ? null : results.get(0);
     }
 
-    // Cleanup expired locks every 5 minutes
+
     @Scheduled(fixedRate = 5 * 60 * 1000)
     @Transactional
     public void cleanupExpiredLocks() {
-        int deleted = lockRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+        lockRepository.deleteByExpiresAtBefore(LocalDateTime.now());
     }
+
 }

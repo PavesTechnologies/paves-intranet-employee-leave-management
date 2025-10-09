@@ -108,18 +108,6 @@ public class LeaveRequest {
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
 
-    @Column(name = "is_locked")
-    private boolean isLocked = false;
-
-    @Column(name = "locked_by")
-    private String lockedBy;
-
-    @Column(name = "locked_at")
-    private LocalDateTime lockedAt;
-
-
-
-
     // Custom constructor for essential fields
     public LeaveRequest(Employee employee, LeaveType leaveType, LocalDate startDate,
                         LocalDate endDate, Integer daysRequested, String reason, String driveLink) {
