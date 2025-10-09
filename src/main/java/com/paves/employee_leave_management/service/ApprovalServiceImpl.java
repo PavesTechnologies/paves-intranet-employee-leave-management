@@ -14,6 +14,7 @@ import com.paves.employee_leave_management.repo.ApprovalRequestRepository;
 import com.paves.employee_leave_management.repo.ApprovalRuleRepository;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.FunctionalApproverRepository;
+import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class ApprovalServiceImpl implements ApprovalService {
+public class ApprovalServiceImpl implements EmailServiceInterface.ApprovalService {
 
     @Autowired
     private ApprovalRuleRepository approvalRuleRepository;

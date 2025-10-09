@@ -108,8 +108,6 @@ public class LeaveRequest {
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
 
-
-
     // Custom constructor for essential fields
     public LeaveRequest(Employee employee, LeaveType leaveType, LocalDate startDate,
                         LocalDate endDate, Integer daysRequested, String reason, String driveLink) {
