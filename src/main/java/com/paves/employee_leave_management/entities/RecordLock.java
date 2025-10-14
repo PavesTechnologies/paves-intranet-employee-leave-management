@@ -22,6 +22,8 @@ public class RecordLock {
 
     private String recordId;
 
+    private String employeeId;
+
     private String lockedBy;
 
     private LocalDateTime lockedAt;

@@ -9,4 +9,5 @@ public interface RecordLockRepository extends JpaRepository<RecordLock, Long> {
     Optional<RecordLock> findByTableNameAndRecordId(String tableName, String recordId);
 
     int deleteByExpiresAtBefore(java.time.LocalDateTime time);
+    boolean existsByRecordIdAndEmployeeId(String recordId,String employeeId);
 }

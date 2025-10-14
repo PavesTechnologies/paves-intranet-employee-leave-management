@@ -11,7 +11,6 @@ import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceI
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -352,4 +351,14 @@ public class LeaveRequestController {
         }
     }
 
+   @GetMapping("/view-details")
+    public ResponseEntity<ApiResponse<List<LeaveRequest>>> leaveBalanceViewDetails(@RequestParam String employeeId, @RequestParam String leaveName, @RequestParam int year){
+        try{
+            List<LeaveRequest> leaveRequests = leaveRequestService.leaveBalanceViewDetails(employeeId, leaveName, year);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaveRequests));
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
+        }
+    }
 }
