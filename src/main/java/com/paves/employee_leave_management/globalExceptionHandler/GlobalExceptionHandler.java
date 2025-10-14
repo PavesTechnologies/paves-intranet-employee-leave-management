@@ -62,4 +62,5 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleException(LeaveTypeException leaveTypeException) {
         return ResponseEntity.status(400).body(leaveTypeException.getExMsg());
     }
+
 }
