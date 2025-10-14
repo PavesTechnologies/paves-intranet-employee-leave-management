@@ -37,18 +37,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(400).body(holidayExceptionHandler.getExMsg());
     }
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<List<String>>> handleValidationExceptions(
-            MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
 
         List<String> errors = ex.getBindingResult()
                 .getAllErrors()
                 .stream()
-                .map(error -> error.getDefaultMessage())
+                .map(obj -> obj.getDefaultMessage())
                 .collect(Collectors.toList());
 
-        ApiResponse<List<String>> response = new ApiResponse<>(false, "Validation failed", errors);
+        // Optionally log errors for debugging
+        errors.forEach(System.out::println);
+
+        // Send only message, keep data = null
+        ApiResponse<String> response = new ApiResponse<>(false,
+                "Compoff cannot be applied beyond 28 days in the past.",
+                null);
+
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
+
 
     // Handle generic runtime exceptions
     @ExceptionHandler(RuntimeException.class)
