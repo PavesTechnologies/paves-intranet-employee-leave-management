@@ -910,10 +910,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         // 5. Track and apply Reason update
-        if (updateRequest.getReason() != null && !updateRequest.getReason().equals(request.getReason())) {
-            changes.append("Reason has been updated.\n");
-            request.setReason(updateRequest.getReason());
-        }
+//        if (updateRequest.getReason() != null && !updateRequest.getReason().equals(request.getReason())) {
+//            changes.append("Reason has been updated.\n");
+//            request.setReason(updateRequest.getReason());
+//        }
 
         leaveBalanceService.updateLeaveBalanceAfterApproval(
                 request.getEmployee().getEmployeeId(),
@@ -921,6 +921,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 updateRequest.getDaysRequested(),
                 request.getRequestDate().getYear()
         );
+        request.setManagerComment(updateRequest.getManagerComment());
         request.setStartSession(updateRequest.getStartSession());
         request.setEndSession(updateRequest.getEndSession());
         // Save only if there are changes

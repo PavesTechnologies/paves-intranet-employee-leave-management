@@ -1,12 +1,8 @@
 package com.paves.employee_leave_management.entities;
 
 import com.paves.employee_leave_management.audit.AuditEntityListener;
-import com.paves.employee_leave_management.repo.LeaveTypeRepo;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,9 +13,9 @@ import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
-// LeaveRequest Entity
 @Entity
 @Table(name = "leave_request")
 @Data
@@ -99,6 +95,9 @@ public class LeaveRequest {
     @Column(name = "year")
     private Integer year;
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "leaveRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ApprovalStage> approvalStages;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)
@@ -120,9 +119,5 @@ public class LeaveRequest {
         this.driveLink = driveLink;
         this.status = LeaveStatus.PENDING;
         this.requestDate = LocalDate.now();
-    }
-
-    public LeaveTypeRepo getLeaveName() {
-        return null;
     }
 }

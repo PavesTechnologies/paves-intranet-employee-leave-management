@@ -6,6 +6,7 @@ import com.paves.employee_leave_management.dto.ManagerUpdateRequestDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.service.LeaveWorkflowService;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -29,9 +30,10 @@ public class LeaveRequestController {
     private final LeaveRequestServiceInterface leaveRequestService;
     private final EmployeeServiceInterface employeeService;
     private final LeaveTypeServiceInterface leaveTypeService;
-    
+    private final LeaveWorkflowService leaveWorkflowService;
+
     // ==================== EMPLOYEE OPERATIONS ====================
-    
+
     /**
      * Apply for leave - Employee submits a new leave request
      */
@@ -46,10 +48,14 @@ public class LeaveRequestController {
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(false, errorMessage, null));
             }
-            
+
             // Save the leave request
             LeaveRequest savedLeaveRequest = leaveRequestService.saveLeaveRequest(request);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully", savedLeaveRequest));
+
+            // Start the multi-level approval workflow
+            leaveWorkflowService.startLeaveWorkflow(savedLeaveRequest);
+
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully and workflow started", savedLeaveRequest));
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -67,17 +73,17 @@ public class LeaveRequestController {
             // Get the employee and leave type entities
             Employee employee = employeeService.getByEmployeeId(validationDTO.getEmployeeId()).getBody();
             LeaveType leaveType = leaveTypeService.getLeaveTypeById(validationDTO.getLeaveTypeId()).getBody();
-            
+
             if (employee == null) {
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(false, "Employee not found", null));
             }
-            
+
             if (leaveType == null) {
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(false, "Leave type not found", null));
             }
-            
+
             // Create LeaveRequest object with proper entities
             LeaveRequest leaveRequest = LeaveRequest.builder()
                     .leaveId(validationDTO.getLeaveId())
@@ -91,7 +97,7 @@ public class LeaveRequestController {
                     .reason(validationDTO.getReason())
                     .requestDate(LocalDate.now())
                     .build();
-            
+
             ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest,validationDTO);
             if (result.isValid()) {
                 return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
@@ -149,8 +155,25 @@ public class LeaveRequestController {
         }
     }
 
+    // ==================== WORKFLOW ACTION ====================
+
+    @PostMapping("/{leaveId}/action")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR')") // Adjust roles as needed
+    public ResponseEntity<ApiResponse<String>> processLeaveAction(
+            @PathVariable String leaveId,
+            @RequestBody ApprovalActionDTO actionDTO) {
+        try {
+            leaveWorkflowService.processApprovalAction(leaveId, actionDTO.getApproverId(), actionDTO.getDecision());
+            String message = "Action '" + actionDTO.getDecision() + "' processed successfully.";
+            return ResponseEntity.ok(new ApiResponse<>(true, message, null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error processing action: " + e.getMessage(), null));
+        }
+    }
+
     // ==================== VALIDATION OPERATIONS ====================
-    
+
     /**
      * Validate leave request without saving
      */
@@ -213,7 +236,7 @@ public class LeaveRequestController {
     }
 
     // ==================== MANAGER OPERATIONS ====================
-    
+
     /**
      * Get pending/filtered leave requests for manager
      */

@@ -33,4 +33,6 @@ public class ManagerUpdateRequestDTO {
     private LocalDate requestDate;
     private String reason;
     private String driveLink;
+    private String managerComment;
+    private String isHalfDay;
 }

@@ -1,0 +1,1308 @@
+🟩- future enhancements
+ 1. - current ones
+
+🧍‍♂️ Employee-Initiated Notifications
+Leave Request Submitted → Manager
+ Notify the manager that an employee has submitted a new leave request.
+
+
+Leave Request Updated → Manager
+ Notify when an employee updates or withdraws an existing request.
+
+
+ Leave Request Cancelled → Manager
+ If employee cancels a pending or approved request before start date.
+
+
+
+👨‍💼 Manager-Initiated Notifications
+Leave Request Reviewed (Approved/Rejected/Cancelled) → Employee
+ Notify the employee about the decision taken by their manager.
+
+
+Leave Request Updated by Manager → Employee
+ If manager modifies leave details (e.g., dates, comments).
+
+
+🟩 Delegation Notification → Employee/Alternate Approver
+ When manager delegates approval responsibility during absence.
+
+
+
+🧑‍🤝‍🧑 Team & Collaboration Notifications
+Employee on Leave (Daily Digest) → Project Members
+ Send daily digest emails listing who is on leave in the team/project.
+
+
+🟩 Project Manager / Team Lead Summary (Weekly Digest)
+ Weekly summary of upcoming leaves in their project/team.
+
+
+
+🗓️ HR & Calendar Notifications
+Calendar Update → HR Team
+ Triggered when a new leave type, public holiday, or policy change affects the calendar.
+
+
+Holiday Announcement → All Employees
+ Holiday wishes to employees
+
+
+Leave Policy Change → All Employees
+ HR updates or modifies leave rules (like maternity duration, encashment policy).
+
+
+
+⚙️ Maker-Checker (Approval Rule) Notifications
+HR (Maker) CRUD Operation → Checker
+ Notify checker that an HR change (new leave type, role, config) needs approval.
+
+
+Checker Action (Approved/Rejected) → Maker
+ Notify maker of checker’s decision.
+
+
+Multi-Level Approval Progression → Next Approver
+ After each level’s approval, notify the next approver in the chain.
+
+
+Final Approval Notification → Initiator (Maker/HR)
+ After final checker approves, notify the HR who initiated the change.
+
+
+
+⚠️ System or Reminder Notifications
+🟩 Pending Approval Reminder → Approvers
+ Automatic reminder if approval pending beyond X days.
+
+
+🟩 Leave Balance Threshold Alert → Employee/HR
+ If leave balance falls below or exceeds policy limit.
+
+
+🟩 Auto-Reject Notification → Employee & HR
+ If request expires without action after configured time.
+
+
+
+
+
+
+🧩 1. Purpose
+A notification system ensures that the right person gets the right message at the right time, based on what’s happening in the system — such as a leave request submission, approval, policy update, or holiday announcement.
+
+⚙️ 2. Core Components of a Notification System
+A typical enterprise-grade notification system is built around these components:
+Component
+Purpose
+Event Source
+The action that triggers a notification (e.g., employee submits leave, HR updates holiday).
+Event Dispatcher (Publisher)
+Captures and publishes these events to the system — often part of business services.
+Notification Processor (Listener)
+Listens for events and decides what type of notification(s) to send and to whom.
+Template Engine
+Defines reusable email/SMS/in-app templates with placeholders like {EmployeeName}, {Date}, etc.
+Channel Handlers
+Handle different communication channels like Email, In-App, SMS, Push, Slack, etc.
+Notification Queue (Optional)
+Message queue (like RabbitMQ, Kafka, or internal async service) used to process notifications asynchronously.
+Audit/Logs
+Every notification event is logged for traceability and troubleshooting.
+User Preferences (Optional)
+Allows users to opt-in/out of certain notification types (e.g., disable daily digest).
+
+
+🔁 3. End-to-End Flow
+Let’s use “Employee Submits a Leave Request” as an example:
+Step 1: Event Triggered
+The employee submits a new leave request.
+
+
+The system fires an event → LeaveRequestCreated.
+
+
+Step 2: Event Captured by the Notification System
+The Notification Processor listens for this event.
+
+
+It identifies the event type, initiator, and intended recipient(s) — e.g., Manager, HR.
+
+
+Step 3: Business Rule Evaluation
+The processor checks notification rules (from config or DB):
+
+
+Is this event type enabled?
+
+
+Who should receive it? (Manager, HR?)
+
+
+What channel to use? (Email, In-App?)
+
+
+Step 4: Template Preparation
+The Template Engine retrieves the right template (like “Leave Request Submitted”).
+
+
+It fills in placeholders:
+
+ Dear {ManagerName},
+{EmployeeName} has requested leave from {StartDate} to {EndDate}.
+ → becomes:
+
+ Dear Priya,
+Ajay Kumar has requested leave from 10 Oct 2025 to 14 Oct 2025.
+
+
+Step 5: Channel Delivery
+The Channel Handler decides how to send it:
+
+
+Email → via SMTP
+
+
+In-App → via notification service in frontend
+
+
+Push → via mobile app push notification
+
+
+Slack/MS Teams → via webhook
+
+
+Each handler formats and delivers the message accordingly.
+Step 6: Logging and Feedback
+Each notification (success/failure) is logged in the Notification Log table.
+
+
+Optional retry if sending fails.
+
+
+The system can show notification history in the UI (e.g., “You have 3 new notifications”).
+
+
+
+🧱 4. Types of Notifications in the System
+Type
+Description
+Delivery Example
+Transactional
+Triggered immediately by an action (e.g., leave approval).
+Email + In-App
+Digest / Scheduled
+Sent periodically (e.g., daily summary of employees on leave).
+Daily Email Job
+System Alerts
+Generated by automated tasks (e.g., auto-reject, reminder).
+Email, In-App
+Approval Notifications
+Sent through approval workflow (maker-checker or multi-level).
+In-App + Email
+Informational Broadcasts
+Announcements like holiday updates or policy changes.
+Email Broadcast
+
+
+🕹️ 5. Configuration & Flexibility
+To make the system maintainable:
+Notification Rules are stored in the database (not hardcoded):
+
+
+event_name → recipients, template_id, channels, active_flag
+
+
+Templates are editable via admin UI or configuration.
+
+
+Multi-Level Approvals are dynamic — each level’s approval event triggers a new notification automatically.
+
+
+
+📅 6. Scheduled Notifications (Digests, Reminders)
+For notifications like:
+“Who’s on leave today?”
+
+
+“Pending approvals older than 3 days.”
+
+
+You use scheduled background jobs (cron tasks or schedulers):
+Run daily/weekly.
+
+
+Query data (e.g., employees on leave today).
+
+
+Build an aggregated message.
+
+
+Send it to all concerned users.
+
+
+
+📜 7. Audit & Compliance
+Every notification event is recorded:
+Timestamp
+
+
+Event type
+
+
+Recipients
+
+
+Delivery status (Sent / Failed / Retried)
+
+
+Message ID
+
+
+This helps in audit tracking and troubleshooting delivery issues.
+
+🧠 8. Example Architecture (Conceptual View)
++------------------+
+|  User Actions    |
+| (Leave Submit)   |
++--------+---------+
+         |
+         v
++-----------------------+
+|  Event Publisher      |
+|  (LeaveRequestCreated)|
++----------+------------+
+           |
+           v
++------------------------+
+| Notification Processor |
+| (Business Rules, Map   |
+|  Templates, Recipients)|
++----------+-------------+
+           |
+           v
++------------------------+
+| Channel Dispatcher     |
+| (Email, SMS, In-App,   |
+|  Slack, etc.)          |
++----------+-------------+
+           |
+           v
++------------------------+
+| Notification Log / DB  |
++------------------------+
+
+
+🔒 9. Benefits
+Centralized control: All notifications flow through one unified system.
+
+
+Scalable: Adding new event types or channels doesn’t require code changes.
+
+
+Auditable: Each message is tracked for delivery and compliance.
+
+
+Flexible: Templates, rules, and recipients can be updated from configuration.
+
+
+
+✅ In short:
+A notification system in an LMS is built as an event-driven, rule-based, and channel-agnostic service that listens to system actions (like leave submission or approval), applies rules to decide who should be informed, prepares message templates, and sends notifications through configured channels — all while logging and monitoring every step.
+
+
+🧩 2. Core Tables Overview
+#
+Table Name
+Purpose
+1
+notification_event_master
+Defines all events that can trigger notifications
+2
+notification_rule
+Defines the business rules for when and how to send notifications
+3
+notification_recipient_mapping
+Defines who receives which notification
+4
+notification_template
+Stores email/SMS/in-app templates
+5
+notification_channel_config
+Defines channels (Email, In-App, SMS) and their settings
+6
+notification_log
+Keeps a history of every notification sent (for audit and retry)
+7
+notification_scheduler (optional)
+For periodic jobs (daily digest, weekly reports, reminders)
+
+
+
+🗂️ Table 1: notification_event_master
+Purpose: Master list of all triggerable events in the system.
+Column
+Type
+Description
+event_id
+UUID / PK
+Unique ID
+event_code
+String
+Code name (e.g., LEAVE_REQUEST_CREATED)
+event_name
+String
+Human-readable name
+module
+String
+Related module (e.g., Leave, HR, Calendar)
+description
+Text
+What triggers this event
+active
+Boolean
+Enable/disable event
+
+Example Entries:
+event_code
+event_name
+module
+LEAVE_REQUEST_CREATED
+Leave Request Submitted
+Leave
+LEAVE_APPROVED
+Leave Approved
+Leave
+CALENDAR_UPDATED
+Calendar Updated
+HR Tools
+
+
+⚙️ Table 2: notification_rule
+Purpose: Defines the business rule for each event — what condition must be met, when to send, and through which channel.
+Column
+Type
+Description
+rule_id
+UUID / PK
+Unique rule identifier
+event_id
+FK → notification_event_master
+Event associated with this rule
+rule_name
+String
+Descriptive name (e.g., “Notify Manager on Leave Submit”)
+condition_expression
+String
+Expression to evaluate (e.g., leaveType != 'OptionalHoliday')
+channels
+String / JSON
+e.g., ["EMAIL", "IN_APP"]
+template_id
+FK → notification_template
+Template to use
+timing
+Enum
+IMMEDIATE, SCHEDULED, DELAYED
+priority
+Int
+Order of rule evaluation
+active
+Boolean
+Enable/disable rule
+created_by
+String
+User or system
+created_date
+DateTime
+Audit info
+
+Example Entry:
+event_id
+rule_name
+condition_expression
+channels
+template_id
+timing
+LEAVE_REQUEST_CREATED
+Notify Manager
+leaveType != 'OptionalHoliday'
+["EMAIL"]
+TMP_LEAVE_SUBMIT
+IMMEDIATE
+
+
+👥 Table 3: notification_recipient_mapping
+Purpose: Defines who should be notified when a rule is triggered.
+ Allows dynamic recipient resolution (roles, users, levels, etc.).
+Column
+Type
+Description
+recipient_id
+UUID / PK
+Unique mapping ID
+rule_id
+FK → notification_rule
+Associated rule
+recipient_type
+Enum
+ROLE, USER, DYNAMIC
+recipient_value
+String
+e.g., MANAGER, HR, MAKER, or userId
+level
+Int (nullable)
+For multi-level approvals
+active
+Boolean
+Enable/disable mapping
+
+Example Entry:
+rule_id
+recipient_type
+recipient_value
+level
+RULE_001
+ROLE
+MANAGER
+NULL
+RULE_002
+ROLE
+HR
+NULL
+RULE_003
+DYNAMIC
+NEXT_APPROVER
+2
+
+
+🧾 Table 4: notification_template
+Purpose: Stores reusable templates for messages.
+Column
+Type
+Description
+template_id
+UUID / PK
+Unique template ID
+template_code
+String
+e.g., TMP_LEAVE_SUBMIT
+subject
+String
+Email subject with placeholders
+body_html
+Text
+HTML or plain text content
+placeholders
+JSON
+List of placeholders supported
+channel
+Enum
+EMAIL, SMS, IN_APP
+active
+Boolean
+Enable/disable template
+
+Example:
+template_code
+subject
+channel
+TMP_LEAVE_SUBMIT
+New Leave Request from {EmployeeName}
+EMAIL
+
+
+📡 Table 5: notification_channel_config
+Purpose: Stores configuration and credentials for each channel.
+Column
+Type
+Description
+channel_id
+UUID / PK
+Unique ID
+channel_name
+Enum
+EMAIL, IN_APP, SMS, PUSH
+config_json
+JSON
+e.g., SMTP details or API keys
+enabled
+Boolean
+Enable/disable
+retry_policy
+JSON
+Retry config (e.g., max_attempts=3, delay=5min)
+
+
+🧾 Table 6: notification_log
+Purpose: Tracks all sent notifications (for audit and monitoring).
+Column
+Type
+Description
+log_id
+UUID / PK
+Unique log entry
+event_code
+String
+Which event triggered it
+recipient
+String
+To whom it was sent
+channel
+String
+Email/SMS/In-App
+status
+Enum
+SENT, FAILED, RETRYING
+attempts
+Int
+Retry count
+sent_at
+DateTime
+Time of sending
+error_message
+Text
+If failed
+payload_snapshot
+JSON
+Copy of data used
+
+
+⏰ Table 7: notification_scheduler (optional)
+Purpose: For scheduled notifications (like daily digest or reminders).
+Column
+Type
+Description
+schedule_id
+UUID / PK
+Unique ID
+rule_id
+FK → notification_rule
+Associated rule
+frequency
+Enum
+DAILY, WEEKLY, MONTHLY
+time_of_day
+String
+e.g., 09:00 AM
+last_run
+DateTime
+Last execution timestamp
+
+
+
+Key Features of the ER Diagram:
+Tables (Entities):
+notification_event_master - The master event definitions
+notification_rule - Business rules for notifications
+notification_recipient_mapping - Who receives notifications
+notification_template - Message templates
+notification_channel_config - Channel configurations
+notification_log - Audit trail of sent notifications
+notification_scheduler - Scheduled notification jobs
+Relationships Shown:
+notification_event_master → notification_rule (1:Many)
+One event can trigger multiple rules
+notification_rule → notification_recipient_mapping (1:Many)
+One rule can notify multiple recipients
+notification_rule → notification_template (Many:1)
+Multiple rules can use the same template
+notification_rule → notification_scheduler (1:Many)
+One rule can have multiple scheduled instances
+
+🔁 4. How These Tables Work Together
+Example Flow:
+Employee submits leave → Event published: LEAVE_REQUEST_CREATED.
+
+
+System checks notification_event_master for matching rules.
+
+
+Fetches notification_rule records → filters by conditions.
+
+
+Looks up notification_recipient_mapping to determine recipients.
+
+
+Fetches notification_template to build message.
+
+
+Uses notification_channel_config to send via correct channel.
+
+
+Logs result in notification_log.
+
+
+
+
+
+Hybrid (Optional)
+
+
+Base layout in code + DB content injected inside (<div th:utext="${customContent}"></div>)
+
+
+You get both flexibility and design control
+
+
+
+
+
+-- =============================================
+-- 🚀 Notification Service Seed Script (MySQL)
+-- Schema Version: Without notification_template
+-- Author: ChatGPT (2025-10-09)
+-- =============================================
+
+-- Optional: Clean existing data
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE notification_scheduler;
+TRUNCATE TABLE notification_log;
+TRUNCATE TABLE notification_recipient_mapping;
+TRUNCATE TABLE notification_rule;
+TRUNCATE TABLE notification_channel_config;
+TRUNCATE TABLE notification_event_master;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ===================================================
+-- 1️⃣ notification_event_master
+-- ===================================================
+INSERT INTO notification_event_master (event_id, event_code, event_name, module, description, active) VALUES
+('EVT001','LEAVE_REQUEST_CREATED','Leave Request Submitted','Leave','Employee submits a new leave request',1),
+('EVT002','LEAVE_REQUEST_UPDATED','Leave Request Updated','Leave','Employee updates or withdraws an existing request',1),
+('EVT003','LEAVE_REQUEST_CANCELLED','Leave Request Cancelled','Leave','Employee cancels a pending or approved request',1),
+('EVT004','LEAVE_REQUEST_REVIEWED','Leave Request Reviewed','Leave','Manager approves/rejects/cancels leave request',1),
+('EVT005','LEAVE_UPDATED_BY_MANAGER','Leave Request Updated by Manager','Leave','Manager modifies leave details',1),
+('EVT006','DELEGATION_ASSIGNED','Delegation Notification','Leave','Manager delegates approval authority',1),
+('EVT007','TEAM_LEAVE_DAILY_DIGEST','Employee on Leave (Daily Digest)','Team','Daily summary of team members on leave',1),
+('EVT008','TEAM_LEAVE_WEEKLY_SUMMARY','Project Manager / Team Lead Summary','Team','Weekly summary of upcoming leaves',1),
+('EVT009','CALENDAR_UPDATED','Calendar Update','HR','New leave type, holiday, or calendar change',1),
+('EVT010','HOLIDAY_ANNOUNCEMENT','Holiday Announcement','HR','HR broadcasts holiday message',1),
+('EVT011','POLICY_CHANGED','Leave Policy Change','HR','HR updates leave rules or policies',1),
+('EVT012','HR_MAKER_OPERATION','HR (Maker) CRUD Operation','HR','HR submits change for checker approval',1),
+('EVT013','CHECKER_DECISION','Checker Action','HR','Checker approves or rejects HR request',1),
+('EVT014','APPROVAL_PROGRESS_NEXT_LEVEL','Multi-Level Approval Progression','Workflow','Notify next approver in the approval chain',1),
+('EVT015','FINAL_APPROVAL_COMPLETE','Final Approval Notification','Workflow','Final approval completed – notify initiator',1),
+('EVT016','PENDING_APPROVAL_REMINDER','Pending Approval Reminder','Workflow','Remind approvers of pending approvals',1),
+('EVT017','LEAVE_BALANCE_ALERT','Leave Balance Threshold Alert','Leave','Notify when leave balance falls below/exceeds policy limit',1);
+
+-- ===================================================
+-- 2️⃣ notification_rule
+-- ===================================================
+INSERT INTO notification_rule (rule_id, event_id, rule_name, condition_expression, channels, template_key, timing, priority, active, created_by, created_date) VALUES
+('RULE001','EVT001','Notify Manager on Leave Submission','1=1','["EMAIL","IN_APP"]','LEAVE_REQUEST_SUBMIT','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE002','EVT002','Notify Manager on Leave Update','1=1','["EMAIL","IN_APP"]','LEAVE_REQUEST_UPDATE','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE003','EVT003','Notify Manager on Leave Cancellation','1=1','["EMAIL","IN_APP"]','LEAVE_REQUEST_CANCELLED','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE004','EVT004','Notify Employee on Review Decision','1=1','["EMAIL","IN_APP"]','LEAVE_REVIEW_RESULT','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE005','EVT005','Notify Employee on Manager Update','1=1','["EMAIL","IN_APP"]','LEAVE_MANAGER_UPDATE','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE006','EVT006','Notify Alternate Approver on Delegation','1=1','["EMAIL","IN_APP"]','DELEGATION_ASSIGNMENT','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE007','EVT007','Send Daily Team Leave Digest','1=1','["EMAIL"]','DAILY_TEAM_LEAVE_DIGEST','SCHEDULED',2,1,'system',CURRENT_TIMESTAMP),
+('RULE008','EVT008','Send Weekly Team Summary','1=1','["EMAIL"]','WEEKLY_TEAM_LEAVE_SUMMARY','SCHEDULED',2,1,'system',CURRENT_TIMESTAMP),
+('RULE009','EVT009','Notify HR on Calendar Update','1=1','["EMAIL"]','CALENDAR_UPDATE_NOTICE','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE010','EVT010','Broadcast Holiday Announcement','1=1','["EMAIL"]','HOLIDAY_ANNOUNCEMENT','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE011','EVT011','Broadcast Leave Policy Change','1=1','["EMAIL"]','POLICY_CHANGE_ANNOUNCEMENT','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE012','EVT012','Notify Checker on HR Maker Operation','1=1','["EMAIL","IN_APP"]','HR_MAKER_TO_CHECKER','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE013','EVT013','Notify Maker on Checker Decision','1=1','["EMAIL","IN_APP"]','HR_CHECKER_TO_MAKER','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE014','EVT014','Notify Next Approver in Chain','1=1','["EMAIL","IN_APP"]','APPROVAL_NEXT_LEVEL','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE015','EVT015','Notify Initiator on Final Approval','1=1','["EMAIL","IN_APP"]','FINAL_APPROVAL_NOTICE','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP),
+('RULE016','EVT016','Send Reminder for Pending Approvals','daysPending > 3','["EMAIL","IN_APP"]','APPROVAL_PENDING_REMINDER','SCHEDULED',2,1,'system',CURRENT_TIMESTAMP),
+('RULE017','EVT017','Notify Employee & HR on Leave Balance Alert','balance < minBalance OR balance > maxBalance','["EMAIL","IN_APP"]','LEAVE_BALANCE_ALERT','IMMEDIATE',1,1,'system',CURRENT_TIMESTAMP);
+
+-- ===================================================
+-- 3️⃣ notification_recipient_mapping
+-- ===================================================
+INSERT INTO notification_recipient_mapping (recipient_id, rule_id, recipient_type, recipient_value, level, active) VALUES
+('RCP001','RULE001','ROLE','MANAGER',NULL,1),
+('RCP002','RULE002','ROLE','MANAGER',NULL,1),
+('RCP003','RULE003','ROLE','MANAGER',NULL,1),
+('RCP004','RULE004','ROLE','EMPLOYEE',NULL,1),
+('RCP005','RULE005','ROLE','EMPLOYEE',NULL,1),
+('RCP006','RULE006','ROLE','ALTERNATE_APPROVER',NULL,1),
+('RCP007','RULE007','ROLE','PROJECT_MEMBERS',NULL,1),
+('RCP008','RULE008','ROLE','PROJECT_MANAGER',NULL,1),
+('RCP009','RULE009','ROLE','HR',NULL,1),
+('RCP010','RULE010','ROLE','ALL_EMPLOYEES',NULL,1),
+('RCP011','RULE011','ROLE','ALL_EMPLOYEES',NULL,1),
+('RCP012','RULE012','ROLE','CHECKER',NULL,1),
+('RCP013','RULE013','ROLE','MAKER',NULL,1),
+('RCP014','RULE014','DYNAMIC','NEXT_APPROVER',2,1),
+('RCP015','RULE015','ROLE','INITIATOR',NULL,1),
+('RCP016','RULE016','ROLE','APPROVER',NULL,1),
+('RCP017','RULE017','ROLE','EMPLOYEE',NULL,1),
+('RCP018','RULE017','ROLE','HR',NULL,1);
+
+-- ===================================================
+-- 4️⃣ notification_channel_config
+-- ===================================================
+INSERT INTO notification_channel_config (channel_id, channel_name, config_json, enabled, retry_policy) VALUES
+('CH001','EMAIL','{\"smtp_server\":\"smtp.office365.com\",\"port\":587,\"username\":\"noreply@company.com\"}',1,'{\"max_attempts\":3,\"delay\":\"5m\"}'),
+('CH002','IN_APP','{\"api_endpoint\":\"/api/notify/in-app\"}',1,'{\"max_attempts\":2,\"delay\":\"2m\"}'),
+('CH003','SMS','{\"provider\":\"Twilio\",\"api_key\":\"***\"}',0,'{\"max_attempts\":3,\"delay\":\"10m\"}');
+
+-- ===================================================
+-- 5️⃣ notification_scheduler
+-- ===================================================
+INSERT INTO notification_scheduler (schedule_id, rule_id, frequency, time_of_day, last_run) VALUES
+('SCH001','RULE007','DAILY','09:00 AM','2025-10-08 09:00:00'),
+('SCH002','RULE008','WEEKLY','MON 09:00 AM','2025-10-06 09:00:00'),
+('SCH003','RULE016','DAILY','08:00 AM','2025-10-08 08:00:00');
+
+-- ===================================================
+-- 6️⃣ notification_log (Example Data)
+-- ===================================================
+INSERT INTO notification_log (log_id, event_code, recipient, channel, status, attempts, sent_at, error_message, payload_snapshot) VALUES
+('LOG001','LEAVE_REQUEST_CREATED','mgr_001','EMAIL','SENT',1,'2025-10-09 09:02:00',NULL,'{\"employee\":\"Ajay\",\"dates\":\"10–14 Oct\"}'),
+('LOG002','LEAVE_REQUEST_REVIEWED','emp_001','IN_APP','SENT',1,'2025-10-09 09:10:00',NULL,'{\"status\":\"Approved\"}'),
+('LOG003','HOLIDAY_ANNOUNCEMENT','all','EMAIL','SENT',1,'2025-10-09 09:30:00',NULL,'{\"holiday\":\"Diwali\"}');
+
+Excellent — let’s go deep 🧠 into how all 6 tables in your notification system (after removing notification_template) connect and work together.
+ We’ll build a realistic, end-to-end example that shows:
+How each table is linked (via IDs and relationships)
+
+
+What data flows through them
+
+
+How one complex event (multi-step) triggers multiple notifications
+
+
+
+🧩 Tables Overview (Quick Refresher)
+Table
+Purpose
+Key Columns
+Relationships
+notification_event_master
+Defines events that trigger notifications
+event_id, event_code
+🔗 1 → many → notification_rule
+notification_rule
+Defines rules, timing, and templates for events
+rule_id, event_id, template_key, channels
+🔗 1 → many → notification_recipient_mapping, 🔗 1 → many → notification_scheduler
+notification_recipient_mapping
+Maps who gets which notification
+recipient_id, rule_id
+🔗 many → 1 → notification_rule
+notification_channel_config
+Configures Email, SMS, In-App channels
+channel_id, channel_name
+Referenced logically by notification_rule.channels
+notification_log
+Records each notification sent (audit)
+log_id, event_code
+Logs executions of notification_rule
+notification_scheduler
+Schedules daily/weekly jobs
+schedule_id, rule_id
+🔗 many → 1 → notification_rule
+
+
+🧠 Complex Example: Multi-Level Leave Approval Workflow
+We’ll walk through one advanced flow:
+An employee submits a leave request → Manager approves → Checker verifies → Final HR approval → Notifications go to multiple people at different stages.
+This flow triggers 5 interconnected tables in action.
+
+🧱 Step 1: Event Trigger
+Employee Submits Leave Request
+Field
+Value
+event_code
+LEAVE_REQUEST_CREATED
+event_name
+Leave Request Submitted
+module
+Leave
+event_id
+EVT001
+
+📍 From notification_event_master
+EVT001 → "Leave Request Submitted"
+
+
+⚙️ Step 2: Rule Selection
+System checks notification_rule for active rules tied to EVT001.
+rule_id
+event_id
+rule_name
+condition_expression
+template_key
+channels
+timing
+RULE001
+EVT001
+Notify Manager on Leave Submission
+1=1
+LEAVE_REQUEST_SUBMIT
+["EMAIL","IN_APP"]
+IMMEDIATE
+
+So now the system knows:
+Use RULE001
+
+
+Send immediately
+
+
+Use channels Email & In-App
+
+
+Template key → LEAVE_REQUEST_SUBMIT
+
+
+
+👥 Step 3: Recipient Mapping
+Now it looks into notification_recipient_mapping for this rule.
+recipient_id
+rule_id
+recipient_type
+recipient_value
+level
+active
+RCP001
+RULE001
+ROLE
+MANAGER
+NULL
+1
+
+So:
+ ➡ The recipient type is a ROLE,
+ ➡ The value is MANAGER.
+That means the system dynamically fetches the manager of the requesting employee from the org hierarchy.
+
+🛰️ Step 4: Channel Resolution
+Each channel in RULE001 (“EMAIL”, “IN_APP”) is configured in notification_channel_config.
+channel_id
+channel_name
+config_json
+enabled
+CH001
+EMAIL
+{"smtp_server":"smtp.office365.com"}
+1
+CH002
+IN_APP
+{"api_endpoint":"/api/notify/in-app"}
+1
+
+So for this rule:
+EMAIL → Send via SMTP
+
+
+IN_APP → Push to frontend notification API
+
+
+
+📬 Step 5: Notification Sent and Logged
+Now that everything’s resolved, system sends both notifications:
+Email to Manager (mgr_001)
+
+
+In-App alert in dashboard
+
+
+Each send attempt is logged in notification_log:
+| log_id | event_code | recipient | channel | status | attempts | sent_at | payload_snapshot |
+ |---------|-------------|------------|----------|----------|-----------|------------------|
+ | LOG001 | LEAVE_REQUEST_CREATED | mgr_001 | EMAIL | SENT | 1 | 2025-10-09 09:02 | {"employee":"Ajay","dates":"10–14 Oct"} |
+ | LOG002 | LEAVE_REQUEST_CREATED | mgr_001 | IN_APP | SENT | 1 | 2025-10-09 09:02 | {"employee":"Ajay","dates":"10–14 Oct"} |
+
+🔁 Step 6: Multi-Level Approval Chain
+When the manager approves the request, a new event is published:
+LEAVE_REQUEST_REVIEWED → triggers EVT004
+From notification_rule:
+rule_id
+event_id
+rule_name
+template_key
+recipients
+RULE004
+EVT004
+Notify Employee on Review Decision
+LEAVE_REVIEW_RESULT
+EMPLOYEE
+
+Later, when it escalates to checker → next approver:
+rule_id
+event_id
+rule_name
+template_key
+recipient_value
+RULE014
+EVT014
+Notify Next Approver
+APPROVAL_NEXT_LEVEL
+NEXT_APPROVER
+RULE015
+EVT015
+Notify Initiator
+FINAL_APPROVAL_NOTICE
+INITIATOR
+
+So, each stage in the approval chain triggers:
+Event → EVT014 or EVT015
+
+
+Rule → RULE014 or RULE015
+
+
+Recipients → from mapping (dynamic next approver or initiator)
+
+
+Channels → from config
+
+
+Log entry → in notification_log
+
+
+
+⏰ Step 7: Scheduled Reminder Example
+If an approver doesn’t act in 3 days:
+notification_scheduler triggers RULE016 (pending approval reminder).
+
+
+schedule_id
+rule_id
+frequency
+time_of_day
+last_run
+SCH003
+RULE016
+DAILY
+08:00 AM
+2025-10-08 08:00:00
+
+This runs a daily cron that:
+Finds approvals older than 3 days.
+
+
+Reuses notification_rule RULE016 → APPROVAL_PENDING_REMINDER.
+
+
+Looks up notification_recipient_mapping for ROLE = APPROVER.
+
+
+Sends emails and in-app alerts again.
+
+
+Logs each retry in notification_log.
+
+
+
+🔗 Full Relationship Diagram (Conceptually)
+notification_event_master
+       │
+       │ (1 : Many)
+       ▼
+notification_rule
+       │
+       ├── (1 : Many)──► notification_recipient_mapping
+       │
+       ├── (1 : Many)──► notification_scheduler
+       │
+       └── (Many : 1)──► notification_channel_config
+               │
+               └── (All use configs for Email/SMS/In-App)
+       │
+       ▼
+notification_log
+   (records sent messages)
+
+
+🧠 Summary of Relationships by IDs
+From
+To
+Key Columns
+Relationship
+Meaning
+notification_event_master.event_id
+notification_rule.event_id
+event_id
+1 : Many
+One event can have multiple rules
+notification_rule.rule_id
+notification_recipient_mapping.rule_id
+rule_id
+1 : Many
+One rule can target multiple recipients
+notification_rule.rule_id
+notification_scheduler.rule_id
+rule_id
+1 : Many
+One rule can have multiple schedule jobs
+notification_rule.channels
+notification_channel_config.channel_name
+logical link
+Many : 1
+Each rule uses multiple channels from channel config
+notification_rule.event_id
+notification_log.event_code
+logical link
+1 : Many
+Each event produces multiple log entries
+
+
+✅ In short:
+When an event (like Leave Request Submitted) occurs,
+ it triggers a rule (defines conditions, template, timing),
+ looks up recipients (who to notify),
+ uses channel config (how to notify),
+ and logs the outcome (audit trail).
+Each stage connects through IDs (event_id, rule_id) ensuring traceability and modularity.
+
+Would you like me to create a visual ER diagram (image form) showing these table relationships and data flow for this example? It’ll clearly show how each table connects and where data flows at runtime.
+You said:
+### 👥 Step 3: Recipient Mapping Now it looks into **`notification_recipient_mapping`** for this rule. | recipient\_id | rule\_id | recipient\_type | recipient\_value | level | active | | --- | --- | --- | --- | --- | --- | | RCP001 | RULE001 | ROLE | MANAGER | NULL | 1 | So: ➡ The **recipient type** is a **ROLE**, ➡ The **value** is **MANAGER**. That means the system dynamically fetches the **manager of the requesting employee** from the org hierarchy.
+explain this
+ChatGPT said:
+Great question 👌 — let’s unpack that Recipient Mapping concept step by step.
+
+🎯 Purpose of notification_recipient_mapping
+This table tells your notification engine “who should receive a message” when a specific rule is triggered.
+Each entry defines:
+Which rule it belongs to (rule_id)
+
+
+How to identify the recipient (recipient_type)
+
+
+Who exactly the recipient is (recipient_value)
+
+
+Level (used for multi-level approval chains)
+
+
+Active flag (whether the mapping is currently valid)
+
+
+
+🧩 Example Row
+recipient_id
+rule_id
+recipient_type
+recipient_value
+level
+active
+RCP001
+RULE001
+ROLE
+MANAGER
+NULL
+1
+
+Let’s interpret it:
+Field
+Meaning
+recipient_id = RCP001
+Unique record in this table.
+rule_id = RULE001
+Links this mapping to the rule “Notify Manager on Leave Submission”.
+recipient_type = ROLE
+The recipient is identified by a role, not a specific user or dynamic variable.
+recipient_value = MANAGER
+The system must find the manager of the employee who triggered the event.
+level = NULL
+Not part of a multi-level approval chain — just the immediate recipient.
+active = 1
+The mapping is active and valid.
+
+
+🧠 How It Works in the Workflow
+When an employee submits a leave request:
+System triggers an event:
+ LEAVE_REQUEST_CREATED → event_id = EVT001
+
+
+Rule lookup:
+ Finds RULE001 (Notify Manager on Leave Submission)
+
+
+Recipient lookup:
+ Finds this mapping:
+
+ rule_id = RULE001 → recipient_type = ROLE → recipient_value = MANAGER
+
+
+Dynamic resolution:
+ The backend logic translates that “MANAGER” role into an actual user using the employee’s org chart.
+
+ Example:
+
+ SELECT manager_id
+FROM employee_hierarchy
+WHERE employee_id = 'EMP001';
+ → Returns MGR001
+
+
+Resolved recipient:
+ The system now knows:
+
+ Recipient = user_id MGR001
+
+
+Notification delivery:
+ The Notification Processor sends the email and in-app message to MGR001 using channel configurations.
+
+
+
+🧠 Types of recipient_type
+To support flexible use cases, you can have three main types:
+Type
+Example
+Description
+ROLE
+MANAGER, HR, CHECKER, APPROVER
+Looks up users based on their role in the system.
+USER
+U12345
+Sends directly to a specific user ID.
+DYNAMIC
+NEXT_APPROVER, INITIATOR, ALTERNATE_APPROVER
+Uses logic in the workflow to dynamically find the recipient (e.g., next approver in chain).
+
+
+🔁 In Multi-Level Approvals (level ≠ NULL)
+If you had:
+recipient_id
+rule_id
+recipient_type
+recipient_value
+level
+active
+RCP020
+RULE014
+DYNAMIC
+NEXT_APPROVER
+2
+1
+
+Then:
+The system would know this rule targets the 2nd-level approver in a chain.
+
+
+It queries workflow tables to find who the 2nd-level approver is dynamically at runtime.
+
+
+
+✅ In Summary
+notification_recipient_mapping = "Who gets the notification when a specific rule fires."
+It connects to notification_rule via rule_id.
+
+
+It doesn’t store actual user IDs — it stores rules to find them (like MANAGER, HR, or NEXT_APPROVER).
+
+
+The backend resolves those dynamically from the organization or workflow data when the event happens.
+
+That’s actually a sound architectural decision — and quite common in modern notification systems. Here’s how it plays out and why it makes sense 👇
+
+✅ Why removing notification_template makes sense
+
+Rich UI & Design Freedom
+
+Storing plain HTML in the DB limits you to simple, text-based layouts.
+
+By moving templates into code, you can use libraries like MJML, Handlebars, EJS, React Email, or Nodemailer with custom renderers to build elegant, responsive email designs.
+
+Version Control
+
+Templates in the codebase can be versioned with Git, reviewed via pull requests, and easily rolled back.
+
+This improves maintainability and consistency across environments.
+
+Performance & Maintainability
+
+No need to query the DB for template content each time.
+
+Templates are compiled once and cached.
+
+Security
+
+Avoids risk of injecting unvalidated HTML from DB sources.
+
+You control exactly what goes into the rendered email.
+
+⚙️ Suggested changes in your DB structure
+
+Since you’ll remove notification_template, update the dependencies as follows:
+
+Old Reference	Replace With
+notification_rule.template_id	template_code or template_key (string reference to the code-based template)
+Remove table	Delete notification_template from schema entirely
+Update code	Template engine resolves template_key → imports corresponding code template
+
+Example:
+
+{
+  "event_code": "LEAVE_REQUEST_CREATED",
+  "template_key": "LEAVE_REQUEST_SUBMITTED",
+  "channels": ["EMAIL", "IN_APP"]
+}
+
+
+Then in your service:
+
+import { leaveRequestSubmittedTemplate } from './templates/leaveRequestSubmitted.js';
+
+🧩 Tech Stack Suggestions
+
+Depending on your stack:
+
+Node.js:
+
+📧 mjml + nodemailer for beautiful responsive emails.
+
+handlebars or ejs for variable placeholders.
+
+Java / Spring Boot:
+
+Use Thymeleaf, Freemarker, or Velocity templates in the resources folder.
+
+Python / Django:
+
+Use Jinja2 or Django templates for email rendering.
+
+Would you like me to suggest an updated ER diagram (without notification_template) and show how the relationships would look after this change?
+
+You said:
+show how the relationships would look after this change?
+and list down table names
+ChatGPT said:
+
+Perfect — since you’re removing notification_template and handling templates within the codebase, we’ll adjust the schema and relationships accordingly.
+
+Here’s the updated data model 👇
+
+🧱 Updated Core Tables (After Removing notification_template)
+#	Table Name	Purpose
+1	notification_event_master	Defines all events that can trigger notifications.
+2	notification_rule	Defines business rules for when/how to send notifications. (Now stores template_key instead of template_id.)
+3	notification_recipient_mapping	Defines who receives which notification.
+4	notification_channel_config	Defines channel configurations (Email, In-App, SMS).
+5	notification_log	Logs each notification sent (audit, retries, failures).
+6	notification_scheduler	Manages scheduled/digest notifications.
+
+✅ Removed Table: notification_template
+
+🔗 Updated Relationships Overview
+notification_event_master
+        │
+        │  (1 : Many)
+        ▼
+notification_rule
+        │
+        ├── (1 : Many) ──► notification_recipient_mapping
+        │
+        ├── (Many : 1) ──► notification_channel_config (via channel references)
+        │
+        └── (1 : Many) ──► notification_scheduler
+
+⚙️ Detailed Relationship Notes
+Relationship	Type	Description
+notification_event_master → notification_rule	1 : Many	One event can have multiple rules (different channels or recipients).
+notification_rule → notification_recipient_mapping	1 : Many	A rule can have multiple recipients (e.g., Manager, HR).
+notification_rule → notification_scheduler	1 : Many	A rule can have multiple schedules (daily, weekly, etc.).
+notification_rule → notification_channel_config	Many : 1	Multiple rules can use the same channel configuration (e.g., Email).
+notification_rule now uses a field template_key	Text reference	Refers to a template stored in your codebase (e.g., "LEAVE_SUBMIT_EMAIL", "APPROVAL_NOTIFICATION_SMS").
+notification_log	Independent table	Stores audit logs for all notifications triggered from rules.
