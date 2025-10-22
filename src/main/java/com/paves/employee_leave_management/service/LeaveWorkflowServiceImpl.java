@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -94,20 +94,33 @@ public class LeaveWorkflowServiceImpl implements LeaveWorkflowService {
                 return Collections.singletonList(employee.getManager().getEmployeeId());
             }
         } else if (rule.getHierarchyMapping() == HierarchyMapping.PROJECT_MAPPING) {
-            // This is where you call the external API to get project managers
-            // The URL should be configurable
-            String apiUrl = "http://localhost:8081/api/projects/employee/" + employee.getEmployeeId() + "/managers";
+            String apiUrl = "http://192.168.2.37:4000/api/projects/member/" + employee.getEmployeeId();
             try {
-                // Assuming the API returns a List<String> of manager IDs
-                List<String> projectManagerIds = restTemplate.getForObject(apiUrl, List.class);
-                return projectManagerIds != null ? projectManagerIds : Collections.emptyList();
+                // Call API and get response as a List of Map (since JSON is an array of objects)
+                List<Map<String, Object>> projectList = restTemplate.getForObject(apiUrl, List.class);
+
+                if (projectList == null || projectList.isEmpty()) {
+                    return Collections.emptyList();
+                }
+
+                // Extract ownerId (managerId) from each project
+                Set<String> managerIds = projectList.stream()
+                        .map(project -> project.get("ownerId"))
+                        .filter(Objects::nonNull)
+                        .map(Object::toString)
+                        .collect(Collectors.toSet()); // distinct owners
+
+                return new ArrayList<>(managerIds);
+
             } catch (Exception e) {
-                // Log the error; decide if the workflow should fail or continue
+                e.printStackTrace(); // log properly in production
                 return Collections.emptyList();
             }
+
         } else if (rule.getHierarchyMapping() == HierarchyMapping.FIXED_ROLE) {
             return Collections.singletonList(rule.getFixedApproverId());
         }
         return Collections.emptyList();
     }
+
 }
