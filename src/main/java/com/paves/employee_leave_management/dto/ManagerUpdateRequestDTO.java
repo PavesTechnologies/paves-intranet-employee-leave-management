@@ -1,9 +1,6 @@
 package com.paves.employee_leave_management.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
@@ -15,6 +12,8 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 public class ManagerUpdateRequestDTO {
     
     @NotBlank(message = "Manager ID is required")
@@ -24,6 +23,8 @@ public class ManagerUpdateRequestDTO {
     private String leaveId;
     
     // Optional fields for update
+    private String employeeId;
+    private String managerComment;
     private String leaveTypeId;
     private LocalDate startDate;
     private String startSession;
