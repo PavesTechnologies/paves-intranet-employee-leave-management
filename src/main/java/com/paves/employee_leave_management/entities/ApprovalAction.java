@@ -21,7 +21,10 @@ public class ApprovalAction {
     @JoinColumn(name = "stage_id", nullable = false)
     private ApprovalStage stage;
 
-    private UUID actionBy;
+//    private UUID actionBy;
+    @Column(name = "action_by")
+    private String actionBy;
+
     private String actionType; // APPROVE, REJECT, COMMENT
     private String comment;
     private LocalDateTime actionAt;

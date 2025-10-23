@@ -18,10 +18,11 @@ public class DelegationRule {
     private UUID id;
 
     @Column(nullable = false)
-    private UUID ownerUserId;
+    private String ownerUserId;
+//    private UUID ownerUserId;
 
     @Column(nullable = false)
-    private UUID delegateUserId;
+    private String delegateUserId;
 
     private LocalDateTime validFrom;
     private LocalDateTime validTo;

@@ -1,5 +1,4 @@
 package com.paves.employee_leave_management.entities;
-import com.paves.employee_leave_management.entities.LeaveRequest ;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -19,10 +18,13 @@ public class ApprovalStage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "request_id", nullable = false)
-    private LeaveRequest request;
+    private Request request;
 
     private Integer level;
-    private UUID approverId;
+//    private UUID approverId;
+    @Column(name = "approver_id")
+    private String approverId;
+
     private String status; // PENDING, APPROVED, REJECTED, SKIPPED
 
     private LocalDateTime assignedAt;

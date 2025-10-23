@@ -1,6 +1,6 @@
 package com.paves.employee_leave_management.enums;
 
-public enum ApproverTypeA {
+public enum ApproverTypeA{
     SUPERVISOR,
     DEPARTMENT_HEAD,
     ROLE_BASED,
