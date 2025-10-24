@@ -11,4 +11,6 @@ import java.util.List;
 public interface ApprovalStageRepository extends JpaRepository<ApprovalStage, UUID> {
     List<ApprovalStage> findByRequestIdOrderByLevelAsc(UUID requestId);
     List<ApprovalStage> findByApproverIdAndStatus(UUID approverId, String status);
+
+    List<ApprovalStage> findByRequestIdAndStatusIn(UUID id, List<String> pending);
 }

@@ -6,6 +6,8 @@ import com.paves.employee_leave_management.dto.ManagerUpdateRequestDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.security.CurrentUser;
+import com.paves.employee_leave_management.service.ApprovalActionService;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -28,6 +30,7 @@ public class LeaveRequestController {
     private final LeaveRequestServiceInterface leaveRequestService;
     private final EmployeeServiceInterface employeeService;
     private final LeaveTypeServiceInterface leaveTypeService;
+    private final ApprovalActionService approvalActionService;
     
     // ==================== EMPLOYEE OPERATIONS ====================
     
@@ -262,22 +265,76 @@ public class LeaveRequestController {
      * Approve leave request using request body
      */
 
+//    @PostMapping("/approve-batch")
+//    @PreAuthorize("hasAnyRole('MANAGER')")
+//    public ResponseEntity<List<LeaveRequest>> approveLeaveBatch(
+//            @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
+//
+//        List<LeaveRequest> approved = leaveRequestService.approveMultipleRequests(batchApproval);
+//        return ResponseEntity.ok(approved);
+//    }
+//
+//    @PostMapping("/reject-batch")
+//    @PreAuthorize("hasAnyRole('MANAGER')")
+//    public ResponseEntity<List<LeaveRequest>> rejectLeaveBatch(
+//            @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
+//
+//        List<LeaveRequest> rejected = leaveRequestService.rejectMultipleRequests(batchApproval);
+//        return ResponseEntity.ok(rejected);
+//    }
     @PostMapping("/approve-batch")
-    @PreAuthorize("hasAnyRole('MANAGER')")
-    public ResponseEntity<List<LeaveRequest>> approveLeaveBatch(
-            @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR_MANAGER', 'DIRECTOR')") // Adjust roles as needed
+    public ResponseEntity<ApiResponse<BulkActionResultDTO>> approveBatch(
+            @Valid @RequestBody BulkActionRequestDTO requestDto,
+            @CurrentUser Employee currentUser) { // Get current user to set approverId
 
-        List<LeaveRequest> approved = leaveRequestService.approveMultipleRequests(batchApproval);
-        return ResponseEntity.ok(approved);
+        // Set the approver ID and action type from the context
+        requestDto.setApproverId(currentUser.getEmployeeId());
+        requestDto.setActionType("APPROVE"); // Hardcode action type for this endpoint
+
+        // Call the new service
+        BulkActionResultDTO result = approvalActionService.processBulkActions(requestDto);
+
+        // Return the summary DTO
+        return ResponseEntity.ok(new ApiResponse<>(
+                true,
+                "Bulk approval processed. Success: " + result.getSuccessfulStageIds().size() +
+                        ", Failures: " + result.getFailedActions().size(),
+                result
+        ));
     }
 
+    /**
+     * Rejects multiple pending Approval Stages in bulk.
+     * The request body must contain the list of ApprovalStage UUIDs and a rejection comment.
+     */
     @PostMapping("/reject-batch")
-    @PreAuthorize("hasAnyRole('MANAGER')")
-    public ResponseEntity<List<LeaveRequest>> rejectLeaveBatch(
-            @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR_MANAGER', 'DIRECTOR')") // Adjust roles
+    public ResponseEntity<ApiResponse<BulkActionResultDTO>> rejectBatch(
+            @Valid @RequestBody BulkActionRequestDTO requestDto, // DTO includes comment now
+            @CurrentUser Employee currentUser) {
 
-        List<LeaveRequest> rejected = leaveRequestService.rejectMultipleRequests(batchApproval);
-        return ResponseEntity.ok(rejected);
+        // Set the approver ID and action type
+        requestDto.setApproverId(currentUser.getEmployeeId());
+        requestDto.setActionType("REJECT"); // Hardcode action type
+
+        // Basic validation for rejection comment
+        if (requestDto.getComment() == null || requestDto.getComment().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(new ApiResponse<>(
+                    false, "Rejection comment is required for bulk rejection.", null
+            ));
+        }
+
+        // Call the new service
+        BulkActionResultDTO result = approvalActionService.processBulkActions(requestDto);
+
+        // Return the summary DTO
+        return ResponseEntity.ok(new ApiResponse<>(
+                true,
+                "Bulk rejection processed. Success: " + result.getSuccessfulStageIds().size() +
+                        ", Failures: " + result.getFailedActions().size(),
+                result
+        ));
     }
 
 
