@@ -28,7 +28,9 @@ public class Request {
     private String leaveType;
     private Integer totalDays;
 
-    private String status;        // PENDING, APPROVED, REJECTED
+    private String status;// PENDING, APPROVED, REJECTED
+
+    private String targetEntityId;
 
     @Lob
     private String makerAttributes; // JSON string of context info

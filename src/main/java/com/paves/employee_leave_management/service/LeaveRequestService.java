@@ -1,28 +1,36 @@
 package com.paves.employee_leave_management.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.repo.RequestRepository; // New import
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.paves.employee_leave_management.service.ruleengine.RuleEvaluatorService; // New import
+import com.paves.employee_leave_management.service.ruleengine.WorkflowEngine;
+
 
 import java.util.*;
-
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.regex.Pattern;
 
 @Service
 @Transactional
+@RequiredArgsConstructor // Use Lombok for constructor injection
+@Slf4j
 public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Autowired
@@ -46,6 +54,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Autowired
     private EmailServiceInterface emailService;
 
+    private final RequestRepository requestRepository;
+    private final RuleEvaluatorService ruleEvaluatorService;
+    private final WorkflowEngine workflowEngine;
+    private final ObjectMapper objectMapper;
     private static final Pattern GOOGLE_DRIVE_URL_PATTERN = Pattern.compile(
             "^https?://(drive|docs)\\.google\\.com/(file/d/|folders/|spreadsheets/d/|document/d/|open\\?id=)([a-zA-Z0-9_-]+)(/.*)?$"
     );
