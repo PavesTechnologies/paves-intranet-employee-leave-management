@@ -70,7 +70,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/year/{year}")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'GENERAL') ")
     public ResponseEntity<List<Holidays>> getHolidaysByYear(@PathVariable int year) {
         return holidaysService.getHolidaysByYear(year);
     }
@@ -140,5 +140,10 @@ public class HolidaysController {
         return holidaysService.getHolidaysByStateAndCountry(state, country);
     }
 
+    @GetMapping("/month/{month}")
+    public ResponseEntity<List<Holidays>> getHolidaysByMonth(@PathVariable int month) {
+        List<Holidays> holidays = holidaysService.getHolidaysByMonth(month);
+        return ResponseEntity.ok(holidays);
+    }
 }
 
