@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.dto.LeaveBalanceUpdateHandleDTO; // Example DTO
+import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.entities.Request;
 import com.paves.employee_leave_management.entities.HrOperationRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -81,7 +82,8 @@ public class HrOperationProcessorService {
                 case "UPDATE_EMPLOYEE_BALANCE":
                     // Deserialize payload into appropriate DTO/Map
                     // Example using a specific DTO (adjust if you use Map)
-                    LeaveBalanceUpdateHandleDTO balanceUpdate = objectMapper.readValue(hrData.getPayload(), LeaveBalanceUpdateHandleDTO.class);
+
+                    LeaveBalanceUpdateRequest balanceUpdate = objectMapper.readValue(hrData.getPayload(), LeaveBalanceUpdateRequest.class);
                     // --- CALL THE ACTUAL BUSINESS LOGIC ---
                     // Assuming updateLeaveBalancesFromHr takes the DTO directly
                     leaveBalanceService.updateLeaveBalancesFromHr(balanceUpdate);

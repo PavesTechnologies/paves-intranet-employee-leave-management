@@ -13,4 +13,6 @@ public interface ApprovalStageRepository extends JpaRepository<ApprovalStage, UU
     List<ApprovalStage> findByApproverIdAndStatus(UUID approverId, String status);
 
     List<ApprovalStage> findByRequestIdAndStatusIn(UUID id, List<String> pending);
+    List<ApprovalStage> findByRequestIdAndStatus(UUID requestId, String status);
+    List<ApprovalStage> findByRequestIdAndApproverId(UUID requestId, String approverId);
 }

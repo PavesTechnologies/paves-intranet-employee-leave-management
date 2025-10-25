@@ -6,6 +6,7 @@ import com.paves.employee_leave_management.entities.Request;
 import com.paves.employee_leave_management.entities.ApprovalStep;
 import com.paves.employee_leave_management.entities.RuleSet;
 import com.paves.employee_leave_management.enums.ApprovalMode;
+import com.paves.employee_leave_management.event.WorkflowCompletionEvent;
 import com.paves.employee_leave_management.repo.ApprovalActionRepository;
 import com.paves.employee_leave_management.repo.ApprovalStageRepository;
 import com.paves.employee_leave_management.repo.RequestRepository;
@@ -13,6 +14,7 @@ import com.paves.employee_leave_management.repo.ApprovalStepRepository;
 import com.paves.employee_leave_management.service.ruleengine.resolver.ApproverResolverFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,7 @@ public class WorkflowEngine {
 
     private final ApproverResolverFactory resolverFactory;
     private final DelegationService delegationService;
+    private final ApplicationEventPublisher eventPublisher;
     // private final NotificationService notificationService;
 
     public void startWorkflow(Request request, RuleSet ruleSet) {
@@ -44,6 +47,7 @@ public class WorkflowEngine {
             log.warn("RuleSet {} has no steps. Auto-approving Request {}.", ruleSet.getName(), request.getId());
             request.setStatus("APPROVED");
             requestRepository.save(request);
+            eventPublisher.publishEvent(new WorkflowCompletionEvent(this,request));
             return;
         }
 
@@ -117,6 +121,7 @@ public class WorkflowEngine {
 
             request.setStatus("REJECTED");
             requestRepository.save(request);
+            eventPublisher.publishEvent(new WorkflowCompletionEvent(this,request));
 
         } else if ("APPROVE".equals(actionType.toUpperCase())) {
             log.info("Stage {} for Request {} APPROVED", stage.getId(), request.getId());
@@ -150,6 +155,7 @@ public class WorkflowEngine {
                 log.info("Final approval level complete. Request {} APPROVED.", request.getId());
                 request.setStatus("APPROVED");
                 requestRepository.save(request);
+                eventPublisher.publishEvent(new WorkflowCompletionEvent(this, request));
             } else {
                 log.info("Advancing Request {} to Level {}", request.getId(), nextLevel);
                 List<ApprovalStage> nextLevelStages = allStages.stream()

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.enums.ChangeImpact;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.event.WorkflowCompletionEvent;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
@@ -1044,127 +1046,104 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 //    }
 
 
-    // ==================== UTILITY METHODS ====================
+    // ==================== SMART UPDATE WITH LEVEL PRESERVATION ====================
 
     /**
-     * Get employee leave balance
+     * Assesses the impact of changes between original and updated leave request.
+     * Determines whether changes are MAJOR (requires workflow reset),
+     * MINOR (preserve approvals, notify), or TRIVIAL (no workflow impact).
      */
-    @Override
-    public LeaveBalanceDTO getEmployeeLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
-        return leaveBalanceService.getLeaveBalance(employeeId, leaveTypeId, year);
+    private LeaveChangeDetails assessChangeImpact(LeaveRequest original, LeaveRequestValidationDTO updated) {
+        LeaveChangeDetails changeDetails = LeaveChangeDetails.builder()
+                .updatedBy(original.getEmployee().getEmployeeId())
+                .build();
+        
+        // 1. Check leave type change
+        if (!original.getLeaveType().getLeaveTypeId().equals(updated.getLeaveTypeId())) {
+            changeDetails.setLeaveTypeChanged(true);
+            changeDetails.addChange("Leave type changed from " + 
+                original.getLeaveType().getLeaveName() + " to new type");
+        }
+        
+        // 2. Check date changes
+        boolean startDateChanged = !original.getStartDate().equals(updated.getStartDate());
+        boolean endDateChanged = !original.getEndDate().equals(updated.getEndDate());
+        if (startDateChanged || endDateChanged) {
+            changeDetails.setDatesChanged(true);
+            if (startDateChanged) {
+                changeDetails.addChange("Start date: " + original.getStartDate() + " → " + updated.getStartDate());
+            }
+            if (endDateChanged) {
+                changeDetails.addChange("End date: " + original.getEndDate() + " → " + updated.getEndDate());
+            }
+        }
+        
+        // 3. Check duration change
+        double originalDays = original.getDaysRequested();
+        double updatedDays = updated.getDaysRequested();
+        if (Math.abs(originalDays - updatedDays) > 0.01) { // Allow for floating point precision
+            changeDetails.setDurationChanged(true);
+            changeDetails.setDaysDifference((int) Math.abs(originalDays - updatedDays));
+            changeDetails.addChange("Duration: " + originalDays + " days → " + updatedDays + " days");
+        }
+        
+        // 4. Check reason change
+        if (!Objects.equals(original.getReason(), updated.getReason())) {
+            changeDetails.setReasonChanged(true);
+            changeDetails.addChange("Reason updated");
+        }
+        
+        // 5. Check documentation change
+        if (!Objects.equals(original.getDriveLink(), updated.getDriveLink())) {
+            changeDetails.setDocumentationChanged(true);
+            changeDetails.addChange("Documentation link updated");
+        }
+        
+        // 6. Determine impact level based on changes
+        ChangeImpact impact = determineImpactLevel(changeDetails);
+        changeDetails.setImpact(impact);
+        
+        log.info("Change assessment for Leave Request {}: Impact={}, Changes={}", 
+            original.getLeaveId(), impact, changeDetails.getChanges());
+        
+        return changeDetails;
     }
-
+    
     /**
-     * Update leave request by employee
+     * Determines the impact level based on change details.
+     * 
+     * MAJOR: Leave type change, duration change >2 days, or significant date shifts
+     * MINOR: Duration change ≤2 days, date changes within reason, reason updates
+     * TRIVIAL: Only documentation or minor formatting changes
      */
-//    @Override
-//    public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest, LeaveRequestValidationDTO request) {
-//        return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
-//                        leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
-//                .map(existingRequest -> {
-//                    // Disallow update if already approved/rejected
-//                    if (existingRequest.getStatus() == LeaveStatus.APPROVED ||
-//                            existingRequest.getStatus() == LeaveStatus.REJECTED) {
-//                        throw new LeaveBalanceExceptionHandler("Cannot update a leave request that has already been approved or rejected.");
-//                    }
-//
-//                    // Reverse the old leave balance before applying changes
-//                    leaveBalanceService.updateLeaveBalanceAfterRejected(
-//                            existingRequest.getEmployee().getEmployeeId(),
-//                            existingRequest.getLeaveType().getLeaveTypeId(),
-//                            existingRequest.getDaysRequested(),
-//                            existingRequest.getRequestDate().getYear()
-//                    );
-//
-//                    // Build new leave type
-//                    LeaveType updatedLeaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
-//                    if (updatedLeaveType == null) {
-//                        throw new LeaveBalanceExceptionHandler("Leave type not found: " + request.getLeaveTypeId());
-//                    }
-//
-//                    // Validate updated request
-//                    ValidationResultDTO validationResult = validateLeaveRequest(request);
-//                    if (!validationResult.isValid()) {
-//                        return validationResult;
-//                    }
-//
-//                    // Track changes for email
-//                    StringBuilder changes = new StringBuilder();
-//                    if (!existingRequest.getLeaveType().getLeaveTypeId().equals(updatedLeaveType.getLeaveTypeId())) {
-//                        changes.append("Leave Type: ").append(existingRequest.getLeaveType().getLeaveName())
-//                                .append(" → ").append(updatedLeaveType.getLeaveName()).append("\n");
-//                    }
-//                    if (!existingRequest.getStartDate().equals(request.getStartDate())) {
-//                        changes.append("Start Date: ").append(existingRequest.getStartDate())
-//                                .append(" → ").append(request.getStartDate()).append("\n");
-//                    }
-//                    if (!existingRequest.getEndDate().equals(request.getEndDate())) {
-//                        changes.append("End Date: ").append(existingRequest.getEndDate())
-//                                .append(" → ").append(request.getEndDate()).append("\n");
-//                    }
-//                    if (existingRequest.getDaysRequested() != request.getDaysRequested()) {
-//                        changes.append("Days Requested: ").append(existingRequest.getDaysRequested())
-//                                .append(" → ").append(request.getDaysRequested()).append("\n");
-//                    }
-//                    if (!Objects.equals(existingRequest.getReason(), request.getReason())) {
-//                        changes.append("Reason updated.\n");
-//                    }
-//
-//                    // Update fields
-//                    existingRequest.setLeaveType(updatedLeaveType);
-//                    existingRequest.setStartDate(request.getStartDate());
-//                    existingRequest.setEndDate(request.getEndDate());
-//                    existingRequest.setDaysRequested(request.getDaysRequested());
-//                    existingRequest.setReason(request.getReason());
-//                    existingRequest.setDriveLink(request.getDriveLink());
-//                    existingRequest.setStartSession(request.getStartSession());
-//                    existingRequest.setEndSession(request.getEndSession());
-//
-//                    // Reset approval fields
-//                    existingRequest.setApprovedBy(null);
-//                    existingRequest.setResponseDate(null);
-//                    existingRequest.setManagerComment(null);
-//                    existingRequest.setStatus(LeaveStatus.PENDING);
-//
-//                    // Re-apply updated leave balance
-//                    leaveBalanceService.updateLeaveBalanceAfterApproval(
-//                            request.getEmployeeId(),
-//                            request.getLeaveTypeId(),
-//                            request.getDaysRequested(),
-//                            request.getRequestDate().getYear()
-//                    );
-//
-//                    // Save updated request
-//                    LeaveRequest updatedRequest = leaveRequestRepo.save(existingRequest);
-//
-//                    // Notify manager if changes were made
-//                    if (changes.length() > 0) {
-//                        try {
-//                            String managerEmail = updatedRequest.getEmployee().getManager() != null ?
-//                                    updatedRequest.getEmployee().getManager().getEmail() : null;
-//                            if (managerEmail != null && !managerEmail.isEmpty()) {
-//                                emailService.sendLeaveUpdateNotification(
-//                                        managerEmail,
-//                                        updatedRequest.getEmployee().getFullName(),
-//                                        updatedLeaveType.getLeaveName(),
-//                                        updatedRequest.getStartDate().toString(),
-//                                        updatedRequest.getEndDate().toString(),
-//                                        changes.toString()
-//                                );
-//                            }
-//                        } catch (Exception e) {
-//                            System.err.println("Failed to send update notification email: " + e.getMessage());
-//                        }
-//                    }
-//
-//                    // Finalize result
-//                    validationResult.addMessage("Leave request updated successfully.");
-//                    validationResult.setLeaveId(updatedRequest.getLeaveId());
-//
-//                    return validationResult;
-//                })
-//                .orElseThrow(() -> new LeaveBalanceExceptionHandler("Leave request not found for given ID and employee."));
-//    }
+    private ChangeImpact determineImpactLevel(LeaveChangeDetails changes) {
+        // MAJOR changes that require complete workflow reset
+        if (changes.isLeaveTypeChanged()) {
+            return ChangeImpact.MAJOR;
+        }
+        
+        if (changes.isDurationChanged() && changes.getDaysDifference() > 2) {
+            return ChangeImpact.MAJOR;
+        }
+        
+        // Check if dates changed by more than 3 days (indicates major reschedule)
+        if (changes.isDatesChanged() && changes.isDurationChanged() && changes.getDaysDifference() > 3) {
+            return ChangeImpact.MAJOR;
+        }
+        
+        // MINOR changes that preserve workflow but require notification
+        if (changes.isDatesChanged() || changes.isDurationChanged() || changes.isReasonChanged()) {
+            return ChangeImpact.MINOR;
+        }
+        
+        // TRIVIAL changes - only documentation or session changes
+        if (changes.isDocumentationChanged()) {
+            return ChangeImpact.TRIVIAL;
+        }
+        
+        // No changes detected
+        return ChangeImpact.TRIVIAL;
+    }
 
     // update request by employee(using workflow engine)
     @Override
