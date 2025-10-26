@@ -13,9 +13,9 @@ public interface LeaveRequestServiceInterface {
     // Manager operations - New DTO-based methods
     List<LeaveRequest> getRequestsForManager(ManagerQueryDTO queryDTO);
     List<LeaveRequest> getLeaveHistoryForManager(ManagerQueryDTO queryDTO);
-    LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest);
-    LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest);
-    LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest);
+//    LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest);
+//    LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest);
+//    LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest);
 
     // Employee operations
     ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest,LeaveRequestValidationDTO request);
@@ -31,16 +31,18 @@ public interface LeaveRequestServiceInterface {
     LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request);
     
     // Utility operations
-    LeaveBalanceDTO getEmployeeLeaveBalance(String employeeId, String leaveTypeId, Integer year);
+//    LeaveBalanceDTO getEmployeeLeaveBalance(String employeeId, String leaveTypeId, Integer year);
     List<LeaveRequest> getOverlappingRequests(String employeeId, LocalDate startDate, LocalDate endDate);
 
     List<LeaveRequest> getLeaveHistoryByYear(String employeeId, LocalDate startDate, LocalDate endDate);
 
-    List<LeaveRequest> approveMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
+//    List<LeaveRequest> approveMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
 
-    List<LeaveRequest> rejectMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
+//    List<LeaveRequest> rejectMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
 
     List<PendingAndApprovedLeaveRequestsDTO> getPendingLeaveAndApprovedLeaveByEmployeeId(String employeeId, LocalDate startDate, LocalDate endDate);
     List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year);
+
+    ApproverUpdateResponseDTO updateRequestByApprover(ApproverUpdateRequestDTO request);
 }
 

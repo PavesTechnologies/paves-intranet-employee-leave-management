@@ -178,28 +178,28 @@ public class LeaveRequestController {
     /**
      * Get employee leave balance
      */
-    @GetMapping("/balance/{employeeId}/{leaveTypeId}")
-    @PreAuthorize("hasAnyRole('GENERAL','MANAGER','HR')")
-    public ResponseEntity<ApiResponse<LeaveBalanceDTO>> getLeaveBalance(
-            @PathVariable String employeeId,
-            @PathVariable String leaveTypeId,
-            @RequestParam(required = false) Integer year) {
-        try {
-            if (year == null) {
-                year = LocalDate.now().getYear();
-            }
-            LeaveBalanceDTO balance = leaveRequestService.getEmployeeLeaveBalance(employeeId, leaveTypeId, year);
-            if (balance != null) {
-                return ResponseEntity.ok(new ApiResponse<>(true, "Balance retrieved successfully", balance));
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiResponse<>(false, "Leave balance not found", null));
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error retrieving balance: " + e.getMessage(), null));
-        }
-    }
+//    @GetMapping("/balance/{employeeId}/{leaveTypeId}")
+//    @PreAuthorize("hasAnyRole('GENERAL','MANAGER','HR')")
+//    public ResponseEntity<ApiResponse<LeaveBalanceDTO>> getLeaveBalance(
+//            @PathVariable String employeeId,
+//            @PathVariable String leaveTypeId,
+//            @RequestParam(required = false) Integer year) {
+//        try {
+//            if (year == null) {
+//                year = LocalDate.now().getYear();
+//            }
+//            LeaveBalanceDTO balance = leaveRequestService.getEmployeeLeaveBalance(employeeId, leaveTypeId, year);
+//            if (balance != null) {
+//                return ResponseEntity.ok(new ApiResponse<>(true, "Balance retrieved successfully", balance));
+//            } else {
+//                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                        .body(new ApiResponse<>(false, "Leave balance not found", null));
+//            }
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(new ApiResponse<>(false, "Error retrieving balance: " + e.getMessage(), null));
+//        }
+//    }
 
     /**
      * Check for overlapping leave requests
@@ -265,17 +265,17 @@ public class LeaveRequestController {
     /**
      * Approve leave request using request body
      */
-    @PutMapping("/approve")
-    @PreAuthorize("hasAnyRole('MANAGER')")
-    public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(@Valid @RequestBody ApprovalRequestDTO approvalRequest) {
-        try {
-            LeaveRequest approvedRequest = leaveRequestService.approveRequest(approvalRequest);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request approved successfully", approvedRequest));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error approving request: " + e.getMessage(), null));
-        }
-    }
+//    @PutMapping("/approve")
+//    @PreAuthorize("hasAnyRole('MANAGER')")
+//    public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(@Valid @RequestBody ApprovalRequestDTO approvalRequest) {
+//        try {
+//            LeaveRequest approvedRequest = leaveRequestService.approveRequest(approvalRequest);
+//            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request approved successfully", approvedRequest));
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(new ApiResponse<>(false, "Error approving request: " + e.getMessage(), null));
+//        }
+//    }
 
     /**
      * Approve leave request using request body
@@ -358,30 +358,61 @@ public class LeaveRequestController {
     /**
      * Reject leave request using request body
      */
-    @PutMapping("/reject")
-    @PreAuthorize("hasAnyRole('MANAGER')")
-    public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(@Valid @RequestBody RejectionRequestDTO rejectionRequest) {
-        try {
-            LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(rejectionRequest);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request rejected successfully", rejectedRequest));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error rejecting request: " + e.getMessage(), null));
-        }
-    }
+//    @PutMapping("/reject")
+//    @PreAuthorize("hasAnyRole('MANAGER')")
+//    public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(@Valid @RequestBody RejectionRequestDTO rejectionRequest) {
+//        try {
+//            LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(rejectionRequest);
+//            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request rejected successfully", rejectedRequest));
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(new ApiResponse<>(false, "Error rejecting request: " + e.getMessage(), null));
+//        }
+//    }
 
     /**
      * Update leave request by manager using request body
      */
-    @PutMapping("/update")
-    @PreAuthorize("hasAnyRole('MANAGER')")
-    public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(@Valid @RequestBody ManagerUpdateRequestDTO updateRequest) {
+    //old
+//    @PutMapping("/update")
+//    @PreAuthorize("hasAnyRole('MANAGER')")
+//    public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(@Valid @RequestBody ManagerUpdateRequestDTO updateRequest) {
+//        try {
+//            LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(updateRequest);
+//            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", updatedRequest));
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(new ApiResponse<>(false, "Error updating request: " + e.getMessage(), null));
+//        }
+//    }
+
+    //new
+    /**
+     * Update leave request by approver
+     *
+     * For MINOR changes without decision:
+     * - Returns 200 with requiresApproverDecision=true
+     * - Frontend should prompt user and call again with restartWorkflow flag
+     *
+     * For all other cases:
+     * - Returns 200 with success=true/false and actionTaken
+     */
+    @PutMapping("/approver/update")
+    public ResponseEntity<ApproverUpdateResponseDTO> updateByApprover(
+            @RequestBody ApproverUpdateRequestDTO request
+    ) {
         try {
-            LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(updateRequest);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", updatedRequest));
+            ApproverUpdateResponseDTO response = leaveRequestService.updateRequestByApprover(request);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error updating request: " + e.getMessage(), null));
+            return ResponseEntity.badRequest().body(
+                    ApproverUpdateResponseDTO.builder()
+                            .success(false)
+                            .actionTaken("ERROR")
+                            .errors(List.of(e.getMessage()))
+                            .message("Failed to update leave request")
+                            .build()
+            );
         }
     }
 
@@ -412,17 +443,17 @@ public class LeaveRequestController {
         }
     }
 
-    @PutMapping("/cancel")
-    @PreAuthorize("hasAnyRole('MANAGER')")
-    public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest){
-        try{
-            LeaveRequest cancelledRequest = leaveRequestService.rejectRequest(rejectionRequest);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request cancelled successfully", cancelledRequest));
-        }catch (Exception e){
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error cancelling request: " + e.getMessage(), null));
-        }
-    }
+//    @PutMapping("/cancel")
+//    @PreAuthorize("hasAnyRole('MANAGER')")
+//    public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest){
+//        try{
+//            LeaveRequest cancelledRequest = leaveRequestService.rejectRequest(rejectionRequest);
+//            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request cancelled successfully", cancelledRequest));
+//        }catch (Exception e){
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(new ApiResponse<>(false, "Error cancelling request: " + e.getMessage(), null));
+//        }
+//    }
 
    @GetMapping("/view-details")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> leaveBalanceViewDetails(@RequestParam String employeeId, @RequestParam String leaveName, @RequestParam int year){

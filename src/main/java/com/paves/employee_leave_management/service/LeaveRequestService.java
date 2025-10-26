@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.ChangeImpact;
-import com.paves.employee_leave_management.enums.LeaveStatus;
+import com.paves.employee_leave_management.entities.LeaveStatus;
 import com.paves.employee_leave_management.event.WorkflowCompletionEvent;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
@@ -26,6 +26,7 @@ import com.paves.employee_leave_management.service.ruleengine.RuleEvaluatorServi
 import com.paves.employee_leave_management.service.ruleengine.WorkflowEngine;
 
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -1053,18 +1054,22 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
      * Determines whether changes are MAJOR (requires workflow reset),
      * MINOR (preserve approvals, notify), or TRIVIAL (no workflow impact).
      */
-    private LeaveChangeDetails assessChangeImpact(LeaveRequest original, LeaveRequestValidationDTO updated) {
+    private LeaveChangeDetails assessChangeImpact(
+            LeaveRequest original,
+            LeaveRequestValidationDTO updated,
+            Request workflowRequest
+    ) {
         LeaveChangeDetails changeDetails = LeaveChangeDetails.builder()
                 .updatedBy(original.getEmployee().getEmployeeId())
                 .build();
-        
+
         // 1. Check leave type change
         if (!original.getLeaveType().getLeaveTypeId().equals(updated.getLeaveTypeId())) {
             changeDetails.setLeaveTypeChanged(true);
-            changeDetails.addChange("Leave type changed from " + 
-                original.getLeaveType().getLeaveName() + " to new type");
+            changeDetails.addChange("Leave type changed from " +
+                    original.getLeaveType().getLeaveName() + " to new type");
         }
-        
+
         // 2. Check date changes
         boolean startDateChanged = !original.getStartDate().equals(updated.getStartDate());
         boolean endDateChanged = !original.getEndDate().equals(updated.getEndDate());
@@ -1077,7 +1082,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 changeDetails.addChange("End date: " + original.getEndDate() + " → " + updated.getEndDate());
             }
         }
-        
+
         // 3. Check duration change
         double originalDays = original.getDaysRequested();
         double updatedDays = updated.getDaysRequested();
@@ -1086,27 +1091,85 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             changeDetails.setDaysDifference((int) Math.abs(originalDays - updatedDays));
             changeDetails.addChange("Duration: " + originalDays + " days → " + updatedDays + " days");
         }
-        
+
         // 4. Check reason change
         if (!Objects.equals(original.getReason(), updated.getReason())) {
             changeDetails.setReasonChanged(true);
             changeDetails.addChange("Reason updated");
         }
-        
+
         // 5. Check documentation change
         if (!Objects.equals(original.getDriveLink(), updated.getDriveLink())) {
             changeDetails.setDocumentationChanged(true);
             changeDetails.addChange("Documentation link updated");
         }
-        
-        // 6. Determine impact level based on changes
-        ChangeImpact impact = determineImpactLevel(changeDetails);
-        changeDetails.setImpact(impact);
-        
-        log.info("Change assessment for Leave Request {}: Impact={}, Changes={}", 
-            original.getLeaveId(), impact, changeDetails.getChanges());
-        
+
+        // 6. Determine preliminary impact level
+        ChangeImpact preliminaryImpact = determineImpactLevel(changeDetails);
+
+        // 7. For MINOR changes, check if approval rules would change
+        if (preliminaryImpact == ChangeImpact.MINOR) {
+            boolean ruleChanged = wouldRulesChange(workflowRequest, updated);
+            if (ruleChanged) {
+                log.warn("MINOR change would trigger different approval rule for Leave Request {}. Upgrading to MAJOR.",
+                        original.getLeaveId());
+                changeDetails.addChange("Approval requirements changed");
+                preliminaryImpact = ChangeImpact.MAJOR; // Upgrade to MAJOR
+            }
+        }
+
+        changeDetails.setImpact(preliminaryImpact);
+
+        log.info("Change assessment for Leave Request {}: Impact={}, Changes={}",
+                original.getLeaveId(), preliminaryImpact, changeDetails.getChanges());
+
         return changeDetails;
+    }
+
+    /**
+     * Checks if the updated leave request would match a different approval rule
+     */
+    private boolean wouldRulesChange(Request currentWorkflow, LeaveRequestValidationDTO updated) {
+        try {
+            // Get current rule
+            RuleSet currentRule = ruleEvaluatorService.evaluate(currentWorkflow)
+                    .orElse(null);
+
+            // Build temporary request with updated values
+            Request tempRequest = Request.builder()
+                    .createdBy(currentWorkflow.getCreatedBy())
+                    .requestType("LEAVE")
+                    .operationType("APPLY")
+                    .leaveType(updated.getLeaveTypeId())  // Updated leave type
+                    .totalDays((int) updated.getDaysRequested())  // Updated days
+                    .makerAttributes(currentWorkflow.getMakerAttributes())
+                    .build();
+
+            // Evaluate what rule would match with new values
+            RuleSet newRule = ruleEvaluatorService.evaluate(tempRequest)
+                    .orElse(null);
+
+            // Compare rule IDs
+            if (currentRule == null || newRule == null) {
+                log.warn("Rule evaluation returned null. Treating as rule change for safety.");
+                return true; // Safer to restart workflow
+            }
+
+            boolean rulesMatch = currentRule.getId().equals(newRule.getId());
+
+            if (!rulesMatch) {
+                log.info("Rule change detected: '{}' (ID:{}) → '{}' (ID:{})",
+                        currentRule.getName(), currentRule.getId(),
+                        newRule.getName(), newRule.getId());
+            }
+
+            return !rulesMatch;
+
+        } catch (Exception e) {
+            log.error("Error comparing rules for workflow {}. Treating as rule change for safety.",
+                    currentWorkflow.getId(), e);
+            return true; // Fail-safe: restart workflow
+        }
     }
     
     /**
@@ -1290,4 +1353,543 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year){
         return leaveRequestRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(employeeId, leaveName, year).stream().filter(obj -> obj.getStatus().equals(LeaveStatus.APPROVED) || obj.getStatus().equals(LeaveStatus.PENDING)).toList();
     }
+
+    //new code
+    /**
+     * Update leave request by approver with intelligent workflow handling
+     * based on impact level of changes
+     */
+    @Override
+    @Transactional
+    public ApproverUpdateResponseDTO updateRequestByApprover(ApproverUpdateRequestDTO updateRequest) {
+
+        log.info("Approver {} attempting to update Leave Request {}",
+                updateRequest.getApproverId(), updateRequest.getLeaveId());
+
+        // ========== STEP 1: Fetch and Validate Entities ==========
+
+        // Find the leave request
+        LeaveRequest originalLeaveRequest = leaveRequestRepo.findById(updateRequest.getLeaveId())
+                .orElseThrow(() -> new RuntimeException("Leave request not found: " + updateRequest.getLeaveId()));
+
+        // Find the approver
+        Employee approver = employeeRepo.findById(updateRequest.getApproverId())
+                .orElseThrow(() -> new RuntimeException("Approver not found: " + updateRequest.getApproverId()));
+
+        // Find associated workflow
+        Request workflowRequest = requestRepository.findByTargetEntityId(updateRequest.getLeaveId())
+                .orElseThrow(() -> new RuntimeException("Workflow not found for leave request: " + updateRequest.getLeaveId()));
+
+        // ========== STEP 2: Validate Approver Permissions ==========
+
+        if (!"PENDING".equals(workflowRequest.getStatus())) {
+            throw new IllegalStateException("Cannot update: Workflow is already " + workflowRequest.getStatus());
+        }
+
+        // Check if approver has an active stage in this workflow
+        ApprovalStage approverStage = approvalStageRepository.findByRequestIdAndApproverIdAndStatus(
+                workflowRequest.getId(),
+                updateRequest.getApproverId(),
+                "PENDING"
+        ).orElseThrow(() -> new IllegalStateException(
+                "Approver " + updateRequest.getApproverId() + " has no pending approval stage for this request"
+        ));
+
+        log.info("Approver {} has valid stage at Level {} for workflow {}",
+                updateRequest.getApproverId(), approverStage.getLevel(), workflowRequest.getId());
+
+        // ========== STEP 3: Build Updated Details DTO ==========
+
+        LeaveRequestValidationDTO updatedDetailsDto = LeaveRequestValidationDTO.builder()
+                .leaveId(originalLeaveRequest.getLeaveId())
+                .employeeId(originalLeaveRequest.getEmployee().getEmployeeId())
+                .leaveTypeId(updateRequest.getLeaveTypeId() != null ?
+                        updateRequest.getLeaveTypeId() : originalLeaveRequest.getLeaveType().getLeaveTypeId())
+                .startDate(updateRequest.getStartDate() != null ?
+                        updateRequest.getStartDate() : originalLeaveRequest.getStartDate())
+                .endDate(updateRequest.getEndDate() != null ?
+                        updateRequest.getEndDate() : originalLeaveRequest.getEndDate())
+                .daysRequested(updateRequest.getDaysRequested() != null ?
+                        updateRequest.getDaysRequested() : originalLeaveRequest.getDaysRequested())
+                .reason(updateRequest.getReason() != null ?
+                        updateRequest.getReason() : originalLeaveRequest.getReason())
+                .driveLink(updateRequest.getDriveLink() != null ?
+                        updateRequest.getDriveLink() : originalLeaveRequest.getDriveLink())
+                .startSession(updateRequest.getStartSession() != null ?
+                        updateRequest.getStartSession() : originalLeaveRequest.getStartSession())
+                .endSession(updateRequest.getEndSession() != null ?
+                        updateRequest.getEndSession() : originalLeaveRequest.getEndSession())
+                .requestDate(originalLeaveRequest.getRequestDate())
+                .build();
+
+        // ========== STEP 4: Assess Change Impact ==========
+
+        LeaveChangeDetails changeDetails = assessChangeImpact(originalLeaveRequest, updatedDetailsDto, workflowRequest);
+        ChangeImpact impactLevel = changeDetails.getImpact();
+
+        log.info("Change impact assessed as {} for Leave Request {}", impactLevel, updateRequest.getLeaveId());
+
+        ApproverUpdateResponseDTO.ApproverUpdateResponseDTOBuilder responseBuilder = ApproverUpdateResponseDTO.builder()
+                .leaveId(updateRequest.getLeaveId())
+                .workflowRequestId(String.valueOf(workflowRequest.getId()))
+                .impactLevel(impactLevel)
+                .changesSummary(changeDetails.getChanges());
+
+        // ========== STEP 5: Handle Based on Impact Level ==========
+
+        switch (impactLevel) {
+
+            // -------------------- MAJOR CHANGES --------------------
+            case MAJOR:
+                log.info("MAJOR changes detected. Restarting workflow automatically.");
+                return handleMajorChanges(
+                        originalLeaveRequest,
+                        updatedDetailsDto,
+                        workflowRequest,
+                        approver,
+//                        updateRequest.getApproverComment(),
+                        updateRequest.getUpdateReason(),
+                        responseBuilder
+                );
+
+            // -------------------- TRIVIAL CHANGES --------------------
+            case TRIVIAL:
+                log.info("TRIVIAL changes detected. Restarting workflow for consistency.");
+                return handleTrivialChanges(
+                        originalLeaveRequest,
+                        updatedDetailsDto,
+                        workflowRequest,
+                        approver,
+                        updateRequest.getUpdateReason(),
+                        responseBuilder
+                );
+
+            // -------------------- MINOR CHANGES --------------------
+            case MINOR:
+                log.info("MINOR changes detected. Checking approver's decision.");
+
+                // If approver hasn't made a decision yet, prompt them
+                if (updateRequest.getRestartWorkflow() == null) {
+                    return responseBuilder
+                            .success(false)
+                            .requiresApproverDecision(true)
+                            .decisionPrompt("The changes are MINOR. Do you want to:\n" +
+                                    "• YES (Restart): Start fresh approval workflow from scratch\n" +
+                                    "• NO (Preserve): Keep current approvals and notify next level only")
+                            .actionTaken("AWAITING_DECISION")
+                            .message("Approver decision required for MINOR changes")
+                            .build();
+                }
+
+                // Approver has decided
+                if (Boolean.TRUE.equals(updateRequest.getRestartWorkflow())) {
+                    log.info("Approver chose to RESTART workflow for MINOR changes.");
+                    return handleMinorChangesWithRestart(
+                            originalLeaveRequest,
+                            updatedDetailsDto,
+                            workflowRequest,
+                            approver,
+                            updateRequest.getUpdateReason(),
+                            responseBuilder
+                    );
+                } else {
+                    log.info("Approver chose to PRESERVE workflow for MINOR changes.");
+                    return handleMinorChangesPreserveWorkflow(
+                            originalLeaveRequest,
+                            updatedDetailsDto,
+                            workflowRequest,
+                            approverStage,
+                            approver,
+                            updateRequest.getUpdateReason(),
+                            responseBuilder
+                    );
+                }
+
+            default:
+                throw new IllegalStateException("Unknown impact level: " + impactLevel);
+        }
+    }
+
+// ==================== HELPER METHODS FOR EACH SCENARIO ====================
+
+    /**
+     * Handle MAJOR changes: Always restart workflow
+     */
+    private ApproverUpdateResponseDTO handleMajorChanges(
+            LeaveRequest originalLeaveRequest,
+            LeaveRequestValidationDTO updatedDetailsDto,
+            Request workflowRequest,
+            Employee approver,
+            String approverComment,
+            ApproverUpdateResponseDTO.ApproverUpdateResponseDTOBuilder responseBuilder
+    ) {
+        try {
+            // MAJOR changes always restart workflow
+            restartWorkflowWithUpdates(
+                    originalLeaveRequest,
+                    updatedDetailsDto,
+                    workflowRequest,
+                    approver,
+                    approverComment,
+                    "MAJOR changes detected - workflow restarted"
+            );
+
+            return responseBuilder
+                    .success(true)
+                    .actionTaken("WORKFLOW_RESTARTED")
+                    .requiresApproverDecision(false)
+                    .message("MAJOR changes detected. Workflow restarted with fresh approval chain.")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to handle MAJOR changes for Leave Request {}",
+                    originalLeaveRequest.getLeaveId(), e);
+            return responseBuilder
+                    .success(false)
+                    .actionTaken("VALIDATION_FAILED")
+                    .errors(List.of(e.getMessage()))
+                    .message("Update failed: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Handle TRIVIAL changes: Restart workflow for consistency
+     */
+    private ApproverUpdateResponseDTO handleTrivialChanges(
+            LeaveRequest originalLeaveRequest,
+            LeaveRequestValidationDTO updatedDetailsDto,
+            Request workflowRequest,
+            Employee approver,
+            String approverComment,
+            ApproverUpdateResponseDTO.ApproverUpdateResponseDTOBuilder responseBuilder
+    ) {
+        try {
+            // TRIVIAL changes also restart for validation consistency
+            restartWorkflowWithUpdates(
+                    originalLeaveRequest,
+                    updatedDetailsDto,
+                    workflowRequest,
+                    approver,
+                    approverComment,
+                    "TRIVIAL changes - workflow restarted for consistency"
+            );
+
+            return responseBuilder
+                    .success(true)
+                    .actionTaken("WORKFLOW_RESTARTED")
+                    .requiresApproverDecision(false)
+                    .message("TRIVIAL changes applied. Workflow restarted for validation consistency.")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to handle TRIVIAL changes for Leave Request {}",
+                    originalLeaveRequest.getLeaveId(), e);
+            return responseBuilder
+                    .success(false)
+                    .actionTaken("VALIDATION_FAILED")
+                    .errors(List.of(e.getMessage()))
+                    .message("Update failed: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Handle MINOR changes with RESTART decision
+     */
+    private ApproverUpdateResponseDTO handleMinorChangesWithRestart(
+            LeaveRequest originalLeaveRequest,
+            LeaveRequestValidationDTO updatedDetailsDto,
+            Request workflowRequest,
+            Employee approver,
+            String approverComment,
+            ApproverUpdateResponseDTO.ApproverUpdateResponseDTOBuilder responseBuilder
+    ) {
+        try {
+            restartWorkflowWithUpdates(
+                    originalLeaveRequest,
+                    updatedDetailsDto,
+                    workflowRequest,
+                    approver,
+                    approverComment,
+                    "MINOR changes - approver requested workflow restart"
+            );
+
+            return responseBuilder
+                    .success(true)
+                    .actionTaken("WORKFLOW_RESTARTED")
+                    .requiresApproverDecision(false)
+                    .message("MINOR changes applied. Workflow restarted as per approver's decision.")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to restart workflow for MINOR changes on Leave Request {}",
+                    originalLeaveRequest.getLeaveId(), e);
+            return responseBuilder
+                    .success(false)
+                    .actionTaken("VALIDATION_FAILED")
+                    .errors(List.of(e.getMessage()))
+                    .message("Update failed: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Handle MINOR changes with PRESERVE decision
+     * Updates request, keeps current approvals, notifies next level
+     */
+    private ApproverUpdateResponseDTO handleMinorChangesPreserveWorkflow(
+            LeaveRequest originalLeaveRequest,
+            LeaveRequestValidationDTO updatedDetailsDto,
+            Request workflowRequest,
+            ApprovalStage currentApproverStage,
+            Employee approver,
+            String approverComment,
+            ApproverUpdateResponseDTO.ApproverUpdateResponseDTOBuilder responseBuilder
+    ) {
+        try {
+            // ========== STEP 1: Reverse Original Balance ==========
+            log.debug("Reversing original balance for Leave Request {}", originalLeaveRequest.getLeaveId());
+            leaveBalanceService.updateLeaveBalanceAfterRejected(
+                    originalLeaveRequest.getEmployee().getEmployeeId(),
+                    originalLeaveRequest.getLeaveType().getLeaveTypeId(),
+                    originalLeaveRequest.getDaysRequested(),
+                    originalLeaveRequest.getRequestDate().getYear()
+            );
+
+            // ========== STEP 2: Validate Updated Details ==========
+            ValidationResultDTO validationResult = validateLeaveRequest(updatedDetailsDto);
+            if (!validationResult.isValid()) {
+                throw new RuntimeException("Validation failed: " + String.join("; ", validationResult.getErrors()));
+            }
+
+            // ========== STEP 3: Update LeaveRequest Entity ==========
+            LeaveType newLeaveType = leaveTypeRepo.findById(updatedDetailsDto.getLeaveTypeId())
+                    .orElseThrow(() -> new RuntimeException("Leave type not found: " + updatedDetailsDto.getLeaveTypeId()));
+
+            originalLeaveRequest.setLeaveType(newLeaveType);
+            originalLeaveRequest.setStartDate(updatedDetailsDto.getStartDate());
+            originalLeaveRequest.setEndDate(updatedDetailsDto.getEndDate());
+            originalLeaveRequest.setDaysRequested(updatedDetailsDto.getDaysRequested());
+            originalLeaveRequest.setReason(updatedDetailsDto.getReason());
+            originalLeaveRequest.setDriveLink(updatedDetailsDto.getDriveLink());
+            originalLeaveRequest.setStartSession(updatedDetailsDto.getStartSession());
+            originalLeaveRequest.setEndSession(updatedDetailsDto.getEndSession());
+            // Status remains as is (PENDING_APPROVAL)
+            // Don't clear approvedBy or other approval info
+
+            LeaveRequest updatedLeaveRequest = leaveRequestRepo.save(originalLeaveRequest);
+
+            // ========== STEP 4: Deduct New Balance ==========
+            log.debug("Deducting new balance for updated Leave Request {}", updatedLeaveRequest.getLeaveId());
+            leaveBalanceService.updateLeaveBalanceAfterApproval(
+                    updatedLeaveRequest.getEmployee().getEmployeeId(),
+                    updatedLeaveRequest.getLeaveType().getLeaveTypeId(),
+                    updatedLeaveRequest.getDaysRequested(),
+                    updatedLeaveRequest.getRequestDate().getYear()
+            );
+
+
+            // ========== STEP 5: Update Workflow Request Metadata ==========
+            workflowRequest.setLeaveType(updatedLeaveRequest.getLeaveType().getLeaveTypeId());
+            workflowRequest.setTotalDays((int) updatedLeaveRequest.getDaysRequested());
+            requestRepository.save(workflowRequest);
+
+            // ========== STEP 6: Add Comment to Current Stage ==========
+            workflowEngine.processAction(currentApproverStage.getId(),approver.getEmployeeId(), "APPROVED","Leave Details updated by approver."+approverComment);
+//            currentApproverStage.setApprovedAt(LocalDateTime.now());
+//            currentApproverStage.setComments(
+//                    (currentApproverStage.getComments() != null ? currentApproverStage.getComments() + "\n" : "") +
+//                            "[UPDATED by " + approver.getFullName() + "]: " +
+//                            (approverComment != null ? approverComment : "Leave details updated") +
+//                            "\nChanges: " + String.join(", ", validationResult.getMessages())
+//            );
+//            approvalStageRepository.save(currentApproverStage);
+
+            // ========== STEP 7: Notify Next Level Approvers (if any) ==========
+//            List<ApprovalStage> nextLevelStages = approvalStageRepository.findByRequestIdAndLevel(
+//                    workflowRequest.getId(),
+//                    currentApproverStage.getLevel() + 1
+//            );
+
+
+
+//            if (!nextLevelStages.isEmpty()) {
+//                for (ApprovalStage nextStage : nextLevelStages) {
+//                    try {
+//                        Employee nextApprover = employeeRepo.findById(nextStage.getApproverId()).orElse(null);
+//                        if (nextApprover != null && nextApprover.getEmail() != null) {
+//                            emailService.sendLeaveUpdateNotificationToApprover(
+//                                    nextApprover.getEmail(),
+//                                    nextApprover.getFullName(),
+//                                    originalLeaveRequest.getEmployee().getFullName(),
+//                                    updatedLeaveRequest.getLeaveType().getLeaveName(),
+//                                    updatedLeaveRequest.getStartDate().toString(),
+//                                    updatedLeaveRequest.getEndDate().toString(),
+//                                    String.join("\n", validationResult.getMessages()),
+//                                    approver.getFullName()
+//                            );
+//                        }
+//                    } catch (Exception e) {
+//                        log.error("Failed to send notification to next level approver", e);
+//                    }
+//                }
+//            }
+
+            // ========== STEP 8: Notify Employee ==========
+            try {
+                if (originalLeaveRequest.getEmployee().getEmail() != null) {
+                    emailService.sendLeaveUpdateNotification(
+                            originalLeaveRequest.getEmployee().getEmail(),
+                            originalLeaveRequest.getEmployee().getFullName(),
+                            updatedLeaveRequest.getLeaveType().getLeaveName(),
+                            updatedLeaveRequest.getStartDate().toString(),
+                            updatedLeaveRequest.getEndDate().toString(),
+                            "Your leave request was updated by " + approver.getFullName() +
+                                    ".\nChanges: " + String.join(", ", validationResult.getMessages())
+                    );
+                }
+            } catch (Exception e) {
+                log.error("Failed to send update notification to employee", e);
+            }
+
+            log.info("Successfully preserved workflow for Leave Request {} with MINOR changes",
+                    updatedLeaveRequest.getLeaveId());
+
+            return responseBuilder
+                    .success(true)
+                    .actionTaken("WORKFLOW_PRESERVED")
+                    .requiresApproverDecision(false)
+                    .message("MINOR changes applied. Current approvals preserved, next level notified.")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to preserve workflow for MINOR changes on Leave Request {}",
+                    originalLeaveRequest.getLeaveId(), e);
+            return responseBuilder
+                    .success(false)
+                    .actionTaken("VALIDATION_FAILED")
+                    .errors(List.of(e.getMessage()))
+                    .message("Update failed: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Common method to restart workflow with updates
+     * Used for MAJOR, TRIVIAL, and MINOR (with restart decision)
+     */
+    private void restartWorkflowWithUpdates(
+            LeaveRequest originalLeaveRequest,
+            LeaveRequestValidationDTO updatedDetailsDto,
+            Request workflowRequest,
+            Employee approver,
+            String approverComment,
+            String reason
+    ) {
+        // ========== STEP 1: Reverse Original Balance ==========
+        log.debug("Reversing original balance for Leave Request {}", originalLeaveRequest.getLeaveId());
+        leaveBalanceService.updateLeaveBalanceAfterRejected(
+                originalLeaveRequest.getEmployee().getEmployeeId(),
+                originalLeaveRequest.getLeaveType().getLeaveTypeId(),
+                originalLeaveRequest.getDaysRequested(),
+                originalLeaveRequest.getRequestDate().getYear()
+        );
+
+        // ========== STEP 2: Validate Updated Details ==========
+        ValidationResultDTO validationResult = validateLeaveRequest(updatedDetailsDto);
+        if (!validationResult.isValid()) {
+            throw new RuntimeException("Validation failed: " + String.join("; ", validationResult.getErrors()));
+        }
+
+        // ========== STEP 3: Cancel Old Workflow ==========
+        log.info("Cancelling old workflow {} - Reason: {}", workflowRequest.getId(), reason);
+        workflowRequest.setStatus("CANCELLED");
+        requestRepository.save(workflowRequest);
+
+        // Cancel all stages
+        List<ApprovalStage> allStages = approvalStageRepository.findByRequestId(workflowRequest.getId());
+        allStages.forEach(stage -> stage.setStatus("CANCELLED"));
+        approvalStageRepository.saveAll(allStages);
+
+        // Publish event
+        eventPublisher.publishEvent(new WorkflowCompletionEvent(this, workflowRequest));
+
+        // ========== STEP 4: Update LeaveRequest Entity ==========
+        LeaveType newLeaveType = leaveTypeRepo.findById(updatedDetailsDto.getLeaveTypeId())
+                .orElseThrow(() -> new RuntimeException("Leave type not found: " + updatedDetailsDto.getLeaveTypeId()));
+
+        originalLeaveRequest.setLeaveType(newLeaveType);
+        originalLeaveRequest.setStartDate(updatedDetailsDto.getStartDate());
+        originalLeaveRequest.setEndDate(updatedDetailsDto.getEndDate());
+        originalLeaveRequest.setDaysRequested(updatedDetailsDto.getDaysRequested());
+        originalLeaveRequest.setReason(updatedDetailsDto.getReason());
+        originalLeaveRequest.setDriveLink(updatedDetailsDto.getDriveLink());
+        originalLeaveRequest.setStartSession(updatedDetailsDto.getStartSession());
+        originalLeaveRequest.setEndSession(updatedDetailsDto.getEndSession());
+        originalLeaveRequest.setStatus(LeaveStatus.PENDING_APPROVAL);
+        originalLeaveRequest.setApprovedBy(null);
+        originalLeaveRequest.setResponseDate(null);
+        originalLeaveRequest.setManagerComment(
+                "Updated by " + approver.getFullName() + " - " +
+                        (approverComment != null ? approverComment : reason)
+        );
+
+        LeaveRequest updatedLeaveRequest = leaveRequestRepo.save(originalLeaveRequest);
+
+        // ========== STEP 5: Deduct New Balance ==========
+        log.debug("Deducting new balance for updated Leave Request {}", updatedLeaveRequest.getLeaveId());
+        leaveBalanceService.updateLeaveBalanceAfterApproval(
+                updatedLeaveRequest.getEmployee().getEmployeeId(),
+                updatedLeaveRequest.getLeaveType().getLeaveTypeId(),
+                updatedLeaveRequest.getDaysRequested(),
+                updatedLeaveRequest.getRequestDate().getYear()
+        );
+
+        // ========== STEP 6: Start New Workflow ==========
+        log.info("Starting new workflow for updated Leave Request {}", updatedLeaveRequest.getLeaveId());
+        String makerAttributes = buildMakerAttributesJson(updatedLeaveRequest.getEmployee());
+
+        Request newWorkflowRequest = Request.builder()
+                .createdBy(updatedLeaveRequest.getEmployee().getEmployeeId())
+                .requestType("LEAVE")
+                .operationType("UPDATED_BY_APPROVER")
+                .status("PENDING")
+                .targetEntityId(updatedLeaveRequest.getLeaveId())
+                .leaveType(updatedLeaveRequest.getLeaveType().getLeaveTypeId())
+                .totalDays((int) updatedLeaveRequest.getDaysRequested())
+                .makerAttributes(makerAttributes)
+                .build();
+        Request savedNewWorkflowRequest = requestRepository.save(newWorkflowRequest);
+
+        RuleSet matchedRule = ruleEvaluatorService.evaluate(savedNewWorkflowRequest)
+                .orElseThrow(() -> new RuntimeException(
+                        "Configuration Error: No matching approval rule found for updated leave request"
+                ));
+
+        workflowEngine.startWorkflow(savedNewWorkflowRequest, matchedRule);
+
+        // ========== STEP 7: Send Notifications ==========
+        try {
+            if (updatedLeaveRequest.getEmployee().getEmail() != null) {
+                emailService.sendLeaveUpdateNotification(
+                        updatedLeaveRequest.getEmployee().getEmail(),
+                        updatedLeaveRequest.getEmployee().getFullName(),
+                        updatedLeaveRequest.getLeaveType().getLeaveName(),
+                        updatedLeaveRequest.getStartDate().toString(),
+                        updatedLeaveRequest.getEndDate().toString(),
+                        "Your leave request was updated by " + approver.getFullName() +
+                                " and requires fresh approval.\nReason: " + reason
+                );
+            }
+        } catch (Exception e) {
+            log.error("Failed to send update notification to employee", e);
+        }
+
+        log.info("Successfully restarted workflow {} for Leave Request {}",
+                savedNewWorkflowRequest.getId(), updatedLeaveRequest.getLeaveId());
+    }
+
+
+
 }

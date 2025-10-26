@@ -29,4 +29,7 @@ public class ApprovalStage {
 
     private LocalDateTime assignedAt;
     private LocalDateTime actionAt;
+    
+    @Column(columnDefinition = "TEXT")
+    private String comments;
 }

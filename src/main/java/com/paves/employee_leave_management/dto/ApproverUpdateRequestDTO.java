@@ -52,4 +52,6 @@ public class ApproverUpdateRequestDTO {
      */
     @Builder.Default
     private Boolean notifyEmployee = true;
+
+    private Boolean restartWorkflow;
 }
