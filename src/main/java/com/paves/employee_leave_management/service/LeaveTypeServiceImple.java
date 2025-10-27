@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
+import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
@@ -20,8 +21,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
@@ -248,4 +251,22 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             default -> "application/octet-stream";
         };
     }
+
+
+    public List<LeaveTypeIdDTO> getAllLeaveTypeIds() {
+        List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
+        List<LeaveTypeIdDTO> leaveTypeDTOs = new ArrayList<>();
+
+        for (LeaveType leaveType : leaveTypes) {
+            if (Boolean.TRUE.equals(leaveType.getActive())) {
+                LeaveTypeIdDTO dto = new LeaveTypeIdDTO();
+                dto.setLeaveTypeId(leaveType.getLeaveTypeId());
+                dto.setLeaveName(leaveType.getLeaveName());
+                leaveTypeDTOs.add(dto);
+            }
+        }
+
+        return leaveTypeDTOs;
+    }
+
 }

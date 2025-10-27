@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
+import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -13,6 +14,7 @@ import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInte
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -177,5 +179,11 @@ public class LeaveTypeController {
     public ResponseEntity<ApiResponse<Object>> deleteDocument(@PathVariable String leaveTypeId) throws Exception {
         service.deleteDocument(leaveTypeId);
         return ResponseEntity.ok(new ApiResponse<>(true,"Document deleted successfully",null));
+    }
+
+    @GetMapping("/get-all-leave-type-ids")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    public ResponseEntity<List<LeaveTypeIdDTO>> getAllLeaveTypeIds() {
+        return new ResponseEntity<>(service.getAllLeaveTypeIds(), HttpStatus.OK);
     }
 }
