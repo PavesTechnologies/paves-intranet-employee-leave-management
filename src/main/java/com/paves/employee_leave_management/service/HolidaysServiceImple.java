@@ -324,5 +324,13 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
         return ResponseEntity.ok(result);
     }
 
+    @Override
+    public List<Holidays> getHolidaysByMonth(int month) {
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("Month must be between 1 and 12");
+        }
+        return holidayRepo.findByMonth(month);
+    }
+
 
 }

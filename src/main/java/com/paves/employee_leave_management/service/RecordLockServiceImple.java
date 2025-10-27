@@ -55,8 +55,13 @@ public class RecordLockServiceImple implements RecordLockServiceInterface {
     @Override
     public synchronized String lockRecord(String tableName, String recordId, String lockedBy) {
         // 1️⃣ Get the record from DB
+
+
         Map<String, Object> record = getRecord(tableName, recordId);
         if (record == null) return "Record does not exist";
+//        if(lockRepository.existsByRecordIdAndEmployeeId(recordId,(String) record.get("employee_id"))){
+//            return "";
+//        }
 
         // 2️⃣ Dependency check: leave_request → leave_balance
         if ("leave_request".equalsIgnoreCase(tableName)) {
@@ -108,6 +113,7 @@ public class RecordLockServiceImple implements RecordLockServiceInterface {
                 .tableName(tableName)
                 .recordId(recordId)
                 .lockedBy(lockedBy)
+                .employeeId((String) record.get("employee_id"))
                 .lockedAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusMinutes(LOCK_EXPIRY_MINUTES))
                 .build());

@@ -11,7 +11,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import javax.swing.text.html.Option;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -97,6 +99,16 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
       )""")
     List<LeaveRequest> findManagerHistoryByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
 
+    @Query("""
+    SELECT COUNT(lr)
+    FROM LeaveRequest lr
+    WHERE lr.employee.manager.employeeId = :managerId
+      AND lr.status = 'PENDING'
+      AND FUNCTION('YEAR', lr.startDate) = FUNCTION('YEAR', CURRENT_DATE)
+""")
+    long countPendingLeavesByManager(@Param("managerId") String managerId);
+
+
 
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.employeeId = :empId AND lr.startDate BETWEEN :startDate AND :endDate")
@@ -112,5 +124,6 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
             "AND lr.status IN ('PENDING', 'APPROVED')")
     List<LeaveRequest> findPendingOrApprovedByEmployee(@Param("employeeId") String employeeId);
 
-    List<LeaveRequest> findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
+    List<LeaveRequest> findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(String employeeId, String leaveName, Integer year);
+    long countByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus status);
 }

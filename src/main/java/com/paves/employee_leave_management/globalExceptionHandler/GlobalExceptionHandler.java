@@ -73,23 +73,35 @@ public class GlobalExceptionHandler {
     // -----------------------
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<List<String>>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+
         List<String> errors = ex.getBindingResult()
                 .getAllErrors()
                 .stream()
-                .map(error -> error.getDefaultMessage())
+                .map(obj -> obj.getDefaultMessage())
                 .collect(Collectors.toList());
 
-        ApiResponse<List<String>> response = new ApiResponse<>(false, "Validation failed", errors);
+        // Optionally log errors for debugging
+        errors.forEach(System.out::println);
+
+        // Send only message, keep data = null
+        ApiResponse<String> response = new ApiResponse<>(false,
+                "Compoff cannot be applied beyond 28 days in the past.",
+                null);
+
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     // -----------------------
     // RUNTIME / FALLBACK
     // -----------------------
+
+    // Handle generic runtime exceptions
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
         ex.printStackTrace(); // useful for debugging logs
         ApiResponse<String> response = new ApiResponse<>(false, ex.getMessage(), null);
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
 }

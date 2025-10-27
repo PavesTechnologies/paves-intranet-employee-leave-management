@@ -2,6 +2,8 @@ package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveRequest;
+import com.paves.employee_leave_management.entities.LeaveStatus;
+import com.paves.employee_leave_management.entities.LeaveType;
 import jakarta.validation.Valid;
 
 import java.time.LocalDate;
@@ -39,5 +41,6 @@ public interface LeaveRequestServiceInterface {
     List<LeaveRequest> rejectMultipleRequests(@Valid BatchApprovalRequestDTO batchApproval);
 
     List<PendingAndApprovedLeaveRequestsDTO> getPendingLeaveAndApprovedLeaveByEmployeeId(String employeeId, LocalDate startDate, LocalDate endDate);
+    List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year);
 }
 
