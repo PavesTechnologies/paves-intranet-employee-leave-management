@@ -9,10 +9,13 @@ import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.security.CurrentUser;
+import com.paves.employee_leave_management.service.HrOperationService;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -43,32 +46,35 @@ public class LeaveBalanceController {
     @Autowired
     private EmployeeRepo employeeRepo;
 
+    @Autowired
+    private HrOperationService hrOperationService;
+
 //    @Autowired
 //    LeaveBalanceDAO leaveBalanceDao;
 
     // This is a placeholder for getting the user from the JWT token
-    private Employee getAuthenticatedUser() {
-        // In a real application, you would extract the user details from the Spring Security Context.
-        // For now, we'll fetch a hardcoded user to simulate this.
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("No authenticated user found");
-        }
-
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof Jwt jwt) {
-            // You can fetch using email or user_id depending on your DB
-//            String email = jwt.getClaim("email");  // "employee1@example.com"
-            Long userId = jwt.getClaim("user_id"); // If needed
-
-            return employeeRepo.findByEmployeeId(String.valueOf(userId))
-                    .orElseThrow(() -> new RuntimeException("Employee not found for id: " + userId));
-        }
-
-        throw new RuntimeException("Invalid authentication principal");
-    }
+//    private Employee getAuthenticatedUser() {
+//        // In a real application, you would extract the user details from the Spring Security Context.
+//        // For now, we'll fetch a hardcoded user to simulate this.
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//
+//        if (authentication == null || !authentication.isAuthenticated()) {
+//            throw new RuntimeException("No authenticated user found");
+//        }
+//
+//        Object principal = authentication.getPrincipal();
+//
+//        if (principal instanceof Jwt jwt) {
+//            // You can fetch using email or user_id depending on your DB
+////            String email = jwt.getClaim("email");  // "employee1@example.com"
+//            Long userId = jwt.getClaim("user_id"); // If needed
+//
+//            return employeeRepo.findByEmployeeId(String.valueOf(userId))
+//                    .orElseThrow(() -> new RuntimeException("Employee not found for id: " + userId));
+//        }
+//
+//        throw new RuntimeException("Invalid authentication principal");
+//    }
 
 
     @PostMapping("/generate/{employeeId}")
@@ -131,45 +137,69 @@ public class LeaveBalanceController {
         return ResponseEntity.ok("Leave approved and balance updated successfully.");
     }
 
-    @PutMapping("/update")
-    @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> updateLeave(@RequestBody LeaveBalanceUpdateRequest request) {
-        Employee maker = getAuthenticatedUser();
-        String makerRole = "HR"; // or maker.getJobTitle()
+//    @PutMapping("/update")
+//    @PreAuthorize("hasAnyRole('HR')")
+//    public ResponseEntity<ApiResponse<Object>> updateLeave(@RequestBody LeaveBalanceUpdateRequest request) {
+//        Employee maker = getAuthenticatedUser();
+//        String makerRole = "HR"; // or maker.getJobTitle()
+//
+//        // ✅ Fetch current year balances (before state)
+//        List<LeaveBalance> beforeBalances =
+//                leaveBalanceService.getCurrentYearBalances(request.getEmployeeId());
+//
+//        if (beforeBalances == null || beforeBalances.isEmpty()) {
+//            throw new LeaveBalanceExceptionHandler(
+//                    "No leave balances found for current year for employee: " + request.getEmployeeId());
+//        }
+//
+//        // ✅ Shape it exactly as required
+//        Map<String, Object> oldData = new HashMap<>();
+//        oldData.put("employeeId", request.getEmployeeId());
+//        oldData.put("balances", beforeBalances);
+////        oldData.put("performedBy", null);
+//
+//        Map<String, Object> payload = new HashMap<>();
+//        payload.put("oldData", oldData);
+//        payload.put("newData", request);
+//
+//        // ✅ Build Approval DTO
+//        MCApprovalRequestDto dto = new MCApprovalRequestDto();
+//        dto.setActionType(ActionType.UPDATE_EMPLOYEE_LEAVE_BALANCE);
+//        dto.setPayload(payload);
+//
+//        // ✅ Submit for approval
+//        approvalService.submitForApproval(dto, maker, makerRole);
+//
+//        return ResponseEntity.ok(new ApiResponse<>(
+//                true,
+//                "Request to update leave balances has been submitted for approval.",
+//                null
+//        ));
+//    }
 
-        // ✅ Fetch current year balances (before state)
-        List<LeaveBalance> beforeBalances =
-                leaveBalanceService.getCurrentYearBalances(request.getEmployeeId());
+        @PutMapping("/update") // Keep PUT for update operation
+        @PreAuthorize("hasAnyRole('HR')") // Ensure correct role
+        public ResponseEntity<ApiResponse<Object>> updateLeaveBalanceByHr(
+        @RequestBody LeaveBalanceUpdateRequest balanceUpdateData, // This is the payload data
+        @CurrentUser Employee maker) { // Inject the maker directly
 
-        if (beforeBalances == null || beforeBalances.isEmpty()) {
-            throw new LeaveBalanceExceptionHandler(
-                    "No leave balances found for current year for employee: " + request.getEmployeeId());
-        }
-
-        // ✅ Shape it exactly as required
-        Map<String, Object> oldData = new HashMap<>();
-        oldData.put("employeeId", request.getEmployeeId());
-        oldData.put("balances", beforeBalances);
-//        oldData.put("performedBy", null);
-
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("oldData", oldData);
-        payload.put("newData", request);
-
-        // ✅ Build Approval DTO
-        MCApprovalRequestDto dto = new MCApprovalRequestDto();
-        dto.setActionType(ActionType.UPDATE_EMPLOYEE_LEAVE_BALANCE);
-        dto.setPayload(payload);
-
-        // ✅ Submit for approval
-        approvalService.submitForApproval(dto, maker, makerRole);
+            try {
+        // Call the NEW HrOperationService, passing the maker and the payload data
+        // The service will handle creating the HrOperationRequest, the generic Request,
+        // building makerAttributes, and starting the workflow.
+        hrOperationService.submitUpdateLeaveBalance(maker, balanceUpdateData);
 
         return ResponseEntity.ok(new ApiResponse<>(
                 true,
-                "Request to update leave balances has been submitted for approval.",
+                "Request to update leave balances for employee " + balanceUpdateData.getEmployeeId() + " has been submitted for approval.",
                 null
         ));
+    } catch (Exception e) {
+        // Log the exception properly
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(false, "Error submitting balance update request: " + e.getMessage(), null));
     }
+}
 
     @PostMapping("/trigger-monthly-process")
     @PreAuthorize("hasAnyRole('HR')")

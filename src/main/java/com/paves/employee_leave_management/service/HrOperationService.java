@@ -2,10 +2,7 @@ package com.paves.employee_leave_management.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.paves.employee_leave_management.entities.Request;
-import com.paves.employee_leave_management.entities.HrOperationRequest; // Your new payload entity
-import com.paves.employee_leave_management.entities.RuleSet;
-import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.repo.RequestRepository;
 import com.paves.employee_leave_management.repo.HrOperationRequestRepository;// Repository for the payload
 import com.paves.employee_leave_management.service.ruleengine.RuleEvaluatorService;
@@ -16,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
 
 /**
@@ -74,6 +72,60 @@ public class HrOperationService {
         return submitHrOperation(maker, operationType, deactivateData);
     }
 
+    /**
+     * Submits a request to update an existing Leave Type, triggering the approval workflow.
+     *
+     * @param maker         The Employee initiating the request.
+     * @param updateData    The data for the LeaveType update (e.g., a DTO containing leaveTypeId, updated fields, etc.).
+     * @return The created generic workflow Request object.
+     */
+    @Transactional
+    public Request submitUpdateLeaveType(Employee maker, Object updateData) {
+        String operationType = "UPDATE_LEAVE_TYPE";
+        return submitHrOperation(maker, operationType, updateData);
+    }
+
+    // --- Holiday Operations ---
+
+    /**
+     * Submits a request to add a new Holiday, triggering the approval workflow.
+     *
+     * @param maker       The Employee initiating the request.
+     * @param holidayData The Holidays object containing the new holiday details.
+     * @return The created generic workflow Request object.
+     */
+    @Transactional
+    public Request submitAddHoliday(Employee maker, Holidays holidayData) {
+        String operationType = "ADD_HOLIDAY";
+        // The holidayData object itself will be serialized as the payload
+        return submitHrOperation(maker, operationType, holidayData);
+    }
+
+    /**
+     * Submits a request to update an existing Holiday, triggering the approval workflow.
+     *
+     * @param maker   The Employee initiating the request.
+     * @param payload A Map containing "beforeState" (existing Holidays) and "requestedState" (updated Holidays).
+     * @return The created generic workflow Request object.
+     */
+    @Transactional
+    public Request submitUpdateHoliday(Employee maker, Map<String, Object> payload) {
+        String operationType = "UPDATE_HOLIDAY";
+        return submitHrOperation(maker, operationType, payload);
+    }
+
+    /**
+     * Submits a request to delete an existing Holiday, triggering the approval workflow.
+     *
+     * @param maker   The Employee initiating the request.
+     * @param payload A Map containing the "holidayId" to be deleted.
+     * @return The created generic workflow Request object.
+     */
+    @Transactional
+    public Request submitDeleteHoliday(Employee maker, Map<String, Object> payload) {
+        String operationType = "DELETE_HOLIDAY";
+        return submitHrOperation(maker, operationType, payload);
+    }
 
     // Add similar submit methods for other HR operations...
 

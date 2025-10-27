@@ -38,6 +38,7 @@ public class LeaveRequestProcessorService {
     private final LeaveBalanceServiceInterface leaveBalanceService;
 
     /**
+    /**
      * Processes an approved leave request workflow.
      * Updates the LeaveRequest status to APPROVED and sets approval metadata.
      * Balance is NOT touched as it was already deducted on submission.
