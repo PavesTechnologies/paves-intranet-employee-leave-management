@@ -27,4 +27,5 @@ public interface HolidaysServiceInterface {
     void importHolidaysFromExcel(MultipartFile file) throws IOException, IOException;
     ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(String state, String country);
 
+    List<Holidays> getHolidaysByMonth(int month);
 }
