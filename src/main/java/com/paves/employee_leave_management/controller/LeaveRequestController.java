@@ -36,7 +36,7 @@ public class LeaveRequestController {
      * Apply for leave - Employee submits a new leave request
      */
     @PostMapping("/apply")
-    @PreAuthorize("hasAnyRole('GENERAL','HR', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('GENERAL','HR', 'MANAGER') and hasAuthority('EDIT_TIMESHEET')")
     public ResponseEntity<ApiResponse<LeaveRequest>> applyLeave(@Valid @RequestBody LeaveRequestValidationDTO request) {
         try {
             // Validate the leave request
@@ -135,11 +135,11 @@ public class LeaveRequestController {
     /**
      * Cancel leave request by employee
      */
-    @PutMapping("/{leaveId}/cancel")
+    @PutMapping("/{leaveId}/cancel/{employeeId}")
     @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
     public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequest(
             @PathVariable String leaveId,
-            @RequestParam String employeeId) {
+            @PathVariable String employeeId) {
         try {
             LeaveRequest cancelledRequest = leaveRequestService.cancelLeaveRequest(leaveId, employeeId);
             return ResponseEntity.ok(new ApiResponse<>(true, "Cancelled By employee", cancelledRequest));

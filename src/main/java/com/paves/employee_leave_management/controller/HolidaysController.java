@@ -50,7 +50,7 @@ public class HolidaysController {
 
     // 🔹 Add new holiday
     @PostMapping("/add")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<String> addHoliday(@RequestBody List<Holidays> holidays) {
         return holidaysService.addHoliday(holidays);
     }

@@ -22,11 +22,11 @@ public interface LeaveTypeServiceInterface {
 
     public ResponseEntity<String> deActiveLeaveType(String leaveTypeId);
 
-    void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception;
-
-    byte[] viewDocument(String leaveTypeId, String fileType) throws Exception;
-
-    void deleteDocument(String leaveTypeId) throws Exception;
+//    void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception;
+//
+//    byte[] viewDocument(String leaveTypeId, String fileType) throws Exception;
+//
+//    void deleteDocument(String leaveTypeId) throws Exception;
     
     String getMimeType(String fileType) throws Exception;
 }
