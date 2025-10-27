@@ -42,10 +42,20 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
     List<LeaveBalance> searchByEmployee(@Param("query") String query);
 
     // Autocomplete for names or employeeIds
-    @Query("SELECT DISTINCT lb.employee.employeeId FROM LeaveBalance lb " +
+    @Query("SELECT DISTINCT CONCAT(lb.employee.firstName, ' ', lb.employee.lastName) FROM LeaveBalance lb " +
             "WHERE LOWER(lb.employee.employeeId) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(lb.employee.firstName) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(lb.employee.lastName) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<String> autocompleteEmployee(@Param("query") String query);
     List<LeaveBalance> findByEmployee_EmployeeIdAndYear(String employeeId, Integer year);
+
+    LeaveBalance getByEmployeeIdAndLeaveType_LeaveTypeId(String employeeId, String leaveTypeId);
+
+    boolean existsByBlockId(String blockId);
+
+    LeaveBalance getByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
+//    LeaveBalance getByEmployeeIdAndLeaveTypeAndYear(String employeeId, String LeaveType, Integer year);
+
+    List<LeaveBalance> getByEmployeeIdAndLeaveType_LeaveTypeIdAndYearAndBlockId(String employeeId, String leaveTypeId, Integer year, String blockId);
+    List<LeaveBalance> findByBlockId(String blockId);
 }

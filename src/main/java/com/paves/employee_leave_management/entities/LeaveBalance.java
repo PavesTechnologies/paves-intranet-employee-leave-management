@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.cglib.core.Block;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -47,6 +48,9 @@ public class LeaveBalance {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
+    @Column(name = "emp_id")
+    private String employeeId;
+
     @ManyToOne
     @JoinColumn(name = "leave_type_id", nullable = false)
     private LeaveType leaveType;
@@ -82,6 +86,12 @@ public class LeaveBalance {
 
     @Column(name = "last_accrual_date")
     private LocalDate lastAccrualDate;
+
+    @Column(name = "is_blocked")
+    private Boolean isBlocked;
+
+    @Column(name = "block_id")
+    private String blockId;
 
  //   @CreatedDate
     @Column(name = "created_at", updatable = false)
