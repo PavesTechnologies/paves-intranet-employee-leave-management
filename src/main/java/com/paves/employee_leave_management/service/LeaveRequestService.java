@@ -243,6 +243,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         if (endDate.isBefore(startDate)) {
             result.addError("End date must be after or equal to start date");
         }
+        if(request.getStartDate().getYear() != LocalDate.now().getYear() && request.getLeaveTypeId().equals("L-SL")){
+            result.addError("Sick Leave request can only be made for the current year");
+        }
     }
 
     /**

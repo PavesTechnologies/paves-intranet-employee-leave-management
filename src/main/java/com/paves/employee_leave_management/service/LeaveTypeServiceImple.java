@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
+import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
@@ -20,8 +21,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
@@ -55,8 +58,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                         null);
             } else {
                 // Reactivate
-                double newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
-                newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
+                double newAccrualRate = 0;
+                if(leaveType.getMaxDaysPerYear() == null){
+                    newAccrualRate = 0;
+                }else{
+                    newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
+                    newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
+                }
                 dbLeaveType.setActive(true);
                 dbLeaveType.setLeaveName(leaveType.getLeaveName());
                 dbLeaveType.setDescription(leaveType.getDescription());
@@ -74,7 +82,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 dbLeaveType.setAllowNegativeBalance(leaveType.getAllowNegativeBalance());
                 dbLeaveType.setExpiryDays(leaveType.getExpiryDays());
                 dbLeaveType.setMaxDaysPerYear(leaveType.getMaxDaysPerYear());
-                dbLeaveType.setPolicyDocument(leaveType.getPolicyDocument());
+//                dbLeaveType.setPolicyDocument(leaveType.getPolicyDocument());
                 dbLeaveType.setCreateAt(LocalDateTime.now());
 
                 dbLeaveType.setLastUpdatedAt(null);
@@ -88,8 +96,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         // Create new
-        double newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
-        newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
+        double newAccrualRate = 0;
+        if(leaveType.getMaxDaysPerYear() == null){
+            newAccrualRate = 0;
+        }else{
+            newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
+            newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
+        }
         leaveType.setAccrualRate(newAccrualRate);
         leaveType.setCreateAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
@@ -200,43 +213,43 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         return new ResponseEntity<>("Leave type deactivated successfully", HttpStatus.OK);
     }
 
-    @Override
-    public void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception {
-        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
-                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
-
-        // Only accept PDF or Word files
-        String contentType = file.getContentType();
-        if (!contentType.equalsIgnoreCase("application/pdf") &&
-                !contentType.equalsIgnoreCase("application/msword") &&
-                !contentType.equalsIgnoreCase("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
-            throw new RuntimeException("Only PDF and Word documents are allowed");
-        }
-
-        leaveType.setPolicyDocument(file.getBytes());
-        leaveTypeRepo.save(leaveType);
-    }
-
-    @Override
-    public byte[] viewDocument(String leaveTypeName, String fileType) throws Exception {
-        LeaveType leaveType = leaveTypeRepo.findByLeaveName(leaveTypeName)
-                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
-
-        if (leaveType.getPolicyDocument() == null) {
-            throw new LeaveTypeException("No document uploaded for this leave type");
-        }
-
-        return leaveType.getPolicyDocument();
-    }
-
-    @Override
-    public void deleteDocument(String leaveTypeId) throws Exception {
-        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
-                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
-
-        leaveType.setPolicyDocument(null);
-        leaveTypeRepo.save(leaveType);
-    }
+//    @Override
+//    public void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception {
+//        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
+//                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+//
+//        // Only accept PDF or Word files
+//        String contentType = file.getContentType();
+//        if (!contentType.equalsIgnoreCase("application/pdf") &&
+//                !contentType.equalsIgnoreCase("application/msword") &&
+//                !contentType.equalsIgnoreCase("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+//            throw new RuntimeException("Only PDF and Word documents are allowed");
+//        }
+//
+//        leaveType.setPolicyDocument(file.getBytes());
+//        leaveTypeRepo.save(leaveType);
+//    }
+//
+//    @Override
+//    public byte[] viewDocument(String leaveTypeName, String fileType) throws Exception {
+//        LeaveType leaveType = leaveTypeRepo.findByLeaveName(leaveTypeName)
+//                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+//
+//        if (leaveType.getPolicyDocument() == null) {
+//            throw new LeaveTypeException("No document uploaded for this leave type");
+//        }
+//
+//        return leaveType.getPolicyDocument();
+//    }
+//
+//    @Override
+//    public void deleteDocument(String leaveTypeId) throws Exception {
+//        LeaveType leaveType = leaveTypeRepo.findById(leaveTypeId)
+//                .orElseThrow(() -> new LeaveTypeException("Leave type not found"));
+//
+//        leaveType.setPolicyDocument(null);
+//        leaveTypeRepo.save(leaveType);
+//    }
 
     // Helper to get MIME type from extension
     @Override
@@ -248,4 +261,22 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             default -> "application/octet-stream";
         };
     }
+
+
+    public List<LeaveTypeIdDTO> getAllLeaveTypeIds() {
+        List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
+        List<LeaveTypeIdDTO> leaveTypeDTOs = new ArrayList<>();
+
+        for (LeaveType leaveType : leaveTypes) {
+            if (Boolean.TRUE.equals(leaveType.getActive())) {
+                LeaveTypeIdDTO dto = new LeaveTypeIdDTO();
+                dto.setLeaveTypeId(leaveType.getLeaveTypeId());
+                dto.setLeaveName(leaveType.getLeaveName());
+                leaveTypeDTOs.add(dto);
+            }
+        }
+
+        return leaveTypeDTOs;
+    }
+
 }
