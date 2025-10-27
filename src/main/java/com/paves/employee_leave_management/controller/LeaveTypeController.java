@@ -151,6 +151,38 @@ public class LeaveTypeController {
 
     // Document management endpoints remain unchanged
 
+
+//    @PreAuthorize("hasRole('HR')")
+//    @PostMapping("/{leaveTypeId}/upload-document")
+//    public ResponseEntity<String> uploadDocument(@PathVariable String leaveTypeId,
+//                                                 @RequestParam("file") MultipartFile file) throws Exception {
+//        service.uploadDocument(leaveTypeId, file);
+//        return ResponseEntity.ok("Document uploaded successfully");
+//    }
+//
+//    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+//    @GetMapping("/{leaveTypeName}/document")
+//    public ResponseEntity<ByteArrayResource> viewDocument(@PathVariable String leaveTypeName,
+//                                                          @RequestParam(defaultValue = "pdf") String fileType) throws Exception {
+//        byte[] data = service.viewDocument(leaveTypeName, fileType);
+//
+//        ByteArrayResource resource = new ByteArrayResource(data);
+//
+//        return ResponseEntity.ok()
+//                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"policy." + fileType + "\"")
+//                .contentType(MediaType.parseMediaType(service.getMimeType(fileType)))
+//                .contentLength(data.length)
+//                .body(resource);
+//    }
+//
+//    @PreAuthorize("hasRole('HR')")
+//    @DeleteMapping("/{leaveTypeId}/document")
+//    public ResponseEntity<ApiResponse<Object>> deleteDocument(@PathVariable String leaveTypeId) throws Exception {
+//        service.deleteDocument(leaveTypeId);
+//        return ResponseEntity.ok(new ApiResponse<>(true,"Document deleted successfully",null));
+//    }
+  
+  
     @PreAuthorize("hasRole('HR')")
     @PostMapping("/{leaveTypeId}/upload-document")
     public ResponseEntity<String> uploadDocument(@PathVariable String leaveTypeId,
@@ -186,4 +218,5 @@ public class LeaveTypeController {
     public ResponseEntity<List<LeaveTypeIdDTO>> getAllLeaveTypeIds() {
         return new ResponseEntity<>(service.getAllLeaveTypeIds(), HttpStatus.OK);
     }
+
 }

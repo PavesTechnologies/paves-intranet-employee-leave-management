@@ -27,6 +27,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @EntityListeners(AuditEntityListener.class)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class LeaveRequest {
 
     @Id
@@ -47,6 +48,9 @@ public class LeaveRequest {
     @ManyToOne
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
+
+    @Column(name = "emp_id")
+    private String employeeId;
 
     @ManyToOne
     @JoinColumn(name = "leave_type_id", nullable = false)
