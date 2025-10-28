@@ -100,14 +100,14 @@ public interface EmailServiceInterface {
     boolean sendLeaveCancellationNotification(String managerEmail, String employeeName,
                                             String leaveType, String startDate, String endDate);
 
-    interface ApprovalService {
-
-        void submitForApproval(MCApprovalRequestDto dto, Employee maker, String makerRole);
-
-        List<ApprovalRequestResponseDto> getPendingApprovalsForUser(Employee approver);
-
-        void approveRequest(Long requestId, ApproveRequestDto dto, Employee checker);
-
-        void rejectRequest(Long requestId, RejectRequestDto dto, Employee checker);
-    }
+//    interface ApprovalService {
+//
+//        void submitForApproval(MCApprovalRequestDto dto, Employee maker, String makerRole);
+//
+//        List<ApprovalRequestResponseDto> getPendingApprovalsForUser(Employee approver);
+//
+//        void approveRequest(Long requestId, ApproveRequestDto dto, Employee checker);
+//
+//        void rejectRequest(Long requestId, RejectRequestDto dto, Employee checker);
+//    }
 }

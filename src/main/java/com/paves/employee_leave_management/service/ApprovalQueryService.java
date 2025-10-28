@@ -53,7 +53,7 @@ public class ApprovalQueryService {
         log.debug("Fetching PENDING task details for approver {} of type {}", approverId, requestType);
 
         // 1. Find PENDING stages for the approver
-        List<ApprovalStage> pendingStages = approvalStageRepository.findByApproverIdAndStatus(UUID.fromString(approverId), "PENDING");
+        List<ApprovalStage> pendingStages = approvalStageRepository.findByApproverIdAndStatus(approverId, "PENDING");
 
         // 2. Filter by request type
         List<ApprovalStage> filteredStages = pendingStages.stream()

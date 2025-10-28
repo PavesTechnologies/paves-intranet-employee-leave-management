@@ -16,5 +16,5 @@ public interface DelegationRuleRepository extends JpaRepository<DelegationRule, 
             String ownerUserId, LocalDateTime now1, LocalDateTime now2
     );
 
-    List<DelegationRule> findByDelegateUserId(UUID delegateUserId);
+    List<DelegationRule> findByDelegateUserId(String delegateUserId);
 }
