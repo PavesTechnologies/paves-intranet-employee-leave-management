@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
+import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.LeaveType;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
@@ -22,11 +23,13 @@ public interface LeaveTypeServiceInterface {
 
     public ResponseEntity<String> deActiveLeaveType(String leaveTypeId);
 
-    void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception;
-
-    byte[] viewDocument(String leaveTypeId, String fileType) throws Exception;
-
-    void deleteDocument(String leaveTypeId) throws Exception;
+//    void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception;
+//
+//    byte[] viewDocument(String leaveTypeId, String fileType) throws Exception;
+//
+//    void deleteDocument(String leaveTypeId) throws Exception;
     
     String getMimeType(String fileType) throws Exception;
+
+    public List<LeaveTypeIdDTO> getAllLeaveTypeIds();
 }

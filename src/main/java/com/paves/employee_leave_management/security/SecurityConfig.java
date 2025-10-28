@@ -56,12 +56,12 @@ public class SecurityConfig {
                     authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role.replace(" ", "_").toUpperCase()));
                 }
             }
-//            List<String> permissions = jwt.getClaimAsStringList("permissions");
-//            if (permissions != null) {
-//                for (String perm : permissions) {
-//                    authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(perm));
-//                }
-//            }
+            List<String> permissions = jwt.getClaimAsStringList("permissions");
+            if (permissions != null) {
+                for (String perm : permissions) {
+                    authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(perm));
+                }
+            }
             return authorities;
         });
         return converter;
