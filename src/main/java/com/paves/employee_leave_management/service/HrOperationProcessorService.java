@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.paves.employee_leave_management.enums.ActionType;
 
 import java.util.List;
 import java.util.Map;
@@ -72,7 +73,7 @@ public class HrOperationProcessorService {
             // 3. Execute the specific business logic based on the operation type
             switch (approvedRequest.getOperationType()) {
 
-                case "ADD_LEAVE_TYPE":
+                case "CREATE_LEAVE_TYPE":
                     // Deserialize the payload JSON into the LeaveType object
                     LeaveType newLeaveType = objectMapper.readValue(hrData.getPayload(), LeaveType.class);
                     // --- CALL THE ACTUAL BUSINESS LOGIC ---
@@ -80,7 +81,7 @@ public class HrOperationProcessorService {
                     log.info("Successfully added Leave Type {} via approved workflow.", newLeaveType.getLeaveTypeId());
                     break;
 
-                case "UPDATE_EMPLOYEE_BALANCE":
+                case "UPDATE_EMPLOYEE_LEAVE_BALANCE":
                     // Deserialize payload into appropriate DTO/Map
                     // Example using a specific DTO (adjust if you use Map)
 

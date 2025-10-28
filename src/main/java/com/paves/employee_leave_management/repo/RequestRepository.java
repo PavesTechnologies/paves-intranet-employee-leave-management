@@ -11,7 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface RequestRepository extends JpaRepository<Request, UUID> {
-    List<Request> findByCreatedBy(UUID createdBy);
+    List<Request> findByCreatedBy(String createdBy);
     List<Request> findByStatus(String status);
 
     Optional<Request> findByTargetEntityId(String leaveId);

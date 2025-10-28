@@ -40,8 +40,8 @@ public class LeaveBalanceController {
     @Autowired
     private LeaveBalanceServiceInterface leaveBalanceService;
 
-    @Autowired
-    private EmailServiceInterface.ApprovalService approvalService;
+//    @Autowired
+//    private EmailServiceInterface.ApprovalService approvalService;
 
     @Autowired
     private EmployeeRepo employeeRepo;

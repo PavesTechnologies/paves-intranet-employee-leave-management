@@ -42,8 +42,8 @@ public class LeaveTypeController {
     @Autowired
     private LeaveTypeRepo leaveTypeRepo;
 
-    @Autowired
-    private EmailServiceInterface.ApprovalService approvalService;
+//    @Autowired
+//    private EmailServiceInterface.ApprovalService approvalService;
 
     @Autowired
     private EmployeeRepo employeeRepo;

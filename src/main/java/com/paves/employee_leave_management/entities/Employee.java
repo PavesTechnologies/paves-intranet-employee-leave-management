@@ -103,32 +103,15 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-@Entity
-@Table(name = "employee")
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = {
-        "subordinates",
-        "leaveRequests",
-        "approvedRequests",
-        "leaveBalances",
-        "manager",
-        "hrAdministrator",
-        "department",
-        "group"
-})
-@EqualsAndHashCode(exclude = {
-        "subordinates",
-        "leaveRequests",
-        "approvedRequests",
-        "leaveBalances",
-        "manager",
-        "hrAdministrator",
-        "department",
-        "group"
-})
+@ToString
+@EqualsAndHashCode
+@Entity
+@Table(name = "employee")
 public class Employee {
 
     @Id
@@ -170,63 +153,62 @@ public class Employee {
     @Column(name = "job_title", length = 100)
     private String jobTitle;
 
-    // =============================
-    // 🧩 Hierarchy & Role Structure
-    // =============================
-
     @Column(name = "role", length = 50, nullable = false)
-    private String role; // Example: "JUNIOR_DEV", "TEAM_LEAD", "HR_MANAGER"
+    private String role;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")
     @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Employee manager;
 
     @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<Employee> subordinates;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Department department;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Group group;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hr_administrator_id")
     @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Employee hrAdministrator;
-
-    // =============================
-    // 🏖 Leave & Approval Relations
-    // =============================
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<LeaveRequest> leaveRequests;
 
-    @Column(name="password", length = 10)
+    @Column(name = "password", length = 10)
     private String password;
-
-//    @Column(name="usedLeaves")
-//    private int  usedLeaves;
 
     @OneToMany(mappedBy = "approvedBy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<LeaveRequest> approvedRequests;
 
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<LeaveBalance> leaveBalances;
 
-
-    // =============================
-    // 🧠 Utility Methods
-    // =============================
-
-    // Convenience method
     public String getFullName() {
         return firstName + " " + lastName;
     }
