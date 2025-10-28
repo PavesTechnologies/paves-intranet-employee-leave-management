@@ -1,0 +1,274 @@
+package com.paves.employee_leave_management.service;
+
+import com.paves.employee_leave_management.dto.ApprovalStepDTO;
+import com.paves.employee_leave_management.dto.RuleConditionDTO;
+import com.paves.employee_leave_management.dto.RuleSetDTO;
+import com.paves.employee_leave_management.entities.ApprovalStep;
+import com.paves.employee_leave_management.entities.RuleCondition;
+import com.paves.employee_leave_management.entities.RuleSet;
+import com.paves.employee_leave_management.enums.ApprovalMode;
+import com.paves.employee_leave_management.repo.ApprovalStepRepository;
+import com.paves.employee_leave_management.repo.RuleConditionRepository;
+import com.paves.employee_leave_management.repo.RuleSetRepository;
+import com.paves.employee_leave_management.service.ruleengine.RuleEvaluatorService; // To clear cache
+import com.paves.employee_leave_management.serviceInterface.RuleConfigService;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Transactional // Most methods modify data
+@Slf4j
+public class RuleConfigServiceImpl implements RuleConfigService {
+
+    private final RuleSetRepository ruleSetRepository;
+    private final RuleConditionRepository ruleConditionRepository;
+    private final ApprovalStepRepository approvalStepRepository;
+    private final RuleEvaluatorService ruleEvaluatorService; // To evict cache
+
+    // --- Mappers (Consider using MapStruct for more complex mapping) ---
+    private RuleSetDTO mapToRuleSetDTO(RuleSet entity) {
+        if (entity == null) return null;
+        return new RuleSetDTO(
+                entity.getId(),
+                entity.getName(),
+                entity.getDescription(),
+                entity.getActive(),
+                entity.getConditions().stream().map(this::mapToConditionDTO).collect(Collectors.toList()),
+                entity.getApprovalSteps().stream().map(this::mapToStepDTO).collect(Collectors.toList())
+        );
+    }
+    // Simplified DTO for list view (optional)
+    private RuleSetDTO mapToRuleSetListDTO(RuleSet entity) {
+        if (entity == null) return null;
+        return new RuleSetDTO(
+                entity.getId(), entity.getName(), entity.getDescription(), entity.getActive(),
+                null, null // Exclude details for list view
+        );
+    }
+
+    private RuleConditionDTO mapToConditionDTO(RuleCondition entity) {
+        if (entity == null) return null;
+        return new RuleConditionDTO(
+                entity.getId(),
+                entity.getAttribute(),
+                entity.getOperator(),
+                entity.getValue()
+        );
+    }
+
+    private ApprovalStepDTO mapToStepDTO(ApprovalStep entity) {
+        if (entity == null) return null;
+        return new ApprovalStepDTO(
+                entity.getId(),
+                entity.getLevel(),
+                entity.getApproverType(),
+                entity.getApproverValue(),
+                entity.getApprovalMode()
+                // map escalation fields if added
+        );
+    }
+
+    // --- RuleSet Implementation ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<RuleSetDTO> getAllRuleSets() {
+        log.debug("Fetching all rulesets");
+        return ruleSetRepository.findAll().stream()
+                .map(this::mapToRuleSetListDTO) // Use simplified DTO for list
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RuleSetDTO getRuleSetById(UUID ruleSetId) {
+        log.debug("Fetching ruleset by ID: {}", ruleSetId);
+        RuleSet ruleSet = ruleSetRepository.findById(ruleSetId)
+                .orElseThrow(() -> new EntityNotFoundException("RuleSet not found with ID: " + ruleSetId));
+        return mapToRuleSetDTO(ruleSet); // Return full details
+    }
+
+    @Override
+    public RuleSetDTO createRuleSet(RuleSetDTO ruleSetDto) {
+        log.info("Creating new ruleset: {}", ruleSetDto.getName());
+        RuleSet ruleSet = new RuleSet();
+        ruleSet.setName(ruleSetDto.getName());
+        ruleSet.setDescription(ruleSetDto.getDescription());
+        ruleSet.setActive(ruleSetDto.getActive() != null ? ruleSetDto.getActive() : true); // Default to active
+        // Note: Conditions and Steps are usually added via separate calls or handled by cascade if sent in DTO
+        RuleSet savedRuleSet = ruleSetRepository.save(ruleSet);
+        ruleEvaluatorService.clearRuleCache(); // Evict cache
+        return mapToRuleSetDTO(savedRuleSet);
+    }
+
+    @Override
+    public RuleSetDTO updateRuleSet(UUID ruleSetId, RuleSetDTO ruleSetDto) {
+        log.info("Updating ruleset: {}", ruleSetId);
+        RuleSet ruleSet = ruleSetRepository.findById(ruleSetId)
+                .orElseThrow(() -> new EntityNotFoundException("RuleSet not found with ID: " + ruleSetId));
+
+        ruleSet.setName(ruleSetDto.getName());
+        ruleSet.setDescription(ruleSetDto.getDescription());
+        if (ruleSetDto.getActive() != null) {
+            ruleSet.setActive(ruleSetDto.getActive());
+        }
+        // Updating conditions/steps via this method can be complex (detecting adds/updates/deletes).
+        // It's often easier to manage them via their specific endpoints.
+        RuleSet updatedRuleSet = ruleSetRepository.save(ruleSet);
+        ruleEvaluatorService.clearRuleCache(); // Evict cache
+        return mapToRuleSetDTO(updatedRuleSet);
+    }
+
+    @Override
+    public void deleteRuleSet(UUID ruleSetId) {
+        log.warn("Deleting ruleset: {}", ruleSetId);
+        if (!ruleSetRepository.existsById(ruleSetId)) {
+            throw new EntityNotFoundException("RuleSet not found with ID: " + ruleSetId);
+        }
+        // Conditions and Steps should be deleted by cascade (check @OneToMany annotation)
+        ruleSetRepository.deleteById(ruleSetId);
+        ruleEvaluatorService.clearRuleCache(); // Evict cache
+        log.info("Deleted ruleset: {}", ruleSetId);
+    }
+
+    @Override
+    public RuleSetDTO activateRuleSet(UUID ruleSetId) {
+        RuleSet ruleSet = ruleSetRepository.findById(ruleSetId)
+                .orElseThrow(() -> new EntityNotFoundException("RuleSet not found: " + ruleSetId));
+        ruleSet.setActive(true);
+        RuleSet updated = ruleSetRepository.save(ruleSet);
+        ruleEvaluatorService.clearRuleCache();
+        log.info("Activated RuleSet {}", ruleSetId);
+        return mapToRuleSetDTO(updated);
+    }
+
+    @Override
+    public RuleSetDTO deactivateRuleSet(UUID ruleSetId) {
+        RuleSet ruleSet = ruleSetRepository.findById(ruleSetId)
+                .orElseThrow(() -> new EntityNotFoundException("RuleSet not found: " + ruleSetId));
+        ruleSet.setActive(false);
+        RuleSet updated = ruleSetRepository.save(ruleSet);
+        ruleEvaluatorService.clearRuleCache();
+        log.info("Deactivated RuleSet {}", ruleSetId);
+        return mapToRuleSetDTO(updated);
+    }
+
+    // --- RuleCondition Implementation ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<RuleConditionDTO> getConditionsForRuleSet(UUID ruleSetId) {
+        if (!ruleSetRepository.existsById(ruleSetId)) {
+            throw new EntityNotFoundException("RuleSet not found with ID: " + ruleSetId);
+        }
+        return ruleConditionRepository.findByRuleSetId(ruleSetId).stream()
+                .map(this::mapToConditionDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public RuleConditionDTO addConditionToRuleSet(UUID ruleSetId, RuleConditionDTO conditionDto) {
+        log.info("Adding condition to RuleSet {}", ruleSetId);
+        RuleSet ruleSet = ruleSetRepository.findById(ruleSetId)
+                .orElseThrow(() -> new EntityNotFoundException("RuleSet not found with ID: " + ruleSetId));
+
+        RuleCondition condition = new RuleCondition();
+        condition.setRuleSet(ruleSet);
+        condition.setAttribute(conditionDto.getAttribute());
+        condition.setOperator(conditionDto.getOperator());
+        condition.setValue(conditionDto.getValue());
+
+        RuleCondition savedCondition = ruleConditionRepository.save(condition);
+        ruleEvaluatorService.clearRuleCache(); // Conditions changed
+        return mapToConditionDTO(savedCondition);
+    }
+
+    @Override
+    public RuleConditionDTO updateCondition(UUID conditionId, RuleConditionDTO conditionDto) {
+        log.info("Updating condition {}", conditionId);
+        RuleCondition condition = ruleConditionRepository.findById(conditionId)
+                .orElseThrow(() -> new EntityNotFoundException("RuleCondition not found with ID: " + conditionId));
+
+        condition.setAttribute(conditionDto.getAttribute());
+        condition.setOperator(conditionDto.getOperator());
+        condition.setValue(conditionDto.getValue());
+
+        RuleCondition updatedCondition = ruleConditionRepository.save(condition);
+        ruleEvaluatorService.clearRuleCache(); // Conditions changed
+        return mapToConditionDTO(updatedCondition);
+    }
+
+    @Override
+    public void deleteCondition(UUID conditionId) {
+        log.warn("Deleting condition {}", conditionId);
+        if (!ruleConditionRepository.existsById(conditionId)) {
+            throw new EntityNotFoundException("RuleCondition not found with ID: " + conditionId);
+        }
+        ruleConditionRepository.deleteById(conditionId);
+        ruleEvaluatorService.clearRuleCache(); // Conditions changed
+        log.info("Deleted condition {}", conditionId);
+    }
+
+    // --- ApprovalStep Implementation ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<ApprovalStepDTO> getStepsForRuleSet(UUID ruleSetId) {
+        if (!ruleSetRepository.existsById(ruleSetId)) {
+            throw new EntityNotFoundException("RuleSet not found with ID: " + ruleSetId);
+        }
+        return approvalStepRepository.findByRuleSetIdOrderByLevelAsc(ruleSetId).stream()
+                .map(this::mapToStepDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ApprovalStepDTO addStepToRuleSet(UUID ruleSetId, ApprovalStepDTO stepDto) {
+        log.info("Adding step to RuleSet {} at level {}", ruleSetId, stepDto.getLevel());
+        RuleSet ruleSet = ruleSetRepository.findById(ruleSetId)
+                .orElseThrow(() -> new EntityNotFoundException("RuleSet not found with ID: " + ruleSetId));
+
+        ApprovalStep step = new ApprovalStep();
+        step.setRuleSet(ruleSet);
+        step.setLevel(stepDto.getLevel());
+        step.setApproverType(stepDto.getApproverType());
+        step.setApproverValue(stepDto.getApproverValue());
+        step.setApprovalMode(stepDto.getApprovalMode() != null ? stepDto.getApprovalMode() : ApprovalMode.SEQUENTIAL); // Default mode
+
+        ApprovalStep savedStep = approvalStepRepository.save(step);
+        ruleEvaluatorService.clearRuleCache(); // Steps changed
+        return mapToStepDTO(savedStep);
+    }
+
+    @Override
+    public ApprovalStepDTO updateStep(UUID stepId, ApprovalStepDTO stepDto) {
+        log.info("Updating step {}", stepId);
+        ApprovalStep step = approvalStepRepository.findById(stepId)
+                .orElseThrow(() -> new EntityNotFoundException("ApprovalStep not found with ID: " + stepId));
+
+        step.setLevel(stepDto.getLevel());
+        step.setApproverType(stepDto.getApproverType());
+        step.setApproverValue(stepDto.getApproverValue());
+        step.setApprovalMode(stepDto.getApprovalMode());
+
+        ApprovalStep updatedStep = approvalStepRepository.save(step);
+        ruleEvaluatorService.clearRuleCache(); // Steps changed
+        return mapToStepDTO(updatedStep);
+    }
+
+    @Override
+    public void deleteStep(UUID stepId) {
+        log.warn("Deleting step {}", stepId);
+        if (!approvalStepRepository.existsById(stepId)) {
+            throw new EntityNotFoundException("ApprovalStep not found with ID: " + stepId);
+        }
+        approvalStepRepository.deleteById(stepId);
+        ruleEvaluatorService.clearRuleCache(); // Steps changed
+        log.info("Deleted step {}", stepId);
+    }
+}

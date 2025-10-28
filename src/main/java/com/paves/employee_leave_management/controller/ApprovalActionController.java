@@ -32,7 +32,7 @@ public class ApprovalActionController {
     // --- Fetch Pending Tasks (Now returns FULL Details) ---
 
     @GetMapping("/my-pending/leave")
-    @PreAuthorize("isAuthenticated()")
+//    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<Object>>> getMyPendingLeaveTasksWithDetails( // Updated return type
                                                                                         @CurrentUser Employee currentUser) {
         log.info("User {} fetching pending LEAVE task details.", currentUser.getEmployeeId());
@@ -48,7 +48,7 @@ public class ApprovalActionController {
     }
 
     @GetMapping("/my-pending/hr-operations")
-    @PreAuthorize("isAuthenticated()")
+//    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<Object>>> getMyPendingHrOperationTasksWithDetails( // Updated return type
                                                                                               @CurrentUser Employee currentUser) {
         log.info("User {} fetching pending HR_OPERATION task details.", currentUser.getEmployeeId());
