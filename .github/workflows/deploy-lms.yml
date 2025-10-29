@@ -1,0 +1,56 @@
+name: Deploy LeaveManagement to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      - name: Verify local JAR
+        run: ls -lh target/ | grep LeaveManagement.jar
+
+      - name: Remove old JAR on EC2
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: rm -f ${{ secrets.EC2_PATH }}/LeaveManagement.jar
+
+      - name: Upload JAR to EC2 via rsync
+        uses: burnett01/rsync-deployments@7.1.0
+        with:
+          switches: -avz --delete
+          path: target/LeaveManagement.jar
+          remote_path: ${{ secrets.EC2_PATH }}/LeaveManagement.jar
+          remote_host: ${{ secrets.EC2_HOST }}
+          remote_user: ${{ secrets.EC2_USER }}
+          remote_key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Restart lms.service
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo systemctl daemon-reload 
+            sudo systemctl restart lms.service 
+            sleep 5 
+            sudo systemctl status lms.service --no-pager
