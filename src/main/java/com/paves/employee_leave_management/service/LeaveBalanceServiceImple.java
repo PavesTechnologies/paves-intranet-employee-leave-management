@@ -552,13 +552,29 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         List<Employee> employees = employeeRepo.findAll();
 
         List<LeaveBalance> newBalances = employees.stream()
-                .filter(emp -> leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
-                        emp.getEmployeeId(),
-                        leaveType.getLeaveTypeId(),
-                        year
-                ).isEmpty())
+                .filter(emp -> {
+                    // Skip maternity for males
+                    if (leaveType.getLeaveName().equalsIgnoreCase("MATERNITY_LEAVE")
+                            && emp.getGender().equalsIgnoreCase("MALE")) {
+                        return false;
+                    }
+
+                    // Skip paternity for females
+                    if (leaveType.getLeaveName().equalsIgnoreCase("PATERNITY_LEAVE")
+                            && emp.getGender().equalsIgnoreCase("FEMALE")) {
+                        return false;
+                    }
+
+                    // Include only if no existing record for this employee + leave type + year
+                    return leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
+                            emp.getEmployeeId(),
+                            leaveType.getLeaveTypeId(),
+                            year
+                    ).isEmpty();
+                })
                 .map(emp -> buildLeaveBalance(emp, leaveType, createdDate, true))
                 .toList();
+
 
         if (!newBalances.isEmpty()) {
             leaveBalanceRepo.saveAll(newBalances);

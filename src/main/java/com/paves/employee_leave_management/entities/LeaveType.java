@@ -1,7 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.paves.employee_leave_management.audit.AuditEntityListener;
+import com.paves.employee_leave_management.audit                    .AuditEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.beans.BeanUtils;
