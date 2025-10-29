@@ -37,7 +37,7 @@ jobs:
         uses: burnett01/rsync-deployments@7.1.0
         with:
           switches: -avz --delete
-          path: target/LeaveManagement.jar
+          path: target/employee-leave-management-0.0.1-SNAPSHOT.jar
           remote_path: ${{ secrets.EC2_PATH }}/employee-leave-management-0.0.1-SNAPSHOT.jar
           remote_host: ${{ secrets.EC2_HOST }}
           remote_user: ${{ secrets.EC2_USER }}
