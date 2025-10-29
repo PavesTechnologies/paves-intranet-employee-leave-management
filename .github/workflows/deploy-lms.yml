@@ -31,14 +31,14 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: rm -f ${{ secrets.EC2_PATH }}/LeaveManagement.jar
+          script: rm -f ${{ secrets.EC2_PATH }}/employee-leave-management-0.0.1-SNAPSHOT.jar
 
       - name: Upload JAR to EC2 via rsync
         uses: burnett01/rsync-deployments@7.1.0
         with:
           switches: -avz --delete
           path: target/LeaveManagement.jar
-          remote_path: ${{ secrets.EC2_PATH }}/LeaveManagement.jar
+          remote_path: ${{ secrets.EC2_PATH }}/employee-leave-management-0.0.1-SNAPSHOT.jar
           remote_host: ${{ secrets.EC2_HOST }}
           remote_user: ${{ secrets.EC2_USER }}
           remote_key: ${{ secrets.EC2_SSH_KEY }}
