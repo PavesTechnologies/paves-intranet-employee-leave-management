@@ -1,5 +1,3 @@
-Path: .github/workflows/deploy-lms.yml
-
 name: Deploy LeaveManagement to EC2
 
 on:
