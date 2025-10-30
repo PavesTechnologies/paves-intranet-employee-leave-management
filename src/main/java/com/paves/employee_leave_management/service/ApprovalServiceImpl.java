@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -215,7 +216,9 @@ public class ApprovalServiceImpl implements EmailServiceInterface.ApprovalServic
                     break;
                 case DEACTIVATE_LEAVE_TYPE:
                     Map<String, String> deactivatePayload = objectMapper.readValue(payload, Map.class);
-                    leaveTypeService.deActiveLeaveType(deactivatePayload.get("leaveTypeId"));
+                    String leaveTypeId = deactivatePayload.get("leaveTypeId");
+                    LocalDate effectiveDate = LocalDate.parse(deactivatePayload.get("deactivationEffectiveDate"));
+                    leaveTypeService.deActiveLeaveType(leaveTypeId, effectiveDate);
                     break;
                 case UPDATE_EMPLOYEE_LEAVE_BALANCE:
                     Map<String, Object> balanceUpdatePayload = objectMapper.readValue(payload, Map.class);

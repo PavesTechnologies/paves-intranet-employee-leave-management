@@ -113,6 +113,9 @@ public class LeaveType {
     @Column(nullable = false)
     private LocalDate effectiveStartDate;
 
+    @Column(name = "deactivation_effective_date")
+    private LocalDate deactivationEffectiveDate;
+
 //    @Lob
 //    @Column(name = "policy_document", columnDefinition = "LONGBLOB",nullable = false)
 //    private byte[] policyDocument;
