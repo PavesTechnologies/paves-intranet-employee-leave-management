@@ -24,6 +24,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LeaveBlockScheduler {
 
+//    Blocks first (00:00) → ensures no blocked types activate by mistake.
+//
+//            Activations next (00:05) → adds new valid leave types.
+//
+//            Deactivations last (00:10) → cleans up old ones safely.
+
     private final LeaveBlockRepo leaveBlockRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final LeaveTypeRepo leaveTypeRepo;
@@ -93,6 +99,28 @@ public class LeaveBlockScheduler {
                     leaveType.getEffectiveStartDate());
         }
 }
+    @Scheduled(cron = "0 10 0 * * ?") // Every day at 12:10 AM (after activation)
+    @Transactional
+    public void deactivateDueLeaveTypes() {
+        LocalDate today = LocalDate.now();
+
+        // Fetch active leave types with deactivation date <= today
+        List<LeaveType> toDeactivate = leaveTypeRepo.findByActiveTrueAndDeactivationEffectiveDateLessThanEqual(today);
+        if (toDeactivate.isEmpty()) return;
+
+        log.info("Deactivating {} leave types effective today or earlier...", toDeactivate.size());
+        for (LeaveType leaveType : toDeactivate) {
+            leaveType.setActive(false);
+            leaveTypeRepo.save(leaveType);
+
+            // Optional cleanup of leave balances linked to the deactivated leave type
+            leaveBalanceRepo.deleteByLeaveType(leaveType);
+
+            log.info("Deactivated leave type: {} (effective until {})",
+                    leaveType.getLeaveName(),
+                    leaveType.getDeactivationEffectiveDate());
+        }
+    }
 
 
 }

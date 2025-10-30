@@ -140,10 +140,19 @@ public class LeaveTypeController {
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> deleteLeaveType(@PathVariable String leaveTypeId) {
+    public ResponseEntity<ApiResponse<Object>> deleteLeaveType(
+            @PathVariable String leaveTypeId,
+            @RequestBody Map<String, String> requestBody) {
+
         Employee maker = getAuthenticatedUser();
-//        String makerRole = maker.getJobTitle();
         String makerRole = "HR";
+
+        String effectiveDateStr = requestBody.get("deactivationEffectiveDate");
+
+        // Optional: validate input
+        if (effectiveDateStr == null || effectiveDateStr.isEmpty()) {
+            throw new IllegalArgumentException("Deactivation effective date is required.");
+        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.DEACTIVATE_LEAVE_TYPE);
@@ -151,12 +160,19 @@ public class LeaveTypeController {
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("leaveTypeId", leaveTypeId);
+        payload.put("deactivationEffectiveDate", effectiveDateStr);
+
         dto.setPayload(payload);
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
-        return ResponseEntity.ok(new ApiResponse<>(true,"Request to deactivate leave type has been submitted for approval.",null));
+        return ResponseEntity.ok(
+                new ApiResponse<>(true,
+                        "Request to deactivate leave type effective from " + effectiveDateStr + " has been submitted for approval.",
+                        null)
+        );
     }
+
 
     // Document management endpoints remain unchanged
 

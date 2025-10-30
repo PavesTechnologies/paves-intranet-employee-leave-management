@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,4 +23,7 @@ public interface LeaveTypeRepo extends JpaRepository<LeaveType,String> {
 
     @Query("SELECT l FROM LeaveType l WHERE l.active = false AND l.effectiveStartDate <= CURRENT_DATE")
     List<LeaveType> findPendingEffectiveLeaveTypes();
+
+    List<LeaveType> findByActiveTrueAndDeactivationEffectiveDateLessThanEqual(LocalDate date);
+
 }

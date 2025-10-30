@@ -222,16 +222,34 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     }
 
     @Transactional
-    public ResponseEntity<String> deActiveLeaveType(String leaveTypeId) {
-        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(
-                ()->new RuntimeException("Leave Type Not Found"));
+    public ResponseEntity<String> deActiveLeaveType(String leaveTypeId, LocalDate effectiveDate) {
+        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
+                .orElseThrow(() -> new RuntimeException("Leave Type Not Found"));
 
-        leaveType.setActive(false);
-        leaveTypeRepo.save(leaveType);
+        if (effectiveDate.isAfter(LocalDate.now())) {
+            // Future effective date → schedule it
+            leaveType.setDeactivationEffectiveDate(effectiveDate);
+            leaveType.setActive(true); // still active until the date arrives
+            leaveTypeRepo.save(leaveType);
 
-        leaveBalanceRepo.deleteByLeaveType(leaveType);
-        return new ResponseEntity<>("Leave type deactivated successfully", HttpStatus.OK);
+            return new ResponseEntity<>(
+                    "Leave type scheduled for deactivation on " + effectiveDate,
+                    HttpStatus.OK);
+        } else {
+            // Effective date has passed → deactivate immediately
+            leaveType.setActive(false);
+            leaveType.setDeactivationEffectiveDate(LocalDate.now());
+            leaveTypeRepo.save(leaveType);
+
+            // Optional: cleanup leave balances
+            leaveBalanceRepo.deleteByLeaveType(leaveType);
+
+            return new ResponseEntity<>(
+                    "Leave type deactivated immediately (effective date already passed)",
+                    HttpStatus.OK);
+        }
     }
+
 
 //    @Override
 //    public void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception {
