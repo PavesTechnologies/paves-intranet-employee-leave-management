@@ -24,10 +24,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @CrossOrigin
 @RestController
@@ -88,6 +85,16 @@ public class LeaveTypeController {
         // Assuming the role is stored in the jobTitle field for now
         // String makerRole = maker.getJobTitle();
         String makerRole = "HR";
+        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
+        if (existingLeaveType.isPresent()) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(
+                            false,
+                            "Leave type '" + leaveType.getLeaveName() + "' already exists.",
+                            null
+                    ));
+        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.CREATE_LEAVE_TYPE);

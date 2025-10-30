@@ -15,5 +15,7 @@ public interface LeaveTypeRepo extends JpaRepository<LeaveType,String> {
 
     List<LeaveType> findByActiveTrue();
 
+    Optional<LeaveType> findByLeaveNameIgnoreCase(String leaveName);
+
 //    Optional<LeaveType> findByLeaveName(String leaveName);
 }
