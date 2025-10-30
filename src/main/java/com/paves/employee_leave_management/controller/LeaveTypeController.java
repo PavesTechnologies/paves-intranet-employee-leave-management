@@ -24,6 +24,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @CrossOrigin
@@ -84,6 +85,7 @@ public class LeaveTypeController {
         Employee maker = getAuthenticatedUser();
         // Assuming the role is stored in the jobTitle field for now
         // String makerRole = maker.getJobTitle();
+
         String makerRole = "HR";
         Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
         if (existingLeaveType.isPresent()) {

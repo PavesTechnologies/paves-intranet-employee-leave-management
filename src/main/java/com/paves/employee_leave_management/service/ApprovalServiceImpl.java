@@ -77,7 +77,6 @@ public class ApprovalServiceImpl implements EmailServiceInterface.ApprovalServic
             } else {
                 request.setStatus(RequestStatus.WAITING);
             }
-
             try {
                 request.setPayload(objectMapper.writeValueAsString(dto.getPayload()));
             } catch (JsonProcessingException e) {

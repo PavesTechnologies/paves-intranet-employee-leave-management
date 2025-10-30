@@ -2,24 +2,32 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBlock;
+import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.BlockStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveBlockRepo;
+import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LeaveBlockScheduler {
 
     private final LeaveBlockRepo leaveBlockRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
+    private final LeaveTypeRepo leaveTypeRepo;
+    private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
 
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
@@ -64,5 +72,27 @@ public class LeaveBlockScheduler {
             });
             if (!balances.isEmpty()) leaveBalanceRepo.saveAll(balances);
         }
+
+
     }
+
+    @Scheduled(cron = "0 0 0 * * ?") // Every midnight
+    public void activatePendingLeaveTypes() {
+        List<LeaveType> pendingTypes = leaveTypeRepo.findPendingEffectiveLeaveTypes();
+
+        if (pendingTypes.isEmpty()) return;
+
+        log.info("Activating {} leave types effective today...", pendingTypes.size());
+
+        for (LeaveType leaveType : pendingTypes) {
+            leaveType.setActive(true);
+            leaveTypeRepo.save(leaveType);
+            leaveBalanceServiceInterface.createLeaveBalanceForAllEmployees(leaveType);
+            log.info("Activated leave type: {} (effective from {})",
+                    leaveType.getLeaveName(),
+                    leaveType.getEffectiveStartDate());
+        }
+}
+
+
 }
