@@ -2,10 +2,12 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBlock;
+import com.paves.employee_leave_management.entities.LeaveStatus;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.BlockStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveBlockRepo;
+import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import jakarta.transaction.Transactional;
@@ -34,7 +36,7 @@ public class LeaveBlockScheduler {
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final LeaveTypeRepo leaveTypeRepo;
     private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
-
+    private final LeaveRequestRepo leaveRequestRepo;
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void processLeaveBlock() {
@@ -112,7 +114,7 @@ public class LeaveBlockScheduler {
         for (LeaveType leaveType : toDeactivate) {
             leaveType.setActive(false);
             leaveTypeRepo.save(leaveType);
-
+            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
             // Optional cleanup of leave balances linked to the deactivated leave type
             leaveBalanceRepo.deleteByLeaveType(leaveType);
 
