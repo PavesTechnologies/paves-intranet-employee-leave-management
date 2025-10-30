@@ -47,6 +47,10 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
         leaveType.generateId(); // ensure leaveTypeId is set
 
+//        if (leaveType.getEffectiveStartDate().isBefore(LocalDate.now())) {
+//            return new ApiResponse<>(false, "Effective start date cannot be in the past.", null);
+//        }
+
         Optional<LeaveType> existingLeaveType = leaveTypeRepo.findById(leaveType.getLeaveTypeId());
 
         if (existingLeaveType.isPresent()) {
@@ -65,7 +69,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                     newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
                     newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
                 }
-                dbLeaveType.setActive(true);
+
+                boolean shouldActiveNow = !leaveType.getEffectiveStartDate().isAfter(LocalDate.now());
+                dbLeaveType.setActive(shouldActiveNow);
                 dbLeaveType.setLeaveName(leaveType.getLeaveName());
                 dbLeaveType.setDescription(leaveType.getDescription());
                 dbLeaveType.setAccrualRate(newAccrualRate);
@@ -84,13 +90,19 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 dbLeaveType.setMaxDaysPerYear(leaveType.getMaxDaysPerYear());
 //                dbLeaveType.setPolicyDocument(leaveType.getPolicyDocument());
                 dbLeaveType.setCreateAt(LocalDateTime.now());
+                dbLeaveType.setEffectiveStartDate(leaveType.getEffectiveStartDate());
 
                 dbLeaveType.setLastUpdatedAt(null);
                 LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
-                leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
 
+                if(shouldActiveNow) {
+                    leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
+                }
                 return new ApiResponse<>(true,
-                        "Leave type reactivated successfully.",
+                        dbLeaveType.getActive()
+                                ? "Leave type reactivated and effective immediately."
+                                : "Leave type reactivated and will be effective from "
+                                + leaveType.getEffectiveStartDate(),
                         reactivated);
             }
         }
@@ -103,12 +115,20 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
             newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
         }
+
+        boolean shouldActivateNow = !leaveType.getEffectiveStartDate().isAfter(LocalDate.now());
         leaveType.setAccrualRate(newAccrualRate);
         leaveType.setCreateAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
-        leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+
+        if(shouldActivateNow) {
+            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+        }
         return new ApiResponse<>(true,
-                "Leave type created successfully.",
+                savedLeaveType.getActive()
+                        ? "Leave type created and effective immediately."
+                        : "Leave type created and will become active on "
+                        + leaveType.getEffectiveStartDate(),
                 savedLeaveType);
     }
 

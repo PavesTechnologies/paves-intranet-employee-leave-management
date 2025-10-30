@@ -8,6 +8,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -108,6 +109,9 @@ public class LeaveType {
 
     @Column(name = "active")
     private Boolean active = true;
+
+    @Column(nullable = false)
+    private LocalDate effectiveStartDate;
 
 //    @Lob
 //    @Column(name = "policy_document", columnDefinition = "LONGBLOB",nullable = false)
