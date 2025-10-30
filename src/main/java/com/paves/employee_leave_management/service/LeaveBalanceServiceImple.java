@@ -547,7 +547,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Transactional
     public void createLeaveBalanceForAllEmployees(LeaveType leaveType) {
         int year = LocalDate.now().getYear();
-        LocalDate createdDate = LocalDate.now();
+        LocalDate createdDate = leaveType.getEffectiveStartDate();
 
         List<Employee> employees = employeeRepo.findAll();
 
