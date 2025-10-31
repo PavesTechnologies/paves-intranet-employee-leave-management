@@ -1,19 +1,15 @@
 package com.paves.employee_leave_management.repo;
 
-import aj.org.objectweb.asm.commons.Remapper;
 import com.paves.employee_leave_management.dto.ManagerQueryDTO;
-import com.paves.employee_leave_management.dto.PendingAndApprovedLeaveRequestsDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
-import com.paves.employee_leave_management.entities.LeaveStatus;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import javax.swing.text.html.Option;
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 

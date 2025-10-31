@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;

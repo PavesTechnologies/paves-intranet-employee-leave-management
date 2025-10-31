@@ -2,10 +2,9 @@ package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.paves.employee_leave_management.audit.AuditEntityListener;
+import com.paves.employee_leave_management.enums.ActionType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -28,7 +27,7 @@ public class LeaveType {
     @PrePersist
     public void generateId() {
         if ((leaveTypeId == null || leaveTypeId.isBlank()) && leaveName != null) {
-            switch (LeaveTypesEnum.valueOf(leaveName)) {
+            switch (ActionType.LeaveTypesEnum.valueOf(leaveName)) {
                 case MATERNITY_LEAVE -> leaveTypeId = "L-ML";
                 case PATERNITY_LEAVE -> leaveTypeId = "L-PL";
                 case SICK_LEAVE -> leaveTypeId = "L-SL";

@@ -2,8 +2,6 @@ package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveRequest;
-import com.paves.employee_leave_management.entities.LeaveStatus;
-import com.paves.employee_leave_management.entities.LeaveType;
 import jakarta.validation.Valid;
 
 import java.time.LocalDate;

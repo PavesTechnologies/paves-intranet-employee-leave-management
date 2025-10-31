@@ -1,10 +1,9 @@
 package com.paves.employee_leave_management.serviceInterface;
 
-import com.paves.employee_leave_management.dto.CancelCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
-import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
+import com.paves.employee_leave_management.enums.ApproverType;
 
 import java.util.List;
 
@@ -13,7 +12,7 @@ public interface LeaveCompoffSerivceInterface {
     void approveCompoff(Long compoffId);
     void rejectCompoff(Long compoffId);
     List<LeaveCompoff> getCompoffsByEmployee(String employeeId);
-    List<LeaveCompoff> getCompoffsByManagerAndStatus(String managerId, LeaveStatusCompoff status);
+    List<LeaveCompoff> getCompoffsByManagerAndStatus(String managerId, ApproverType.LeaveStatusCompoff status);
     List<PendingCompoffResponseDTO> getPendingCompoffsForManager(String managerId);
 
 

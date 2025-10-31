@@ -1,4 +1,4 @@
-package com.paves.employee_leave_management.entities;
+package com.paves.employee_leave_management.enums;
 
 public enum LeaveStatus {
     PENDING,    // When leave is submitted but not yet reviewed

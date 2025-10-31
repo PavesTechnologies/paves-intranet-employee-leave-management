@@ -5,7 +5,6 @@ import com.paves.employee_leave_management.dto.ManagerQueryDTO;
 import com.paves.employee_leave_management.dto.ManagerUpdateRequestDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
-import com.paves.employee_leave_management.entities.LeaveStatus;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
@@ -13,7 +12,6 @@ import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceI
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

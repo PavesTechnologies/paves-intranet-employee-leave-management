@@ -51,8 +51,8 @@ public class LeaveBlockController {
         return new ApiResponse<>(true, "Leave blocks retrieved successfully", leaveBlocks);
     }
 
-    @PostMapping("/deactivate")
-    public ApiResponse<String> deActivateLeaveBlock(@RequestBody String blockId) {
+    @PostMapping("/deactivate/{blockId}")
+    public ApiResponse<String> deActivateLeaveBlock(@PathVariable String blockId) {
         leaveBlockService.deActivateLeaveBlock(blockId);
         return new ApiResponse<>(true, "Leave block deactivated successfully", null);
     }

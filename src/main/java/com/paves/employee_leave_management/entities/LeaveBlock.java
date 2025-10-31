@@ -50,6 +50,9 @@ public class LeaveBlock {
     @JsonManagedReference
     private List<LeaveBlockLeaveType> leaveTypes;
 
+    @OneToMany(mappedBy = "leaveBlock", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    private List<LeaveBlockMapping> mappings;
 
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
@@ -57,6 +60,7 @@ public class LeaveBlock {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BlockStatus status; // ACTIVE, EXPIRED, CANCELLED
 

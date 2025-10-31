@@ -2,16 +2,10 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.LeaveBlockRequestDto;
 import com.paves.employee_leave_management.dto.UnblockLeaveRequestDto;
-import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveBlock;
-import com.paves.employee_leave_management.entities.LeaveBlockLeaveType;
-import com.paves.employee_leave_management.entities.LeaveBlockMember;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.BlockStatus;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBlockException;
-import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
-import com.paves.employee_leave_management.repo.LeaveBlockLeaveTypeRepo;
-import com.paves.employee_leave_management.repo.LeaveBlockMemberRepo;
-import com.paves.employee_leave_management.repo.LeaveBlockRepo;
+import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.LeaveBlockServiceInterface;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +28,9 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
     private LeaveBlockMemberRepo leaveBlockMemberRepo;
     @Autowired
     private LeaveBlockRepo leaveBlockRepo;
+
+    @Autowired
+    private LeaveBlockMappingRepo leaveBlockMappingRepo;
 
     // ------------------------------------------------------
     // CREATE LEAVE BLOCK
@@ -60,8 +57,12 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
         }
 
         // 🧩 3. Prevent overlapping blocks
-        boolean overlapExists = leaveBlockRepo.existsByProjectIdAndDateRangeOverlap(
-                requestDto.getProjectId(), requestDto.getStartDate(), requestDto.getEndDate());
+        boolean overlapExists = leaveBlockRepo.existsByProjectIdAndDateRangeOverlapAndStatus(
+                requestDto.getProjectId(),
+                requestDto.getStartDate(),
+                requestDto.getEndDate(),
+                BlockStatus.ACTIVE
+        );
         if (overlapExists) {
             throw new LeaveBlockException("A leave block already exists for this project within the selected date range.");
         }
@@ -80,21 +81,42 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
                 .status(initialStatus)
                 .reason(requestDto.getReason())
                 .createdAt(OffsetDateTime.now())
+                .year(today.getYear())
                 .build();
 
         LeaveBlock savedLeaveBlock = leaveBlockRepo.save(leaveBlock);
-        String blockId = savedLeaveBlock.getId();
 
-        // 🧩 6. Save types & members
+        // 🧩 6. Save Members and Leave Types (existing functionality)
         saveBlockRelations(requestDto, savedLeaveBlock);
+        updateBalancesForBlock(requestDto, savedLeaveBlock.getId(), true);
 
-        // 🧩 7. If active now, block balances immediately
-        if (!requestDto.getStartDate().isAfter(today)) {
-            updateBalancesForBlock(requestDto, blockId, true);
+
+        // 🆕 7. Save Employee ↔ LeaveType Mappings
+        List<LeaveBlockMapping> mappings = new ArrayList<>();
+
+        for (String empId : requestDto.getMembers()) {
+            for (String leaveTypeId : requestDto.getLeaveTypeIds()) {
+                LeaveBlockMapping mapping = LeaveBlockMapping.builder()
+                        .leaveBlock(savedLeaveBlock)
+                        .employeeId(empId)
+                        .leaveTypeId(leaveTypeId)
+                        .year(today.getYear())
+                        .status(initialStatus)
+                        .build();
+                mappings.add(mapping);
+            }
         }
 
-        System.out.println("Leave block created successfully with status: " + initialStatus);
+        leaveBlockMappingRepo.saveAll(mappings);
+
+        // 🧩 8. If active now, block balances immediately
+        if (!requestDto.getStartDate().isAfter(today)) {
+            updateBalancesForBlock(requestDto, savedLeaveBlock.getId(), true);
+        }
+
+        System.out.println("✅ Leave block created successfully with status: " + initialStatus);
     }
+
 
     // ------------------------------------------------------
     // UPDATE LEAVE BLOCK
@@ -102,9 +124,9 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
     @Transactional
     public LeaveBlock updateLeaveBlock(String blockId, LeaveBlockRequestDto requestDto) {
         LeaveBlock existingBlock = leaveBlockRepo.findById(blockId)
-                .orElseThrow(() -> new RuntimeException("LeaveBlock not found with ID: " + blockId));
+                .orElseThrow(() -> new LeaveBlockException("LeaveBlock not found with ID: " + blockId));
 
-        // Update main block fields
+        // --- 1️⃣ Update main fields ---
         existingBlock.setManagerId(requestDto.getManagerId());
         existingBlock.setProjectId(requestDto.getProjectId());
         existingBlock.setStartDate(requestDto.getStartDate());
@@ -113,11 +135,9 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
         existingBlock.setStatus(requestDto.getStatus());
         existingBlock.setUpdatedAt(OffsetDateTime.now());
 
-        // --- Update Leave Types ---
-        // 1. Delete old associations
+        // --- 2️⃣ Update Leave Types (legacy support) ---
         leaveBlockLeaveTypeRepo.deleteAllByLeaveBlock(existingBlock);
 
-        // 2. Save new ones
         List<LeaveBlockLeaveType> updatedLeaveTypes = requestDto.getLeaveTypeIds().stream()
                 .map(typeId -> LeaveBlockLeaveType.builder()
                         .id(UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase())
@@ -127,11 +147,9 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
                 .toList();
         leaveBlockLeaveTypeRepo.saveAll(updatedLeaveTypes);
 
-        // --- Update Members ---
-        // 1. Delete old members
+        // --- 3️⃣ Update Members (legacy support) ---
         leaveBlockMemberRepo.deleteAllByLeaveBlock(existingBlock);
 
-        // 2. Save new ones
         List<LeaveBlockMember> updatedMembers = requestDto.getMembers().stream()
                 .map(memberId -> LeaveBlockMember.builder()
                         .id(UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase())
@@ -141,8 +159,24 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
                 .toList();
         leaveBlockMemberRepo.saveAll(updatedMembers);
 
-        // --- Update LeaveBalances ---
-        // First, clear previous blocked balances if any
+        // --- 4️⃣ Update new Employee ↔ LeaveType mappings ---
+        leaveBlockMappingRepo.deleteAllByLeaveBlock(existingBlock);
+
+        List<LeaveBlockMapping> updatedMappings = new ArrayList<>();
+        for (String empId : requestDto.getMembers()) {
+            for (String leaveTypeId : requestDto.getLeaveTypeIds()) {
+                LeaveBlockMapping mapping = LeaveBlockMapping.builder()
+                        .leaveBlock(existingBlock)
+                        .employeeId(empId)
+                        .leaveTypeId(leaveTypeId)
+                        .year(requestDto.getYear())
+                        .build();
+                updatedMappings.add(mapping);
+            }
+        }
+        leaveBlockMappingRepo.saveAll(updatedMappings);
+
+        // --- 5️⃣ Reset previous leave balances ---
         List<LeaveBalance> previouslyBlockedBalances = leaveBalanceRepo.findByBlockId(blockId);
         previouslyBlockedBalances.forEach(balance -> {
             balance.setBlockId(null);
@@ -150,13 +184,14 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
         });
         leaveBalanceRepo.saveAll(previouslyBlockedBalances);
 
-        // Now block the new balances (only if block is active)
+        // --- 6️⃣ Re-block balances if ACTIVE ---
         if (existingBlock.getStatus() == BlockStatus.ACTIVE) {
             List<LeaveBalance> newBalancesToBlock = new ArrayList<>();
-            for (String employeeId : requestDto.getMembers()) {
+
+            for (String empId : requestDto.getMembers()) {
                 for (String leaveTypeId : requestDto.getLeaveTypeIds()) {
                     LeaveBalance balance = leaveBalanceRepo
-                            .getByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, requestDto.getYear());
+                            .getByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(empId, leaveTypeId, requestDto.getYear());
                     if (balance != null) {
                         balance.setBlockId(blockId);
                         balance.setIsBlocked(true);
@@ -164,6 +199,7 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
                     }
                 }
             }
+
             if (!newBalancesToBlock.isEmpty()) {
                 leaveBalanceRepo.saveAll(newBalancesToBlock);
             }
@@ -173,6 +209,7 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
     }
 
 
+
     // ------------------------------------------------------
     // UNBLOCK
     // ------------------------------------------------------
@@ -180,24 +217,55 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
     @Transactional
     public void unblockLeave(UnblockLeaveRequestDto requestDto) {
         String blockId = requestDto.getBlockId();
-
         LeaveBlock leaveBlock = leaveBlockRepo.findById(blockId)
                 .orElseThrow(() -> new LeaveBlockException("Leave block not found with ID: " + blockId));
 
-        List<LeaveBalance> balances = leaveBalanceRepo.findByBlockId(blockId);
-        if (balances.isEmpty()) {
-            throw new LeaveBlockException("No balances found to unblock for this leave block.");
+        for (var unblockReq : requestDto.getUnblockRequests()) {
+            String employeeId = unblockReq.getEmployeeId();
+            List<String> leaveTypeIdsToUnblock = unblockReq.getLeaveTypeIds();
+
+            if (leaveTypeIdsToUnblock == null || leaveTypeIdsToUnblock.isEmpty()) {
+                continue;
+            }
+
+            // 1) bulk update leave balances
+            int balancesUpdated = leaveBalanceRepo.unblockBalancesForEmployeeAndTypes(employeeId, blockId, leaveTypeIdsToUnblock);
+            System.out.println("Balances updated: " + balancesUpdated);
+
+            // 2) mark mappings inactive (bulk)
+            int mappingsUpdated = leaveBlockMappingRepo.markMappingsInactive(BlockStatus.INACTIVE, blockId, employeeId, leaveTypeIdsToUnblock);
+            System.out.println("Mappings set inactive: " + mappingsUpdated);
+
+            // 3) remove member if no mappings left
+            boolean hasMappingsForEmployee = leaveBlockMappingRepo.existsByLeaveBlockIdAndEmployeeId(blockId, employeeId);
+            if (!hasMappingsForEmployee) {
+                leaveBlockMemberRepo.deleteByLeaveBlockIdAndEmployeeId(blockId, employeeId);
+            }
         }
 
-        balances.forEach(b -> {
-            b.setBlockId(null);
-            b.setIsBlocked(false);
-        });
-        leaveBalanceRepo.saveAll(balances);
+        // 4) remove leave types with no mappings
+        List<LeaveBlockLeaveType> blockLeaveTypes = leaveBlockLeaveTypeRepo.findByLeaveBlock(leaveBlock);
+        for (LeaveBlockLeaveType blockLeaveType : blockLeaveTypes) {
+            String ltId = blockLeaveType.getLeaveTypeId();
+            boolean stillMapped = leaveBlockMappingRepo.existsByLeaveBlockIdAndLeaveTypeId(blockId, ltId);
+            if (!stillMapped) {
+                leaveBlockLeaveTypeRepo.delete(blockLeaveType);
+            }
+        }
 
-        leaveBlock.setStatus(BlockStatus.INACTIVE);
-        leaveBlockRepo.save(leaveBlock);
+        // 5) if no mappings left, mark block inactive
+        boolean anyMappingsLeft = leaveBlockMappingRepo.existsByLeaveBlockId(blockId);
+        if (!anyMappingsLeft) {
+            leaveBlock.setStatus(BlockStatus.INACTIVE);
+            leaveBlock.setUpdatedAt(OffsetDateTime.now());
+            leaveBlockRepo.save(leaveBlock);
+        }
+
+        System.out.println("Partial unblock processed for blockId=" + blockId);
     }
+
+
+
 
     // ------------------------------------------------------
     // SUPPORT METHODS
@@ -253,7 +321,9 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
     }
 
     @Override
+    @Transactional
     public void deActivateLeaveBlock(String blockId) {
+        // 1️⃣ Validate existence
         LeaveBlock block = leaveBlockRepo.findById(blockId)
                 .orElseThrow(() -> new LeaveBlockException("Leave block not found with ID: " + blockId));
 
@@ -261,14 +331,29 @@ public class LeaveBlockService implements LeaveBlockServiceInterface {
             throw new LeaveBlockException("Leave block is already inactive.");
         }
 
+        // 2️⃣ Unblock all affected employee leave balances
         List<LeaveBalance> balances = leaveBalanceRepo.findByBlockId(blockId);
-        balances.forEach(b -> {
-            b.setBlockId(null);
-            b.setIsBlocked(false);
-        });
-        leaveBalanceRepo.saveAll(balances);
+        for (LeaveBalance balance : balances) {
+            balance.setBlockId(null);
+            balance.setIsBlocked(false);
+        }
+        if (!balances.isEmpty()) {
+            leaveBalanceRepo.saveAll(balances);
+        }
 
+        // 3️⃣ Remove fine-grained mappings
+        leaveBlockMappingRepo.deleteByLeaveBlockId(blockId);
+
+        // 4️⃣ Remove higher-level associations (members & leave types)
+        leaveBlockMemberRepo.deleteAllByLeaveBlock(block);
+        leaveBlockLeaveTypeRepo.deleteAllByLeaveBlock(block);
+
+        // 5️⃣ Update main block status
         block.setStatus(BlockStatus.INACTIVE);
+        block.setUpdatedAt(OffsetDateTime.now());
         leaveBlockRepo.save(block);
+
+        System.out.println("Leave block " + blockId + " successfully deactivated.");
     }
+
 }

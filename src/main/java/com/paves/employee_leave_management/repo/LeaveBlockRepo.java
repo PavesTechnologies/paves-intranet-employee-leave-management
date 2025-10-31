@@ -14,6 +14,8 @@ import java.util.UUID;
 @Repository
 public interface LeaveBlockRepo extends JpaRepository<LeaveBlock, String> {
 
+//    LeaveBlock findById(String id);
+
     List<LeaveBlock> findByStatusAndStartDateLessThanEqual(BlockStatus status, LocalDate date);
 
     List<LeaveBlock> findByStatusAndEndDateBefore(BlockStatus status, LocalDate date);
@@ -26,9 +28,11 @@ public interface LeaveBlockRepo extends JpaRepository<LeaveBlock, String> {
     WHERE lb.projectId = :projectId
       AND lb.startDate <= :endDate
       AND lb.endDate >= :startDate
+      AND lb.status = :status
 """)
-    boolean existsByProjectIdAndDateRangeOverlap(@Param("projectId") String projectId,
+    boolean existsByProjectIdAndDateRangeOverlapAndStatus(@Param("projectId") String projectId,
                                                  @Param("startDate") LocalDate startDate,
-                                                 @Param("endDate") LocalDate endDate);
+                                                 @Param("endDate") LocalDate endDate,
+                                                          @Param("status") BlockStatus status);
 
 }

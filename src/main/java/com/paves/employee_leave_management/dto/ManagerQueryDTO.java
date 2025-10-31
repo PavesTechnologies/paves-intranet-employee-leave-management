@@ -1,6 +1,6 @@
 package com.paves.employee_leave_management.dto;
 
-import com.paves.employee_leave_management.entities.LeaveStatus;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

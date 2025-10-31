@@ -2,7 +2,7 @@ package com.paves.employee_leave_management.compoffvalidation;
 
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
-import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
+import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.repo.LeaveCompoffRepo;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
@@ -49,8 +49,8 @@ public class CompoffRequestValidator implements ConstraintValidator<ValidCompoff
             List<LeaveCompoff> existingCompoffs = leaveCompoffRepo.findByEmployeeId(dto.getEmployeeId());
 
             for (LeaveCompoff existing : existingCompoffs) {
-                if (existing.getStatus() == LeaveStatusCompoff.APPROVED ||
-                        existing.getStatus() == LeaveStatusCompoff.PENDING) {
+                if (existing.getStatus() == ApproverType.LeaveStatusCompoff.APPROVED ||
+                        existing.getStatus() == ApproverType.LeaveStatusCompoff.PENDING) {
 
                     // Check for date overlap
                     if (!dto.getEndDate().isBefore(existing.getStartDate()) &&
