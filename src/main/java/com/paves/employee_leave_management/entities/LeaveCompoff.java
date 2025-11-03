@@ -48,6 +48,12 @@ public class LeaveCompoff {
 
     private String file;
 
+    @Column(name = "start_session",columnDefinition = "TEXT")
+    private String startSession;
+
+    @Column(name = "end_session",columnDefinition = "TEXT")
+    private String endSession;
+
     @Enumerated(EnumType.STRING)
     @Column(name="status")
     private LeaveStatusCompoff status;

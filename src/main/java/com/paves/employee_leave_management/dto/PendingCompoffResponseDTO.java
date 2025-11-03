@@ -15,6 +15,8 @@ public class PendingCompoffResponseDTO {
 //    private Double halfDays;
     private Double duration;
     private String note;
+    private String startSession;
+    private String endSession;
     private String status;
     private LocalDate actionDate;
     private LocalDate expiryDate;

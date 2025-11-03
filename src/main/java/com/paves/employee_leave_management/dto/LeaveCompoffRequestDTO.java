@@ -21,5 +21,8 @@ public class LeaveCompoffRequestDTO {
     private double duration;
     @NotBlank(message = "note is required")
     private String note;
+
+    private String startSession;
+    private String endSession;
 //    private String file;
 }
