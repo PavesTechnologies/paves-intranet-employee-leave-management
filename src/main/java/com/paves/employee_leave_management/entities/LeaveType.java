@@ -1,13 +1,14 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.paves.employee_leave_management.audit.AuditEntityListener;
+import com.paves.employee_leave_management.audit                    .AuditEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -108,6 +109,12 @@ public class LeaveType {
 
     @Column(name = "active")
     private Boolean active = true;
+
+    @Column(nullable = true)
+    private LocalDate effectiveStartDate;
+
+    @Column(name = "deactivation_effective_date")
+    private LocalDate deactivationEffectiveDate;
 
 //    @Lob
 //    @Column(name = "policy_document", columnDefinition = "LONGBLOB",nullable = false)

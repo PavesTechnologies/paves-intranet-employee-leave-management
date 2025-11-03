@@ -45,10 +45,11 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                 .note(dto.getNote())
                 .status(LeaveStatusCompoff.PENDING)
                 .managerId(managerId)
+                .startSession(dto.getStartSession())
+                .endSession(dto.getEndSession())
                 .build();
 
         LeaveCompoff cf =leaveCompoffRepo.save(compoff);
-        System.out.println(cf);
     }
 
 
@@ -164,6 +165,8 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
             dto.setStatus(compoff.getStatus().toString());
             dto.setActionDate(compoff.getActionDate());
             dto.setExpiryDate(compoff.getExpiryDate());
+            dto.setStartSession(compoff.getStartSession());
+            dto.setEndSession(compoff.getEndSession());
 
             return dto;
         }).collect(Collectors.toList());

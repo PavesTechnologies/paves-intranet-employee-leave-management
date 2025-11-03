@@ -11,6 +11,7 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
@@ -24,10 +25,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.*;
 
 @CrossOrigin
 @RestController
@@ -83,11 +82,33 @@ public class LeaveTypeController {
 
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> addLeaveType(@RequestBody LeaveType leaveType) {
+    public ResponseEntity<ApiResponse<Object>> addLeaveType(@Valid @RequestBody LeaveType leaveType) {
         Employee maker = getAuthenticatedUser();
         // Assuming the role is stored in the jobTitle field for now
         // String makerRole = maker.getJobTitle();
+
         String makerRole = "HR";
+        if (leaveType.getEffectiveStartDate() == null) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(
+                            false,
+                            "Leave type effective start date is required",
+                            null
+                    ));
+        }
+
+
+        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
+        if (existingLeaveType.isPresent()) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(
+                            false,
+                            "Leave type '" + leaveType.getLeaveName() + "' already exists.",
+                            null
+                    ));
+        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.CREATE_LEAVE_TYPE);
@@ -131,10 +152,19 @@ public class LeaveTypeController {
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> deleteLeaveType(@PathVariable String leaveTypeId) {
+    public ResponseEntity<ApiResponse<Object>> deleteLeaveType(
+            @PathVariable String leaveTypeId,
+            @RequestBody Map<String, String> requestBody) {
+
         Employee maker = getAuthenticatedUser();
-//        String makerRole = maker.getJobTitle();
         String makerRole = "HR";
+
+        String effectiveDateStr = requestBody.get("deactivationEffectiveDate");
+
+        // Optional: validate input
+        if (effectiveDateStr == null || effectiveDateStr.isEmpty()) {
+            throw new IllegalArgumentException("Deactivation effective date is required.");
+        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.DEACTIVATE_LEAVE_TYPE);
@@ -142,12 +172,19 @@ public class LeaveTypeController {
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("leaveTypeId", leaveTypeId);
+        payload.put("deactivationEffectiveDate", effectiveDateStr);
+
         dto.setPayload(payload);
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
-        return ResponseEntity.ok(new ApiResponse<>(true,"Request to deactivate leave type has been submitted for approval.",null));
+        return ResponseEntity.ok(
+                new ApiResponse<>(true,
+                        "Request to deactivate leave type effective from " + effectiveDateStr + " has been submitted for approval.",
+                        null)
+        );
     }
+
 
     // Document management endpoints remain unchanged
 

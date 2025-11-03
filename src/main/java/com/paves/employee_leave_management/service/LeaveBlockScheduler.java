@@ -2,25 +2,41 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBlock;
+import com.paves.employee_leave_management.entities.LeaveStatus;
+import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.BlockStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveBlockRepo;
+import com.paves.employee_leave_management.repo.LeaveRequestRepo;
+import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LeaveBlockScheduler {
 
+//    Blocks first (00:00) → ensures no blocked types activate by mistake.
+//
+//            Activations next (00:05) → adds new valid leave types.
+//
+//            Deactivations last (00:10) → cleans up old ones safely.
+
     private final LeaveBlockRepo leaveBlockRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
-
+    private final LeaveTypeRepo leaveTypeRepo;
+    private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
+    private final LeaveRequestRepo leaveRequestRepo;
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void processLeaveBlock() {
@@ -64,5 +80,49 @@ public class LeaveBlockScheduler {
             });
             if (!balances.isEmpty()) leaveBalanceRepo.saveAll(balances);
         }
+
+
     }
+
+    @Scheduled(cron = "0 0 0 * * ?") // Every midnight
+    public void activatePendingLeaveTypes() {
+        List<LeaveType> pendingTypes = leaveTypeRepo.findPendingEffectiveLeaveTypes();
+
+        if (pendingTypes.isEmpty()) return;
+
+        log.info("Activating {} leave types effective today...", pendingTypes.size());
+
+        for (LeaveType leaveType : pendingTypes) {
+            leaveType.setActive(true);
+            leaveTypeRepo.save(leaveType);
+            leaveBalanceServiceInterface.createLeaveBalanceForAllEmployees(leaveType);
+            log.info("Activated leave type: {} (effective from {})",
+                    leaveType.getLeaveName(),
+                    leaveType.getEffectiveStartDate());
+        }
+}
+    @Scheduled(cron = "0 10 0 * * ?") // Every day at 12:10 AM (after activation)
+    @Transactional
+    public void deactivateDueLeaveTypes() {
+        LocalDate today = LocalDate.now();
+
+        // Fetch active leave types with deactivation date <= today
+        List<LeaveType> toDeactivate = leaveTypeRepo.findByActiveTrueAndDeactivationEffectiveDateLessThanEqual(today);
+        if (toDeactivate.isEmpty()) return;
+
+        log.info("Deactivating {} leave types effective today or earlier...", toDeactivate.size());
+        for (LeaveType leaveType : toDeactivate) {
+            leaveType.setActive(false);
+            leaveTypeRepo.save(leaveType);
+            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
+            // Optional cleanup of leave balances linked to the deactivated leave type
+            leaveBalanceRepo.deleteByLeaveType(leaveType);
+
+            log.info("Deactivated leave type: {} (effective until {})",
+                    leaveType.getLeaveName(),
+                    leaveType.getDeactivationEffectiveDate());
+        }
+    }
+
+
 }

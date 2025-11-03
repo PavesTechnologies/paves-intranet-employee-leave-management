@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface LeaveTypeServiceInterface {
@@ -21,7 +22,7 @@ public interface LeaveTypeServiceInterface {
 
     ResponseEntity<String> deleteLeaveType(String leaveTypeId);
 
-    public ResponseEntity<String> deActiveLeaveType(String leaveTypeId);
+    public ResponseEntity<String> deActiveLeaveType(String leaveTypeId, LocalDate effectiveDate);
 
 //    void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception;
 //
