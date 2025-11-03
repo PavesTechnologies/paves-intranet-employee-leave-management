@@ -110,7 +110,7 @@ public class LeaveType {
     @Column(name = "active")
     private Boolean active = true;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private LocalDate effectiveStartDate;
 
     @Column(name = "deactivation_effective_date")
