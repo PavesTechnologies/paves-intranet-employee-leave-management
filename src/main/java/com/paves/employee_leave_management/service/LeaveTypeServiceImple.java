@@ -52,10 +52,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
         leaveType.generateId(); // ensure leaveTypeId is set
 
-//        if (leaveType.getEffectiveStartDate().isBefore(LocalDate.now())) {
-//            return new ApiResponse<>(false, "Effective start date cannot be in the past.", null);
-//        }
-
         Optional<LeaveType> existingLeaveType = leaveTypeRepo.findById(leaveType.getLeaveTypeId());
 
         if (existingLeaveType.isPresent()) {

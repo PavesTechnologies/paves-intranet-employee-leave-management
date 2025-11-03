@@ -11,6 +11,7 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
@@ -81,12 +82,23 @@ public class LeaveTypeController {
 
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> addLeaveType(@RequestBody LeaveType leaveType) {
+    public ResponseEntity<ApiResponse<Object>> addLeaveType(@Valid @RequestBody LeaveType leaveType) {
         Employee maker = getAuthenticatedUser();
         // Assuming the role is stored in the jobTitle field for now
         // String makerRole = maker.getJobTitle();
 
         String makerRole = "HR";
+        if (leaveType.getEffectiveStartDate() == null) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(
+                            false,
+                            "Leave type effective start date is required",
+                            null
+                    ));
+        }
+
+
         Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
         if (existingLeaveType.isPresent()) {
             return ResponseEntity
