@@ -42,5 +42,7 @@ public interface LeaveRequestServiceInterface {
 
     List<PendingAndApprovedLeaveRequestsDTO> getPendingLeaveAndApprovedLeaveByEmployeeId(String employeeId, LocalDate startDate, LocalDate endDate);
     List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year);
+
+    List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId);
 }
 
