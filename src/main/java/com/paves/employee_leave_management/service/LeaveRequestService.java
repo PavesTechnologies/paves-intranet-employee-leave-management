@@ -1074,6 +1074,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .orElseThrow(() -> new LeaveBalanceExceptionHandler("Leave request not found for given ID and employee."));
     }
 
+    public List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId){
+        return leaveRequestRepo.findByEmployee_EmployeeIdAndStatus(employeeId, LeaveStatus.PENDING);
+    }
+
     @Override
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year){
         return leaveRequestRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(employeeId, leaveName, year).stream().filter(obj -> obj.getStatus().equals(LeaveStatus.APPROVED) || obj.getStatus().equals(LeaveStatus.PENDING)).toList();

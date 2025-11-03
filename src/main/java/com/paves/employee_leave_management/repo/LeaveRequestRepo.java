@@ -129,4 +129,6 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     long countByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus status);
 
     void deleteByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
+
+    List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus leaveStatus);
 }
