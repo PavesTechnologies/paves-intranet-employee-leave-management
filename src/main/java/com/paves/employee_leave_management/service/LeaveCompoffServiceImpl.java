@@ -136,7 +136,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
     @Override
     public List<LeaveCompoff> getCompoffsByEmployee(String employeeId) {
-        return leaveCompoffRepo.findByEmployeeId(employeeId);
+        return leaveCompoffRepo.findByEmployeeId(employeeId).stream().filter(e-> e.getStatus().equals(LeaveStatusCompoff.PENDING)).collect(Collectors.toList());
     }
 
     @Override
