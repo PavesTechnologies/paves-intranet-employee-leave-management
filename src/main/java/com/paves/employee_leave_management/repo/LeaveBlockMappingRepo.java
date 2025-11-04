@@ -29,6 +29,8 @@ public interface LeaveBlockMappingRepo extends JpaRepository<LeaveBlockMapping, 
 
     void deleteByLeaveBlockId(String blockId);
 
+    List<LeaveBlockMapping> findByLeaveBlock(LeaveBlock block);
+
     // LeaveBlockMappingRepository
     @Modifying
     @Query("UPDATE LeaveBlockMapping m SET m.status = :inactiveStatus " +

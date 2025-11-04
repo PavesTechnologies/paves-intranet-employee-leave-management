@@ -16,7 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 
-@Component
+//@Component
 public class AuditEntityListener {
 
     private static ApplicationContext context;
