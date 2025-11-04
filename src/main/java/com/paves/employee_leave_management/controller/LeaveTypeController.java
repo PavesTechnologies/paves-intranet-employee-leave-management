@@ -99,16 +99,16 @@ public class LeaveTypeController {
         }
 
 
-        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
-        if (existingLeaveType.isPresent()) {
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(
-                            false,
-                            "Leave type '" + leaveType.getLeaveName() + "' already exists.",
-                            null
-                    ));
-        }
+//        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
+//        if (existingLeaveType.isPresent()) {
+//            return ResponseEntity
+//                    .status(HttpStatus.CONFLICT)
+//                    .body(new ApiResponse<>(
+//                            false,
+//                            "Leave type '" + leaveType.getLeaveName() + "' already exists.",
+//                            null
+//                    ));
+//        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.CREATE_LEAVE_TYPE);
@@ -160,6 +160,7 @@ public class LeaveTypeController {
         String makerRole = "HR";
 
         String effectiveDateStr = requestBody.get("deactivationEffectiveDate");
+
 
         // Optional: validate input
         if (effectiveDateStr == null || effectiveDateStr.isEmpty()) {
