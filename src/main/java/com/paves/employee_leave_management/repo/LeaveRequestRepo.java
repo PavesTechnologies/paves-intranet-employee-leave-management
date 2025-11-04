@@ -1,20 +1,16 @@
 package com.paves.employee_leave_management.repo;
 
-import aj.org.objectweb.asm.commons.Remapper;
 import com.paves.employee_leave_management.dto.ManagerQueryDTO;
-import com.paves.employee_leave_management.dto.PendingAndApprovedLeaveRequestsDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
-import com.paves.employee_leave_management.entities.LeaveStatus;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.enums.ApproverType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import javax.swing.text.html.Option;
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,7 +22,7 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
 
     List<LeaveRequest> findByEmployee(Employee employee);
 
-    List<LeaveRequest> findByEmployeeAndStatus(Employee employee, LeaveStatus status);
+    List<LeaveRequest> findByEmployeeAndStatus(Employee employee, ApproverType.LeaveStatus status);
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.id = :employeeId " +
             "AND lr.status IN ('PENDING', 'APPROVED') " +
@@ -37,7 +33,7 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
     List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
-    List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
+    List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(ApproverType.LeaveStatus status, String managerId);
 
     Optional<LeaveRequest> findByLeaveIdAndEmployee_Manager_EmployeeId(String leaveId, String managerId);
 
@@ -126,9 +122,9 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     List<LeaveRequest> findPendingOrApprovedByEmployee(@Param("employeeId") String employeeId);
 
     List<LeaveRequest> findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(String employeeId, String leaveName, Integer year);
-    long countByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus status);
+    long countByEmployee_EmployeeIdAndStatus(String employeeId, ApproverType.LeaveStatus status);
 
-    void deleteByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
+    void deleteByLeaveTypeAndStatus(LeaveType leaveType, ApproverType.LeaveStatus status);
 
-    List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus leaveStatus);
+    List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(String employeeId, ApproverType.LeaveStatus leaveStatus);
 }
