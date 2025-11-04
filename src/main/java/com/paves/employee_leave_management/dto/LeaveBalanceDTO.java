@@ -1,6 +1,6 @@
 package com.paves.employee_leave_management.dto;
 
-import com.paves.employee_leave_management.entities.LeaveStatus;
+import com.paves.employee_leave_management.enums.ApproverType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,5 +23,5 @@ public class LeaveBalanceDTO {
     private Double carriedForward;
 //    private Integer availableBalance;
     private Integer year;
-    private LeaveStatus status=LeaveStatus.APPROVED;
+    private ApproverType.LeaveStatus status= ApproverType.LeaveStatus.APPROVED;
 }

@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
@@ -500,7 +501,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .daysRequested(request.getDaysRequested())
                 .reason(request.getReason())
                 .driveLink(request.getDriveLink())
-                .status(LeaveStatus.PENDING)
+                .status(ApproverType.LeaveStatus.PENDING)
                 .startSession(request.getStartSession())
                 .endSession(request.getEndSession())
                 .requestDate(LocalDate.now())
@@ -572,11 +573,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             throw new RuntimeException("Unauthorized: You can only cancel your own leave requests");
         }
 
-        if (request.getStatus() != LeaveStatus.PENDING) {
+        if (request.getStatus() != ApproverType.LeaveStatus.PENDING) {
             throw new RuntimeException("Cannot cancel a leave request that is not pending");
         }
 
-        request.setStatus(LeaveStatus.CANCELLED);
+        request.setStatus(ApproverType.LeaveStatus.CANCELLED);
         request.setResponseDate(LocalDate.now());
 //        request.set
         request.setManagerComment("Cancelled by employee");
@@ -647,7 +648,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + approvalRequest.getManagerId()));
 
         // Update leave request status
-        request.setStatus(LeaveStatus.APPROVED);
+        request.setStatus(ApproverType.LeaveStatus.APPROVED);
         request.setApprovedBy(manager);
         request.setResponseDate(LocalDate.now());
 
@@ -697,7 +698,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     .findByLeaveIdAndEmployee_Manager_EmployeeId(leaveId, managerId)
                     .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + leaveId + " for this manager"));
 
-            request.setStatus(LeaveStatus.APPROVED);
+            request.setStatus(ApproverType.LeaveStatus.APPROVED);
             request.setApprovedBy(manager);
             request.setResponseDate(LocalDate.now());
 
@@ -722,7 +723,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     .findByLeaveIdAndEmployee_Manager_EmployeeId(leaveId, managerId)
                     .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + leaveId + " for this manager"));
 
-            request.setStatus(LeaveStatus.REJECTED);
+            request.setStatus(ApproverType.LeaveStatus.REJECTED);
             request.setApprovedBy(manager);
             request.setResponseDate(LocalDate.now());
 
@@ -771,10 +772,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         Employee manager = employeeRepo.findById(rejectionRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + rejectionRequest.getManagerId()));
 
-        if(request.getStatus() == LeaveStatus.APPROVED){
-            request.setStatus(LeaveStatus.CANCELLED);
+        if(request.getStatus() == ApproverType.LeaveStatus.APPROVED){
+            request.setStatus(ApproverType.LeaveStatus.CANCELLED);
         }else{
-            request.setStatus(LeaveStatus.REJECTED);
+            request.setStatus(ApproverType.LeaveStatus.REJECTED);
         }
         request.setApprovedBy(manager);
         request.setResponseDate(LocalDate.now());
@@ -971,8 +972,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
                 .map(existingRequest -> {
                     // Disallow update if already approved/rejected
-                    if (existingRequest.getStatus() == LeaveStatus.APPROVED ||
-                            existingRequest.getStatus() == LeaveStatus.REJECTED) {
+                    if (existingRequest.getStatus() == ApproverType.LeaveStatus.APPROVED ||
+                            existingRequest.getStatus() == ApproverType.LeaveStatus.REJECTED) {
                         throw new LeaveBalanceExceptionHandler("Cannot update a leave request that has already been approved or rejected.");
                     }
 
@@ -1032,7 +1033,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     existingRequest.setApprovedBy(null);
                     existingRequest.setResponseDate(null);
                     existingRequest.setManagerComment(null);
-                    existingRequest.setStatus(LeaveStatus.PENDING);
+                    existingRequest.setStatus(ApproverType.LeaveStatus.PENDING);
 
                     // Re-apply updated leave balance
                     leaveBalanceService.updateLeaveBalanceAfterApproval(
@@ -1075,11 +1076,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     public List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId){
-        return leaveRequestRepo.findByEmployee_EmployeeIdAndStatus(employeeId, LeaveStatus.PENDING);
+        return leaveRequestRepo.findByEmployee_EmployeeIdAndStatus(employeeId, ApproverType.LeaveStatus.PENDING);
     }
 
     @Override
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year){
-        return leaveRequestRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(employeeId, leaveName, year).stream().filter(obj -> obj.getStatus().equals(LeaveStatus.APPROVED) || obj.getStatus().equals(LeaveStatus.PENDING)).toList();
+        return leaveRequestRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(employeeId, leaveName, year).stream().filter(obj -> obj.getStatus().equals(ApproverType.LeaveStatus.APPROVED) || obj.getStatus().equals(ApproverType.LeaveStatus.PENDING)).toList();
     }
 }

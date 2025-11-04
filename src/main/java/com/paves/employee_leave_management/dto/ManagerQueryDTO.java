@@ -1,6 +1,6 @@
 package com.paves.employee_leave_management.dto;
 
-import com.paves.employee_leave_management.entities.LeaveStatus;
+import com.paves.employee_leave_management.enums.ApproverType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,7 +22,7 @@ public class ManagerQueryDTO {
     private String managerId;
     
     // Optional filters
-    private LeaveStatus status;
+    private ApproverType.LeaveStatus status;
     private LocalDate fromDate;
     private LocalDate toDate;
     private String employeeId;

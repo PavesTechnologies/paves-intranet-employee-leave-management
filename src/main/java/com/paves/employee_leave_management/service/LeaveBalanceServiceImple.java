@@ -6,6 +6,7 @@ import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
@@ -18,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -66,9 +66,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 continue;
             }
             if (emp.getGender() != null) {
-                if (emp.getGender().equalsIgnoreCase("male") && lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString()))
+                if (emp.getGender().equalsIgnoreCase("male") && lt.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.MATERNITY_LEAVE.toString()))
                     continue;
-                if (emp.getGender().equalsIgnoreCase("female") && lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString()))
+                if (emp.getGender().equalsIgnoreCase("female") && lt.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.PATERNITY_LEAVE.toString()))
                     continue;
             }
 
@@ -77,7 +77,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             double carriedForward = 0;
             double usedLeaves = 0;
 
-            if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
+            if (lt.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.SICK_LEAVE.toString())) {
                 LocalDate accrualStart = (hireDate.getYear() < currentYear)
                         ? LocalDate.of(currentYear, 1, 1)
                         : hireDate;
@@ -100,7 +100,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     totalLeaves = monthsLeftInYear * lt.getAccrualRate();
                 }
 
-            } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
+            } else if (lt.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.EARNED_LEAVE.toString())) {
                 LocalDate accrualStart = (hireDate.getYear() < currentYear)
                         ? LocalDate.of(currentYear, 1, 1)
                         : hireDate;
@@ -123,10 +123,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
                     totalLeaves = monthsLeftInYear * lt.getAccrualRate();
                 }
-            } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
+            } else if (lt.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
                 accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
                 totalLeaves = accruedLeaves;
-            } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
+            } else if (lt.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
                 accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
                 totalLeaves = accruedLeaves;
             } else {
@@ -261,18 +261,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             newbalance.updateRemainingLeaves();
             leaveBalanceDao.save(newbalance);
         }
-    }
-
-    @Scheduled(cron = "0 0 0 1 1 *")
-    public void scheduleYearEndProcessing() {
-        processYearEndCarryForward();
-        //holidayService.createHolidaysForCurrentYear();
         holidayService.deleteHolidaysThreeYearsAgo();
-    }
-
-    @Scheduled(cron = "0 5 0 1 * *")
-    public void scheduleMonthlyLeaveAccrual() {
-        triggerMonthlyLeaveAccrual();
     }
 
     @Override
@@ -303,11 +292,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
             double accrual = 0;
 
-            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
+            if (type.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.SICK_LEAVE.toString())) {
                 accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
             }
 
-            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
+            if (type.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.EARNED_LEAVE.toString())) {
                 accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
                 ;
             }
@@ -631,7 +620,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             totalLeaves = lt.getAccrualRate() * monthsLeft;
             accruedLeaves = isNewLeaveType ? 0 : getAccruedLeaves(hireDate, referenceDate, lt.getAccrualRate());
 
-            if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString()) && !isNewLeaveType) {
+            if (lt.getLeaveName().equalsIgnoreCase(ApproverType.LeaveTypesEnum.EARNED_LEAVE.toString()) && !isNewLeaveType) {
                 carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear, lt);
             }
         } else {

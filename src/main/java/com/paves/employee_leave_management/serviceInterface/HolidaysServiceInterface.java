@@ -1,7 +1,6 @@
 package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.HolidayNameDateDto;
-import com.paves.employee_leave_management.entities.HolidayType;
 import com.paves.employee_leave_management.entities.Holidays;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;

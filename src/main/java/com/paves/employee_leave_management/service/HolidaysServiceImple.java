@@ -1,8 +1,8 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.HolidayNameDateDto;
-import com.paves.employee_leave_management.entities.HolidayType;
 import com.paves.employee_leave_management.entities.Holidays;
+import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
 import java.io.ByteArrayInputStream;
 import com.paves.employee_leave_management.repo.HolidayRepo;
@@ -11,7 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.io.ByteArrayOutputStream;
-import java.sql.Connection;
+import java.sql.*;
+
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,13 +23,12 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 @Service
@@ -201,7 +201,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
                 String description = getCellValueAsString(row.getCell(3));
 
                 String typeStr = getCellValueAsString(row.getCell(4));
-                HolidayType type = HolidayType.valueOf(typeStr.toUpperCase());
+                ApproverType.HolidayType type = ApproverType.HolidayType.valueOf(typeStr.toUpperCase());
 
                 String state = getCellValueAsString(row.getCell(5));
                 String country = getCellValueAsString(row.getCell(6));
@@ -226,27 +226,28 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     }
 
     public ByteArrayInputStream createHolidayTemplate() throws IOException, SQLException {
-        // Dynamically get headers from the database schema
         List<String> headers = getTableHeaders();
 
-        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
             Sheet sheet = workbook.createSheet("Holidays Template");
 
+            // --- Header font and style ---
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             CellStyle headerCellStyle = workbook.createCellStyle();
             headerCellStyle.setFont(headerFont);
 
+            // --- Header row ---
             Row headerRow = sheet.createRow(0);
-
-            // Create header cells from the dynamic list
             for (int i = 0; i < headers.size(); i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers.get(i));
                 cell.setCellStyle(headerCellStyle);
             }
 
-            // Auto-size columns
+            // --- Auto-size columns ---
             for (int i = 0; i < headers.size(); i++) {
                 sheet.autoSizeColumn(i);
             }
@@ -254,6 +255,35 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         }
+    }
+
+    private List<String> getTableHeaders() throws SQLException {
+        List<String> headers = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        // Columns to skip (audit/system fields)
+        Set<String> excludeColumns = Set.of(
+                "id", "created_by", "created_at", "updated_by", "updated_at", "deleted_at"
+        );
+
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement("SELECT * FROM holidays LIMIT 1");
+             ResultSet rs = stmt.executeQuery()) {
+
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+
+            for (int i = 1; i <= columnCount; i++) {
+                String columnName = metaData.getColumnName(i).toLowerCase();
+
+
+                if (!excludeColumns.contains(columnName) && seen.add(columnName)) {
+                    headers.add(columnName);
+                }
+            }
+        }
+
+        return headers;
     }
 
     /**
@@ -264,32 +294,6 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
      * @return A list of column names.
      * @throws SQLException if a database access error occurs.
      */
-    private List<String> getTableHeaders() throws SQLException {
-        List<String> headers = new ArrayList<>();
-
-        // Get table name from the @Table annotation of the entity
-        Table tableAnnotation = Holidays.class.getAnnotation(Table.class);
-        String tableName = (tableAnnotation != null) ? tableAnnotation.name() : "holidays";
-
-        // Find the primary key column name to exclude it
-        String primaryKeyColumn = getPrimaryKeyColumnName(Holidays.class);
-
-        // Use try-with-resources for automatic connection closing
-        try (Connection connection = dataSource.getConnection()) {
-            DatabaseMetaData metaData = connection.getMetaData();
-            // Get columns for the specified table
-            try (ResultSet columns = metaData.getColumns(null, null, tableName, null)) {
-                while (columns.next()) {
-                    String columnName = columns.getString("COLUMN_NAME");
-                    // Add column to headers list if it's not the primary key
-                    if (!columnName.equalsIgnoreCase(primaryKeyColumn)) {
-                        headers.add(columnName);
-                    }
-                }
-            }
-        }
-        return headers;
-    }
 
     /**
      * Finds the primary key column name of an entity using reflection.

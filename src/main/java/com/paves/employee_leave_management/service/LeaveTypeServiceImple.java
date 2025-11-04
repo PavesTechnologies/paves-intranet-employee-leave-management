@@ -4,9 +4,8 @@ import com.paves.employee_leave_management.dto.ApiResponse;
 //import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveStatus;
 import com.paves.employee_leave_management.entities.LeaveType;
-import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
+import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
@@ -17,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,7 +24,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
@@ -241,7 +238,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             leaveType.setActive(false);
             leaveType.setDeactivationEffectiveDate(LocalDate.now());
             leaveTypeRepo.save(leaveType);
-            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
+            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, ApproverType.LeaveStatus.PENDING);
 
             // Optional: cleanup leave balances
             leaveBalanceRepo.deleteByLeaveType(leaveType);
