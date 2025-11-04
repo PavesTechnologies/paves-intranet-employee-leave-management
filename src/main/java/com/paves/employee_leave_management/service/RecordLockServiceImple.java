@@ -11,7 +11,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
@@ -157,7 +156,6 @@ public class RecordLockServiceImple implements RecordLockServiceInterface {
     }
 
 
-    @Scheduled(fixedRate = 5 * 60 * 1000)
     @Transactional
     public void cleanupExpiredLocks() {
         lockRepository.deleteByExpiresAtBefore(LocalDateTime.now());

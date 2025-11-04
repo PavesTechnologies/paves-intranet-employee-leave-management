@@ -2,8 +2,8 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBlock;
-import com.paves.employee_leave_management.entities.LeaveStatus;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.BlockStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveBlockRepo;
@@ -13,9 +13,7 @@ import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceI
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -37,7 +35,6 @@ public class LeaveBlockScheduler {
     private final LeaveTypeRepo leaveTypeRepo;
     private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
     private final LeaveRequestRepo leaveRequestRepo;
-    @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void processLeaveBlock() {
         LocalDate today = LocalDate.now();
@@ -84,7 +81,6 @@ public class LeaveBlockScheduler {
 
     }
 
-    @Scheduled(cron = "0 0 0 * * ?") // Every midnight
     public void activatePendingLeaveTypes() {
         List<LeaveType> pendingTypes = leaveTypeRepo.findPendingEffectiveLeaveTypes();
 
@@ -101,7 +97,6 @@ public class LeaveBlockScheduler {
                     leaveType.getEffectiveStartDate());
         }
 }
-    @Scheduled(cron = "0 10 0 * * ?") // Every day at 12:10 AM (after activation)
     @Transactional
     public void deactivateDueLeaveTypes() {
         LocalDate today = LocalDate.now();
@@ -114,7 +109,7 @@ public class LeaveBlockScheduler {
         for (LeaveType leaveType : toDeactivate) {
             leaveType.setActive(false);
             leaveTypeRepo.save(leaveType);
-            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
+            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, ApproverType.LeaveStatus.PENDING);
             // Optional cleanup of leave balances linked to the deactivated leave type
             leaveBalanceRepo.deleteByLeaveType(leaveType);
 

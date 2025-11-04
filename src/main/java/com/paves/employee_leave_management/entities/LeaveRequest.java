@@ -1,9 +1,8 @@
 package com.paves.employee_leave_management.entities;
 
 import com.paves.employee_leave_management.audit.AuditEntityListener;
+import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -83,7 +82,7 @@ public class LeaveRequest {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
-    private LeaveStatus status = LeaveStatus.PENDING;
+    private ApproverType.LeaveStatus status = ApproverType.LeaveStatus.PENDING;
 
     @ManyToOne
     @JoinColumn(name = "approved_by")
@@ -122,7 +121,7 @@ public class LeaveRequest {
         this.daysRequested = daysRequested;
         this.reason = reason;
         this.driveLink = driveLink;
-        this.status = LeaveStatus.PENDING;
+        this.status = ApproverType.LeaveStatus.PENDING;
         this.requestDate = LocalDate.now();
     }
 

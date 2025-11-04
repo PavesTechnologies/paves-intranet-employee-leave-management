@@ -1,10 +1,10 @@
 package com.paves.employee_leave_management.service;
 
 
-import com.paves.employee_leave_management.dto.CancelCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
 import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.enums.JobStatus;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveCompoffRepo;
@@ -43,7 +43,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                 .endDate(dto.getEndDate())
                 .duration(dto.getDuration())
                 .note(dto.getNote())
-                .status(LeaveStatusCompoff.PENDING)
+                .status(JobStatus.LeaveStatusCompoff.PENDING)
                 .managerId(managerId)
                 .startSession(dto.getStartSession())
                 .endSession(dto.getEndSession())
@@ -70,10 +70,10 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         }
 
 
-        LeaveStatusCompoff currentStatus = compoff.getStatus();
+        JobStatus.LeaveStatusCompoff currentStatus = compoff.getStatus();
 
         // ✅ Allow approve if status is PENDING or REJECTED
-        if (currentStatus != LeaveStatusCompoff.PENDING && currentStatus != LeaveStatusCompoff.REJECTED) {
+        if (currentStatus != JobStatus.LeaveStatusCompoff.PENDING && currentStatus != JobStatus.LeaveStatusCompoff.REJECTED) {
             throw new RuntimeException("Only pending or rejected compoffs can be approved.");
         }
 
@@ -89,7 +89,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
             balance.setRemainingLeaves(balance.getRemainingLeaves() + duration);
             balance.setAccruedLeaves(balance.getAccruedLeaves() + duration);
 
-        compoff.setStatus(LeaveStatusCompoff.APPROVED);
+        compoff.setStatus(JobStatus.LeaveStatusCompoff.APPROVED);
         compoff.setActionDate(LocalDate.now());
         compoff.setExpiryDate(date);
         balance.setLastAccrualDate(LocalDate.now());
@@ -103,15 +103,15 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         LeaveCompoff compoff = leaveCompoffRepo.findById(compoffId)
                 .orElseThrow(() -> new RuntimeException("Compoff request not found"));
 
-        LeaveStatusCompoff currentStatus = compoff.getStatus();
+        JobStatus.LeaveStatusCompoff currentStatus = compoff.getStatus();
 
         // ✅ Allow reject if status is PENDING or APPROVED
-        if (currentStatus != LeaveStatusCompoff.PENDING && currentStatus != LeaveStatusCompoff.APPROVED) {
+        if (currentStatus != JobStatus.LeaveStatusCompoff.PENDING && currentStatus != JobStatus.LeaveStatusCompoff.APPROVED) {
             throw new RuntimeException("Only pending or approved compoffs can be rejected.");
         }
 
         // ✅ If APPROVED → REJECTED, subtract from balance
-        if (currentStatus == LeaveStatusCompoff.APPROVED) {
+        if (currentStatus == JobStatus.LeaveStatusCompoff.APPROVED) {
             LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
                     compoff.getEmployeeId(), "L-COMPOFF", LocalDate.now().getYear());
 
@@ -126,7 +126,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
             leaveBalanceRepo.save(balance);
         }
 
-        compoff.setStatus(LeaveStatusCompoff.REJECTED);
+        compoff.setStatus(JobStatus.LeaveStatusCompoff.REJECTED);
         compoff.setActionDate(LocalDate.now());
         compoff.setExpiryDate(null); // Optional
 
@@ -136,17 +136,17 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
     @Override
     public List<LeaveCompoff> getCompoffsByEmployee(String employeeId) {
-        return leaveCompoffRepo.findByEmployeeId(employeeId).stream().filter(e-> e.getStatus().equals(LeaveStatusCompoff.PENDING)).collect(Collectors.toList());
+        return leaveCompoffRepo.findByEmployeeId(employeeId).stream().filter(e-> e.getStatus().equals(JobStatus.LeaveStatusCompoff.PENDING)).collect(Collectors.toList());
     }
 
     @Override
-    public List<LeaveCompoff> getCompoffsByManagerAndStatus(String managerId, LeaveStatusCompoff status) {
+    public List<LeaveCompoff> getCompoffsByManagerAndStatus(String managerId, JobStatus.LeaveStatusCompoff status) {
         return leaveCompoffRepo.findByManagerIdAndStatus(managerId, status);
     }
 
     @Override
     public List<PendingCompoffResponseDTO> getPendingCompoffsForManager(String managerId) {
-        List<LeaveCompoff> compoffs = leaveCompoffRepo.findByManagerIdAndStatus(managerId, LeaveStatusCompoff.PENDING);
+        List<LeaveCompoff> compoffs = leaveCompoffRepo.findByManagerIdAndStatus(managerId, JobStatus.LeaveStatusCompoff.PENDING);
 
         return compoffs.stream().map(compoff -> {
             Employee emp = compoff.getEmployee();
@@ -178,11 +178,11 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         LeaveCompoff compoff = leaveCompoffRepo.findById(compOffId)
                 .orElseThrow(() -> new RuntimeException("CompOff request not found"));
 
-        if (compoff.getStatus() != LeaveStatusCompoff.PENDING) {
+        if (compoff.getStatus() != JobStatus.LeaveStatusCompoff.PENDING) {
             throw new RuntimeException("Only pending CompOff requests can be cancelled.");
         }
 
-        compoff.setStatus(LeaveStatusCompoff.CANCELLED);
+        compoff.setStatus(JobStatus.LeaveStatusCompoff.CANCELLED);
         compoff.setActionDate(LocalDate.now());
 
         // Optional: Save cancellation note
@@ -195,7 +195,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         LeaveCompoff compOff = leaveCompoffRepo.findById(id)
                 .orElseThrow(()->new RuntimeException("CompOff request not Found "));
 
-        compOff.setStatus(LeaveStatusCompoff.CANCELLED);
+        compOff.setStatus(JobStatus.LeaveStatusCompoff.CANCELLED);
         compOff.setActionDate(LocalDate.now());
 
 
@@ -206,5 +206,28 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
     }
 
+    @Override
+    public void expireUnusedCompoffs() {
+        List<LeaveCompoff> compoffs = leaveCompoffRepo.findByStatus(JobStatus.LeaveStatusCompoff.APPROVED);
+
+        for (LeaveCompoff compoff : compoffs) {
+            if (compoff.getExpiryDate() != null &&
+                    LocalDate.now().isAfter(compoff.getExpiryDate())) {
+
+                compoff.setStatus(JobStatus.LeaveStatusCompoff.EXPIRED);
+                leaveCompoffRepo.save(compoff);
+
+                LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(compoff.getEmployeeId(), "L-COMPOFF",LocalDate.now().getYear());
+
+                if (balance!=null) {
+                    double days = compoff.getDuration();
+                    balance.setTotalLeaves(balance.getTotalLeaves()- days);
+                    balance.setRemainingLeaves(balance.getRemainingLeaves() - days);
+                    balance.setAccruedLeaves(balance.getAccruedLeaves() - days);
+                    leaveBalanceRepo.save(balance);
+                }
+            }
+        }
+    }
 
 }
