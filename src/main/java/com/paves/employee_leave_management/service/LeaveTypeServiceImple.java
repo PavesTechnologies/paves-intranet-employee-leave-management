@@ -6,6 +6,7 @@ import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.ApproverType;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
@@ -238,7 +239,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             leaveType.setActive(false);
             leaveType.setDeactivationEffectiveDate(LocalDate.now());
             leaveTypeRepo.save(leaveType);
-            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, ApproverType.LeaveStatus.PENDING);
+            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
 
             // Optional: cleanup leave balances
             leaveBalanceRepo.deleteByLeaveType(leaveType);
