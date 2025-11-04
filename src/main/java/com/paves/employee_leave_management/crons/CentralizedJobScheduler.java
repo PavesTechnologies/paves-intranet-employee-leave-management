@@ -1,4 +1,4 @@
-package com.paves.employee_leave_management.Crons;
+package com.paves.employee_leave_management.crons;
 
 import com.paves.employee_leave_management.entities.JobExecutionLog;
 import com.paves.employee_leave_management.enums.JobStatus;
