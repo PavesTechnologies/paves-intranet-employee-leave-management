@@ -25,8 +25,8 @@ import java.util.function.Supplier;
 public class CentralizedJobScheduler {
 
     private final JobExecutionLogRepository jobExecutionLogRepository;
-    private final ApplicationContext applicationContext; // ✅ to call transactional methods safely
-    private static final String NODE_ID = "NODE-1"; // Change if clustered
+    private final ApplicationContext applicationContext;
+    private static final String NODE_ID = "NODE-1"; // useful in clusters
 
     // ---------------- Thread Pool ----------------
     @Bean
@@ -40,13 +40,43 @@ public class CentralizedJobScheduler {
         return executor;
     }
 
-    // ---------------- Scheduled Jobs ----------------
-    @Scheduled(cron = "0 0 * * * *") // every hour
+    // ---------------- Cron Jobs ----------------
+
+    //  Daily tasks at midnight
+    @Scheduled(cron = "0 0 0 * * *")
+    public void scheduleDailyTasks() {
+        runJob("Daily-Leave-Block", this::processLeaveBlock);
+        runJob("Daily-Activate-Leaves", this::activatePendingLeaveTypes);
+        runJob("Daily-Deactivate-Leaves", this::deactivateDueLeaveTypes);
+        runJob("Daily-Compoff-Expiry", this::expireUnusedCompoffs);
+    }
+
+    // Monthly tasks at 00:05 on 1st of every month
+    @Scheduled(cron = "0 5 0 1 * *")
+    public void scheduleMonthlyTasks() {
+        runJob("Monthly-Leave-Accrual", this::scheduleMonthlyLeaveAccrual);
+    }
+
+    //  Yearly tasks (1st Jan)
+    @Scheduled(cron = "0 0 0 1 1 *")
+    public void scheduleYearlyTasks() {
+        runJob("Yearly-Leave-Close", this::scheduleYearEndProcessing);
+    }
+
+    // Frequent tasks (every 5 minutes)
+    @Scheduled(fixedRate = 5 * 60 * 1000)
+    public void scheduleFrequentTasks() {
+        runJob("Frequent-RecordLock-Cleanup", this::cleanupExpiredLocks);
+    }
+
+    // Clean old job logs hourly
+    @Scheduled(cron = "0 0 * * * *")
     public void cleanupOldJobLogs() {
         runJob("Cleanup-Old-Job-Logs", this::deleteOldJobLogs);
     }
 
     // ---------------- Job Orchestration ----------------
+
     private void runJob(String jobName, Supplier<Boolean> jobFunction) {
         try {
             UUID jobId = createJobLog(jobName);
@@ -101,19 +131,62 @@ public class CentralizedJobScheduler {
             entry.setErrorMessage(errorMessage);
             jobExecutionLogRepository.saveAndFlush(entry);
 
-            log.info("Job {} completed with status {}", entry.getJobName(), entry.getStatus());
+            log.info("Job '{}' completed with status {}", entry.getJobName(), entry.getStatus());
         });
     }
 
-    // ---------------- Actual Job Methods ----------------
+    // ---------------- Actual Job Implementations ----------------
+
+    private boolean processLeaveBlock() {
+        log.info("Processing leave block...");
+        // leaveBlockScheduler.processLeaveBlock();
+        return true;
+    }
+
+    private boolean activatePendingLeaveTypes() {
+        log.info("Activating pending leave types...");
+        // leaveBlockScheduler.activatePendingLeaveTypes();
+        return true;
+    }
+
+    private boolean deactivateDueLeaveTypes() {
+        log.info("Deactivating due leave types...");
+        // leaveBlockScheduler.deactivateDueLeaveTypes();
+        return true;
+    }
+
+    private boolean expireUnusedCompoffs() {
+        log.info("Expiring unused comp-offs...");
+        // compoffExpiryScheduler.expireUnusedCompoffs();
+        return true;
+    }
+
+    private boolean scheduleMonthlyLeaveAccrual() {
+        log.info("Running monthly leave accrual...");
+        // leaveBalanceService.scheduleMonthlyLeaveAccrual();
+        return true;
+    }
+
+    private boolean scheduleYearEndProcessing() {
+        log.info("Running year-end leave balance processing...");
+        // leaveBalanceService.scheduleYearEndProcessing();
+        return true;
+    }
+
+    private boolean cleanupExpiredLocks() {
+        log.info("Cleaning expired record locks...");
+        // recordLockService.cleanupExpiredLocks();
+        return true;
+    }
+
     private boolean deleteOldJobLogs() {
         LocalDateTime cutoffDate = LocalDate.now().minusMonths(2).atStartOfDay();
         try {
             int deletedCount = jobExecutionLogRepository.deleteByStartTimeBefore(cutoffDate);
-            log.info("Deleted {} job logs older than {}", deletedCount, cutoffDate);
+            log.info("🧹 Deleted {} job logs older than {}", deletedCount, cutoffDate);
             return true;
         } catch (Exception e) {
-            log.error("Error while deleting old job logs: {}", e.getMessage(), e);
+            log.error("Error deleting old job logs: {}", e.getMessage(), e);
             return false;
         }
     }
