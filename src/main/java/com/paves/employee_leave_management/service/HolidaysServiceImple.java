@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.enums.ApproverType;
+import com.paves.employee_leave_management.enums.HolidayType;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
 import java.io.ByteArrayInputStream;
 import com.paves.employee_leave_management.repo.HolidayRepo;
@@ -201,7 +202,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
                 String description = getCellValueAsString(row.getCell(3));
 
                 String typeStr = getCellValueAsString(row.getCell(4));
-                ApproverType.HolidayType type = ApproverType.HolidayType.valueOf(typeStr.toUpperCase());
+                HolidayType type = HolidayType.valueOf(typeStr.toUpperCase());
 
                 String state = getCellValueAsString(row.getCell(5));
                 String country = getCellValueAsString(row.getCell(6));

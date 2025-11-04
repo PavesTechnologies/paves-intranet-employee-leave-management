@@ -5,6 +5,7 @@ import com.paves.employee_leave_management.entities.LeaveBlock;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.BlockStatus;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveBlockRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
@@ -109,7 +110,7 @@ public class LeaveBlockScheduler {
         for (LeaveType leaveType : toDeactivate) {
             leaveType.setActive(false);
             leaveTypeRepo.save(leaveType);
-            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, ApproverType.LeaveStatus.PENDING);
+            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
             // Optional cleanup of leave balances linked to the deactivated leave type
             leaveBalanceRepo.deleteByLeaveType(leaveType);
 
