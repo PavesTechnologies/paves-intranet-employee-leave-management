@@ -246,29 +246,44 @@ public class ApprovalServiceImpl implements ApprovalServiceInterface {
                     break;
                 case DELETE_HOLIDAY:
                     // Parse the payload as a Map
+//                    Map<String, Object> deleteHolidayPayload = objectMapper.readValue(
+//                            payload,
+//                            new TypeReference<Map<String, Object>>() {}
+//                    );
+//
+//                    // Extract nested holiday object
+//                    Map<String, Object> holidayMap = (Map<String, Object>) deleteHolidayPayload.get("holiday");
+//                    if (holidayMap == null) {
+//                        throw new IllegalArgumentException("Payload missing holiday details");
+//                    }
+//
+//                    Long holidayIdToDelete = ((Number) holidayMap.get("holidayId")).longValue();
+//                    if (holidayIdToDelete == null) {
+//                        throw new IllegalArgumentException("Holiday ID is missing in payload");
+//                    }
+//
+//                    // --- CALL EXISTING HOLIDAY SERVICE METHOD ---
+//                    ResponseEntity<String> deleteResponse = holidaysService.deleteHoliday(holidayIdToDelete);
+//                    if (!deleteResponse.getStatusCode().is2xxSuccessful()) {
+//                        throw new RuntimeException("HolidaysService.deleteHoliday failed: " + deleteResponse.getBody());
+//                    }
+//
+//                    // log.info("Successfully deleted Holiday ID {} via approved workflow.", holidayIdToDelete);
+//                    break;
                     Map<String, Object> deleteHolidayPayload = objectMapper.readValue(
                             payload,
                             new TypeReference<Map<String, Object>>() {}
                     );
 
-                    // Extract nested holiday object
-                    Map<String, Object> holidayMap = (Map<String, Object>) deleteHolidayPayload.get("holiday");
-                    if (holidayMap == null) {
-                        throw new IllegalArgumentException("Payload missing holiday details");
-                    }
-
-                    Long holidayIdToDelete = ((Number) holidayMap.get("holidayId")).longValue();
+                    Long holidayIdToDelete = ((Number) deleteHolidayPayload.get("holidayId")).longValue();
                     if (holidayIdToDelete == null) {
                         throw new IllegalArgumentException("Holiday ID is missing in payload");
                     }
 
-                    // --- CALL EXISTING HOLIDAY SERVICE METHOD ---
                     ResponseEntity<String> deleteResponse = holidaysService.deleteHoliday(holidayIdToDelete);
                     if (!deleteResponse.getStatusCode().is2xxSuccessful()) {
                         throw new RuntimeException("HolidaysService.deleteHoliday failed: " + deleteResponse.getBody());
                     }
-
-                    // log.info("Successfully deleted Holiday ID {} via approved workflow.", holidayIdToDelete);
                     break;
                 default:
                     throw new IllegalStateException("Unsupported action type: " + actionType);
