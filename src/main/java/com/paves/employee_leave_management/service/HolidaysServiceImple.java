@@ -100,12 +100,16 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
                 .orElseThrow(() -> new HolidayExceptionHandler("No holidays found for this year"))
                 .stream()
                 .peek(h -> h.setIsActive(!h.getHolidayDate().isBefore(today)))
-                .sorted(Comparator.comparing(Holidays::getHolidayDate))
+                .sorted(
+                        Comparator.comparing(Holidays::getIsActive).reversed() // active first
+                                .thenComparing(Holidays::getHolidayDate)       // then by date
+                )
                 .collect(Collectors.toList());
 
         holidayRepo.saveAll(holidays);
         return ResponseEntity.ok(holidays);
     }
+
 
 
 
