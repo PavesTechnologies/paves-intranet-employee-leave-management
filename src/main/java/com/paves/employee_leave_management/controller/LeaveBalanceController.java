@@ -9,6 +9,7 @@ import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ public class LeaveBalanceController {
     private LeaveBalanceServiceInterface leaveBalanceService;
 
     @Autowired
-    private EmailServiceInterface.ApprovalService approvalService;
+    private ApprovalServiceInterface approvalService;
 
     @Autowired
     private EmployeeRepo employeeRepo;

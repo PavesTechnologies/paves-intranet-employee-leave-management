@@ -228,8 +228,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         if (effectiveDate.isAfter(LocalDate.now())) {
             // Future effective date → schedule it
             leaveType.setDeactivationEffectiveDate(effectiveDate);
-            leaveType.setActive(true); // still active until the date arrives
-            leaveTypeRepo.save(leaveType);
+//            leaveType.setActive(true); // still active until the date arrives
+//            leaveTypeRepo.save(leaveType);
 
             return new ResponseEntity<>(
                     "Leave type scheduled for deactivation on " + effectiveDate,
