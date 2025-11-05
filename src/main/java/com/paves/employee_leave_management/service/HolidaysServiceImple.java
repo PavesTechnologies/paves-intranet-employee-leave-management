@@ -26,10 +26,8 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -96,16 +94,23 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
     @Override
     public ResponseEntity<List<Holidays>> getHolidaysByYear(int year) {
-        List<Holidays> holidays = holidayRepo.findByYear(year)
-                .orElseThrow(() -> new HolidayExceptionHandler("No holidays found for this year"));
-
         LocalDate today = LocalDate.now();
-        holidays.forEach(h -> h.setIsActive(!h.getHolidayDate().isBefore(today)));
+
+        List<Holidays> holidays = holidayRepo.findByYear(year)
+                .orElseThrow(() -> new HolidayExceptionHandler("No holidays found for this year"))
+                .stream()
+                .peek(h -> h.setIsActive(!h.getHolidayDate().isBefore(today)))
+                .sorted(
+                        Comparator.comparing(Holidays::getIsActive).reversed() // active first
+                                .thenComparing(Holidays::getHolidayDate)       // then by date
+                )
+                .collect(Collectors.toList());
 
         holidayRepo.saveAll(holidays);
-
         return ResponseEntity.ok(holidays);
     }
+
+
 
 
 
