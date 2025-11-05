@@ -53,4 +53,7 @@ public class Holidays {
     @LastModifiedDate
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
 }
