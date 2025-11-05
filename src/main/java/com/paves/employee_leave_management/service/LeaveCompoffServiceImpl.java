@@ -5,7 +5,6 @@ import com.paves.employee_leave_management.dto.CancelCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
 import com.paves.employee_leave_management.entities.*;
-import com.paves.employee_leave_management.enums.JobStatus;
 import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
@@ -145,7 +144,6 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
     public List<LeaveCompoff> getCompoffsByManagerAndStatus(String managerId, LeaveStatusCompoff status) {
         return leaveCompoffRepo.findByManagerIdAndStatus(managerId, status);
     }
-
 
     @Override
     public List<PendingCompoffResponseDTO> getPendingCompoffsForManager(String managerId) {

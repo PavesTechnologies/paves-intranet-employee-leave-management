@@ -1,9 +1,9 @@
 package com.paves.employee_leave_management.serviceInterface;
 
-import com.paves.employee_leave_management.dto.CancelCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
+import com.paves.employee_leave_management.enums.JobStatus;
 import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 
 import java.util.List;

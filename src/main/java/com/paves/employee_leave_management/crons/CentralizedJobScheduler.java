@@ -1,193 +1,127 @@
 package com.paves.employee_leave_management.crons;
 
 import com.paves.employee_leave_management.entities.JobExecutionLog;
-import com.paves.employee_leave_management.enums.JobStatus;
-import com.paves.employee_leave_management.repositories.JobExecutionLogRepository;
+import com.paves.employee_leave_management.enums.JobStatus; // Assuming this import path
+import com.paves.employee_leave_management.repo.JobExecutionLogRepository;
+import com.paves.employee_leave_management.service.JobLoggingService;
+import com.paves.employee_leave_management.service.LeaveBlockScheduler;
+import com.paves.employee_leave_management.service.LeaveRequestService;
+import com.paves.employee_leave_management.service.RecordLockServiceImple;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.core.task.TaskExecutor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.function.Supplier;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CentralizedJobScheduler {
 
+    // Unique identifier for this application instance
+    private static final String NODE_ID = "NODE-" + UUID.randomUUID().toString().substring(0, 8);
+
+    // ShedLock handles the locking
+    private final LeaveBlockScheduler leaveBlockScheduler;
+    private final LeaveRequestService leaveRequestService;
+    private final LeaveBalanceServiceInterface leaveBalanceService;
+    private final LeaveCompoffSerivceInterface leaveCompoffService;
+    private final RecordLockServiceImple recordLockService;
+
+    // We inject our new service to handle custom logging
+    private final JobLoggingService jobLoggingService;
+
+    // This repository is now only needed for the cleanup task
     private final JobExecutionLogRepository jobExecutionLogRepository;
-    private final ApplicationContext applicationContext;
-    private static final String NODE_ID = "NODE-1"; // useful in clusters
 
-    // ---------------- Thread Pool ----------------
-    @Bean
-    public TaskExecutor taskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(3);
-        executor.setMaxPoolSize(6);
-        executor.setQueueCapacity(20);
-        executor.setThreadNamePrefix("JobExecutor-");
-        executor.initialize();
-        return executor;
-    }
 
-    // ---------------- Cron Jobs ----------------
+    // ---------------- CRONS ----------------
+    private static final String LOCK_AT_LEAST_10S = "PT10S";
+    private static final String LOCK_AT_MOST_15M = "PT15M";
 
-    //  Daily tasks at midnight
     @Scheduled(cron = "0 0 0 * * *")
-    public void scheduleDailyTasks() {
-        runJob("Daily-Leave-Block", this::processLeaveBlock);
-        runJob("Daily-Activate-Leaves", this::activatePendingLeaveTypes);
-        runJob("Daily-Deactivate-Leaves", this::deactivateDueLeaveTypes);
-        runJob("Daily-Compoff-Expiry", this::expireUnusedCompoffs);
+    @SchedulerLock(name = "DailyTasks_LeaveBlock", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
+    public void scheduleDailyLeaveBlock() {
+        runJob(leaveBlockScheduler::processLeaveBlock, "Daily-Leave-Block");
     }
 
-    // Monthly tasks at 00:05 on 1st of every month
+    @Scheduled(cron = "0 0 0 * * *")
+    @SchedulerLock(name = "DailyTasks_ActivateLeaves", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
+    public void scheduleDailyActivateLeaves() {
+        runJob(leaveBlockScheduler::activatePendingLeaveTypes, "Daily-Activate-Leaves");
+    }
+
+    @Scheduled(cron = "0 0 0 * * *")
+    @SchedulerLock(name = "DailyTasks_DeactivateLeaves", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
+    public void scheduleDailyDeactivateLeaves() {
+        runJob(leaveBlockScheduler::deactivateDueLeaveTypes, "Daily-Deactivate-Leaves");
+    }
+
+    @Scheduled(cron = "0 0 0 * * *")
+    @SchedulerLock(name = "DailyTasks_CompoffExpiry", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
+    public void scheduleDailyCompoffExpiry() {
+        runJob(leaveCompoffService::expireUnusedCompoffs, "Daily-Compoff-Expiry");
+    }
+
     @Scheduled(cron = "0 5 0 1 * *")
-    public void scheduleMonthlyTasks() {
-        runJob("Monthly-Leave-Accrual", this::scheduleMonthlyLeaveAccrual);
+    @SchedulerLock(name = "Monthly_LeaveAccrual", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = "PT1H")
+    public void scheduleMonthlyLeaveAccrual() {
+        runJob(leaveBalanceService::triggerMonthlyLeaveAccrual, "Monthly-Leave-Accrual");
     }
 
-    //  Yearly tasks (1st Jan)
     @Scheduled(cron = "0 0 0 1 1 *")
-    public void scheduleYearlyTasks() {
-        runJob("Yearly-Leave-Close", this::scheduleYearEndProcessing);
+    @SchedulerLock(name = "Yearly_LeaveClose", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = "PT2H")
+    public void scheduleYearlyLeaveClose() {
+        runJob(leaveBalanceService::processYearEndCarryForward, "Yearly-Leave-Close");
     }
 
-    // Frequent tasks (every 5 minutes)
     @Scheduled(fixedRate = 5 * 60 * 1000)
-    public void scheduleFrequentTasks() {
-        runJob("Frequent-RecordLock-Cleanup", this::cleanupExpiredLocks);
+    @SchedulerLock(name = "Frequent_RecordLockCleanup", lockAtLeastFor = "PT1M", lockAtMostFor = "PT5M")
+    public void scheduleFrequentRecordLockCleanup() {
+        runJob(recordLockService::cleanupExpiredLocks, "Frequent-RecordLock-Cleanup");
     }
 
-    // Clean old job logs hourly
-    @Scheduled(cron = "0 0 * * * *")
+    /**
+     * This task cleans up its *own* log table.
+     * ShedLock ensures it only runs on one node.
+     */
+    @Scheduled(cron = "0 0 * * * *") // Runs hourly
+    @SchedulerLock(name = "Cleanup_OldJobLogs", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
     public void cleanupOldJobLogs() {
-        runJob("Cleanup-Old-Job-Logs", this::deleteOldJobLogs);
+        // We wrap this special job in the same logging mechanism
+        runJob(() -> {
+            LocalDateTime cutoffDate = LocalDate.now().minusMonths(2).atStartOfDay();
+            int deleted = jobExecutionLogRepository.deleteByStartTimeBefore(cutoffDate);
+        }, "Cleanup-Old-Job-Logs");
     }
 
-    // ---------------- Job Orchestration ----------------
+    /**
+     * A wrapper to run the job, now with custom logging.
+     * ShedLock ensures this *method* is only called on one node.
+     */
+    private void runJob(Runnable jobFunction, String jobName) {
+        // 1. Create the log entry. This runs in its own transaction.
+        JobExecutionLog logEntry = jobLoggingService.createJobLog(jobName, NODE_ID);
 
-    private void runJob(String jobName, Supplier<Boolean> jobFunction) {
-        try {
-            UUID jobId = createJobLog(jobName);
-            CentralizedJobScheduler self = applicationContext.getBean(CentralizedJobScheduler.class);
-            taskExecutor().execute(() -> self.executeAndUpdate(jobId, jobName, jobFunction));
-        } catch (Exception e) {
-            log.error("Failed to start job {}: {}", jobName, e.getMessage(), e);
-        }
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected UUID createJobLog(String jobName) {
-        JobExecutionLog entry = JobExecutionLog.builder()
-                .jobName(jobName)
-                .status(JobStatus.RUNNING)
-                .startTime(LocalDateTime.now())
-                .attempt(1)
-                .nodeIdentifier(NODE_ID)
-                .build();
-
-        JobExecutionLog saved = jobExecutionLogRepository.saveAndFlush(entry);
-        log.info("Started job {} (ID: {})", jobName, saved.getId());
-        return saved.getId();
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void executeAndUpdate(UUID jobId, String jobName, Supplier<Boolean> jobFunction) {
         boolean success = false;
         String errorMessage = null;
-        LocalDateTime startTime = LocalDateTime.now();
 
         try {
-            success = jobFunction.get();
+            // 2. Run the actual business logic
+            jobFunction.run();
+            success = true;
         } catch (Exception e) {
+
             errorMessage = e.getMessage();
-            log.error("Job {} failed: {}", jobName, e.getMessage(), e);
-        }
-
-        try {
-            updateJobLog(jobId, success, errorMessage, startTime);
-        } catch (Exception e) {
-            log.error("Failed to update job {}: {}", jobName, e.getMessage(), e);
-        }
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void updateJobLog(UUID jobId, boolean success, String errorMessage, LocalDateTime startTime) {
-        jobExecutionLogRepository.findById(jobId).ifPresent(entry -> {
-            entry.setStatus(success ? JobStatus.SUCCESS : JobStatus.FAILED);
-            entry.setEndTime(LocalDateTime.now());
-            entry.setDurationMs(java.time.Duration.between(startTime, entry.getEndTime()).toMillis());
-            entry.setErrorMessage(errorMessage);
-            jobExecutionLogRepository.saveAndFlush(entry);
-
-            log.info("Job '{}' completed with status {}", entry.getJobName(), entry.getStatus());
-        });
-    }
-
-    // ---------------- Actual Job Implementations ----------------
-
-    private boolean processLeaveBlock() {
-        log.info("Processing leave block...");
-        // leaveBlockScheduler.processLeaveBlock();
-        return true;
-    }
-
-    private boolean activatePendingLeaveTypes() {
-        log.info("Activating pending leave types...");
-        // leaveBlockScheduler.activatePendingLeaveTypes();
-        return true;
-    }
-
-    private boolean deactivateDueLeaveTypes() {
-        log.info("Deactivating due leave types...");
-        // leaveBlockScheduler.deactivateDueLeaveTypes();
-        return true;
-    }
-
-    private boolean expireUnusedCompoffs() {
-        log.info("Expiring unused comp-offs...");
-        // compoffExpiryScheduler.expireUnusedCompoffs();
-        return true;
-    }
-
-    private boolean scheduleMonthlyLeaveAccrual() {
-        log.info("Running monthly leave accrual...");
-        // leaveBalanceService.scheduleMonthlyLeaveAccrual();
-        return true;
-    }
-
-    private boolean scheduleYearEndProcessing() {
-        log.info("Running year-end leave balance processing...");
-        // leaveBalanceService.scheduleYearEndProcessing();
-        return true;
-    }
-
-    private boolean cleanupExpiredLocks() {
-        log.info("Cleaning expired record locks...");
-        // recordLockService.cleanupExpiredLocks();
-        return true;
-    }
-
-    private boolean deleteOldJobLogs() {
-        LocalDateTime cutoffDate = LocalDate.now().minusMonths(2).atStartOfDay();
-        try {
-            int deletedCount = jobExecutionLogRepository.deleteByStartTimeBefore(cutoffDate);
-            log.info("🧹 Deleted {} job logs older than {}", deletedCount, cutoffDate);
-            return true;
-        } catch (Exception e) {
-            log.error("Error deleting old job logs: {}", e.getMessage(), e);
-            return false;
+        } finally {
+            // 3. Update the log entry. This also runs in its own transaction.
+            jobLoggingService.updateJobLog(logEntry, success, errorMessage);
         }
     }
 }

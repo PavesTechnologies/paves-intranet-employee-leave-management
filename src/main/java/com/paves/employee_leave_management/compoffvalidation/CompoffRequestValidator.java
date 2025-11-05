@@ -49,7 +49,7 @@ public class CompoffRequestValidator implements ConstraintValidator<ValidCompoff
             List<LeaveCompoff> existingCompoffs = leaveCompoffRepo.findByEmployeeId(dto.getEmployeeId());
 
             for (LeaveCompoff existing : existingCompoffs) {
-                if (existing.getStatus() == LeaveStatusCompoff.APPROVED ||
+                if (existing.getStatus() == LeaveStatusCompoff.APPROVED||
                         existing.getStatus() == LeaveStatusCompoff.PENDING) {
 
                     // Check for date overlap
