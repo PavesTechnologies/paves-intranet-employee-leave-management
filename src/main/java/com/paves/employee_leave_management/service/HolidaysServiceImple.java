@@ -96,9 +96,18 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
     @Override
     public ResponseEntity<List<Holidays>> getHolidaysByYear(int year) {
-        List<Holidays> holidays=holidayRepo.findByYear(year).orElseThrow(() -> new HolidayExceptionHandler("No holidays found for this year"));
+        List<Holidays> holidays = holidayRepo.findByYear(year)
+                .orElseThrow(() -> new HolidayExceptionHandler("No holidays found for this year"));
+
+        LocalDate today = LocalDate.now();
+        holidays.forEach(h -> h.setIsActive(!h.getHolidayDate().isBefore(today)));
+
+        holidayRepo.saveAll(holidays);
+
         return ResponseEntity.ok(holidays);
     }
+
+
 
     @Override
     public ResponseEntity<String> deleteHolidaysByYear(int year) {
