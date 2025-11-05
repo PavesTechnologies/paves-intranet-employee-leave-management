@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.entities;
 
 import com.paves.employee_leave_management.audit.AuditEntityListener;
 import com.paves.employee_leave_management.enums.ApproverType;
+import com.paves.employee_leave_management.enums.HolidayType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -34,7 +35,7 @@ public class Holidays {
     private String holidayDescription;
 
     @Enumerated(EnumType.STRING)
-    private ApproverType.HolidayType type;
+    private HolidayType type;
 
     @Column(nullable = false)
     private String state;
@@ -45,11 +46,14 @@ public class Holidays {
     @Column(nullable = false)
     private int year;
 
-//    @CreatedDate
-//    @Column(name = "created_at", updatable = false)
-//    private LocalDateTime createdAt;
-//
-//    @LastModifiedDate
-//    @Column(name = "last_updated_at", insertable = false)
-//    private LocalDateTime lastUpdatedAt;
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "last_updated_at", insertable = false)
+    private LocalDateTime lastUpdatedAt;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
 }

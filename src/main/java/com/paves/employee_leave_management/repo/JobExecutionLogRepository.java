@@ -1,4 +1,4 @@
-package com.paves.employee_leave_management.repositories;
+package com.paves.employee_leave_management.repo;
 
 import com.paves.employee_leave_management.entities.JobExecutionLog;
 import org.springframework.data.jpa.repository.JpaRepository;

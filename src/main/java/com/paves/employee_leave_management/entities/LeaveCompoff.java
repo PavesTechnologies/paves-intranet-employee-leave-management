@@ -1,7 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
 
-import com.paves.employee_leave_management.enums.JobStatus;
+import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -57,7 +57,7 @@ public class LeaveCompoff {
 
     @Enumerated(EnumType.STRING)
     @Column(name="status")
-    private JobStatus.LeaveStatusCompoff status;
+    private LeaveStatusCompoff status;
 
     @Column(name = "action_date")
     private LocalDate actionDate;

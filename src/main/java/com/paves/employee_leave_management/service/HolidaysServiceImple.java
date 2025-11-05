@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.enums.ApproverType;
+import com.paves.employee_leave_management.enums.HolidayType;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
 import java.io.ByteArrayInputStream;
 import com.paves.employee_leave_management.repo.HolidayRepo;
@@ -95,9 +96,18 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
     @Override
     public ResponseEntity<List<Holidays>> getHolidaysByYear(int year) {
-        List<Holidays> holidays=holidayRepo.findByYear(year).orElseThrow(() -> new HolidayExceptionHandler("No holidays found for this year"));
+        List<Holidays> holidays = holidayRepo.findByYear(year)
+                .orElseThrow(() -> new HolidayExceptionHandler("No holidays found for this year"));
+
+        LocalDate today = LocalDate.now();
+        holidays.forEach(h -> h.setIsActive(!h.getHolidayDate().isBefore(today)));
+
+        holidayRepo.saveAll(holidays);
+
         return ResponseEntity.ok(holidays);
     }
+
+
 
     @Override
     public ResponseEntity<String> deleteHolidaysByYear(int year) {
@@ -201,7 +211,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
                 String description = getCellValueAsString(row.getCell(3));
 
                 String typeStr = getCellValueAsString(row.getCell(4));
-                ApproverType.HolidayType type = ApproverType.HolidayType.valueOf(typeStr.toUpperCase());
+                HolidayType type = HolidayType.valueOf(typeStr.toUpperCase());
 
                 String state = getCellValueAsString(row.getCell(5));
                 String country = getCellValueAsString(row.getCell(6));

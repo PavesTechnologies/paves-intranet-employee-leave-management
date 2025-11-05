@@ -7,6 +7,7 @@ import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.ApproverType;
+import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
@@ -67,7 +68,7 @@ public class LeaveTypeController {
     @GetMapping("/types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
     public List<Map<String, String>> getLeaveTypes() {
-        return Arrays.stream(ApproverType.LeaveTypesEnum.values())
+        return Arrays.stream(LeaveTypesEnum.values())
                 .map(type -> Map.of(
                         "name", type.name(),
                         "label", type.getLabel()
@@ -94,15 +95,33 @@ public class LeaveTypeController {
         }
 
 
+//        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
+//        if (existingLeaveType.isPresent()) {
+//            return ResponseEntity
+//                    .status(HttpStatus.CONFLICT)
+//                    .body(new ApiResponse<>(
+//                            false,
+//                            "Leave type '" + leaveType.getLeaveName() + "' already exists.",
+//                            null
+//                    ));
+//        }
         Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
+
+
+
         if (existingLeaveType.isPresent()) {
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT)
-                    .body(new ApiResponse<>(
-                            false,
-                            "Leave type '" + leaveType.getLeaveName() + "' already exists.",
-                            null
-                    ));
+            LeaveType existing = existingLeaveType.get();
+
+            if (Boolean.TRUE.equals(existing.getActive())) {
+                // If the leave type exists and is active → block creation
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(new ApiResponse<>(
+                                false,
+                                "Leave type '" + leaveType.getLeaveName() + "' already exists and is active.",
+                                null
+                        ));
+            }
         }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
@@ -155,6 +174,7 @@ public class LeaveTypeController {
         String makerRole = "HR";
 
         String effectiveDateStr = requestBody.get("deactivationEffectiveDate");
+
 
         // Optional: validate input
         if (effectiveDateStr == null || effectiveDateStr.isEmpty()) {
