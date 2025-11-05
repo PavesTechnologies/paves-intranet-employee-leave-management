@@ -7,10 +7,4 @@ public enum JobStatus {
     FAILED,
     TIMEOUT,
     SKIPPED;
-
-    public enum LeaveStatusCompoff {
-        PENDING,
-        APPROVED,
-        EXPIRED, CANCELLED, REJECTED
-    }
 }
