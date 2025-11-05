@@ -118,6 +118,17 @@ public class LeaveRequestController {
         }
     }
 
+    @GetMapping("/employee/pending/{employeeId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'GENERAL')")
+    public ResponseEntity<ApiResponse<List<LeaveRequest>>> getEmployeePendingLeaveRequests(@PathVariable String employeeId) {
+        try {
+            List<LeaveRequest> leaveRequests = leaveRequestService.getPendingLeaveRequestsByEmployee(employeeId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaveRequests));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
+        }
+    }
     /**
      * Get a specific leave request by ID
      */

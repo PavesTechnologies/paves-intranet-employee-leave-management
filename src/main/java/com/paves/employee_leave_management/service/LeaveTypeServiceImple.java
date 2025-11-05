@@ -5,8 +5,10 @@ import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
-import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
+import com.paves.employee_leave_management.enums.ApproverType;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
+import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
@@ -15,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -24,7 +25,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
@@ -40,6 +40,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Autowired
     LeaveBalanceServiceInterface leaveBalanceServiceInterface;
+
+    @Autowired
+    LeaveRequestRepo leaveRequestRepo;
 
 
     @Override
@@ -65,7 +68,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                     newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
                     newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
                 }
-                dbLeaveType.setActive(true);
+
+                boolean shouldActiveNow = !leaveType.getEffectiveStartDate().isAfter(LocalDate.now());
+                dbLeaveType.setActive(shouldActiveNow);
                 dbLeaveType.setLeaveName(leaveType.getLeaveName());
                 dbLeaveType.setDescription(leaveType.getDescription());
                 dbLeaveType.setAccrualRate(newAccrualRate);
@@ -84,13 +89,19 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 dbLeaveType.setMaxDaysPerYear(leaveType.getMaxDaysPerYear());
 //                dbLeaveType.setPolicyDocument(leaveType.getPolicyDocument());
                 dbLeaveType.setCreateAt(LocalDateTime.now());
+                dbLeaveType.setEffectiveStartDate(leaveType.getEffectiveStartDate());
 
                 dbLeaveType.setLastUpdatedAt(null);
                 LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
-                leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
 
+                if(shouldActiveNow) {
+                    leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
+                }
                 return new ApiResponse<>(true,
-                        "Leave type reactivated successfully.",
+                        dbLeaveType.getActive()
+                                ? "Leave type reactivated and effective immediately."
+                                : "Leave type reactivated and will be effective from "
+                                + leaveType.getEffectiveStartDate(),
                         reactivated);
             }
         }
@@ -103,12 +114,20 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
             newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
         }
+
+        boolean shouldActivateNow = !leaveType.getEffectiveStartDate().isAfter(LocalDate.now());
         leaveType.setAccrualRate(newAccrualRate);
         leaveType.setCreateAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
-        leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+
+        if(shouldActivateNow) {
+            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+        }
         return new ApiResponse<>(true,
-                "Leave type created successfully.",
+                savedLeaveType.getActive()
+                        ? "Leave type created and effective immediately."
+                        : "Leave type created and will become active on "
+                        + leaveType.getEffectiveStartDate(),
                 savedLeaveType);
     }
 
@@ -202,16 +221,35 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     }
 
     @Transactional
-    public ResponseEntity<String> deActiveLeaveType(String leaveTypeId) {
-        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(
-                ()->new RuntimeException("Leave Type Not Found"));
+    public ResponseEntity<String> deActiveLeaveType(String leaveTypeId, LocalDate effectiveDate) {
+        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
+                .orElseThrow(() -> new RuntimeException("Leave Type Not Found"));
 
-        leaveType.setActive(false);
-        leaveTypeRepo.save(leaveType);
+        if (effectiveDate.isAfter(LocalDate.now())) {
+            // Future effective date → schedule it
+            leaveType.setDeactivationEffectiveDate(effectiveDate);
+            leaveType.setActive(true); // still active until the date arrives
+            leaveTypeRepo.save(leaveType);
 
-        leaveBalanceRepo.deleteByLeaveType(leaveType);
-        return new ResponseEntity<>("Leave type deactivated successfully", HttpStatus.OK);
+            return new ResponseEntity<>(
+                    "Leave type scheduled for deactivation on " + effectiveDate,
+                    HttpStatus.OK);
+        } else {
+            // Effective date has passed → deactivate immediately
+            leaveType.setActive(false);
+            leaveType.setDeactivationEffectiveDate(LocalDate.now());
+            leaveTypeRepo.save(leaveType);
+            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
+
+            // Optional: cleanup leave balances
+            leaveBalanceRepo.deleteByLeaveType(leaveType);
+
+            return new ResponseEntity<>(
+                    "Leave type deactivated immediately (effective date already passed)",
+                    HttpStatus.OK);
+        }
     }
+
 
 //    @Override
 //    public void uploadDocument(String leaveTypeId, MultipartFile file) throws Exception {

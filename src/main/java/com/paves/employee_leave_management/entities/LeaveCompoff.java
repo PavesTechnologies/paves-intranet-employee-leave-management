@@ -1,7 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
 
-import com.paves.employee_leave_management.enums.ApproverType;
+import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -49,9 +49,15 @@ public class LeaveCompoff {
 
     private String file;
 
+    @Column(name = "start_session",columnDefinition = "TEXT")
+    private String startSession;
+
+    @Column(name = "end_session",columnDefinition = "TEXT")
+    private String endSession;
+
     @Enumerated(EnumType.STRING)
     @Column(name="status")
-    private ApproverType.LeaveStatusCompoff status;
+    private LeaveStatusCompoff status;
 
     @Column(name = "action_date")
     private LocalDate actionDate;

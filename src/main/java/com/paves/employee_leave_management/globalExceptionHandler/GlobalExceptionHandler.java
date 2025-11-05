@@ -83,10 +83,11 @@ public class GlobalExceptionHandler {
         // Optionally log errors for debugging
         errors.forEach(System.out::println);
 
-        // Send only message, keep data = null
-        ApiResponse<String> response = new ApiResponse<>(false,
-                "Compoff cannot be applied beyond 28 days in the past.",
-                null);
+        // Join all error messages with a comma or return the first error
+        String errorMessage = errors.isEmpty() ? "Validation failed" : String.join(", ", errors);
+
+        // Send the actual validation error message
+        ApiResponse<String> response = new ApiResponse<>(false, errorMessage, null);
 
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }

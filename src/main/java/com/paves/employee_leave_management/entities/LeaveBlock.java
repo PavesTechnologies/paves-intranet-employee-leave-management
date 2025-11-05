@@ -62,7 +62,7 @@ public class LeaveBlock {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private BlockStatus status; // ACTIVE, EXPIRED, CANCELLED
+    private BlockStatus status; // ACTIVE, EXPIRED, CANCELLED // ACTIVE, EXPIRED, CANCELLED
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

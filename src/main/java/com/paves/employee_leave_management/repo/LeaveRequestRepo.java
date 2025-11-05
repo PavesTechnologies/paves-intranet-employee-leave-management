@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.repo;
 import com.paves.employee_leave_management.dto.ManagerQueryDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
+import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -122,4 +123,8 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
 
     List<LeaveRequest> findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(String employeeId, String leaveName, Integer year);
     long countByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus status);
+
+    void deleteByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
+
+    List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus leaveStatus);
 }
