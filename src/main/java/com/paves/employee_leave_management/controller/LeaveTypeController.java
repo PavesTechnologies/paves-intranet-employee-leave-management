@@ -105,6 +105,24 @@ public class LeaveTypeController {
 //                            null
 //                    ));
 //        }
+        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
+
+
+
+        if (existingLeaveType.isPresent()) {
+            LeaveType existing = existingLeaveType.get();
+
+            if (Boolean.TRUE.equals(existing.getActive())) {
+                // If the leave type exists and is active → block creation
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(new ApiResponse<>(
+                                false,
+                                "Leave type '" + leaveType.getLeaveName() + "' already exists and is active.",
+                                null
+                        ));
+            }
+        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.CREATE_LEAVE_TYPE);
