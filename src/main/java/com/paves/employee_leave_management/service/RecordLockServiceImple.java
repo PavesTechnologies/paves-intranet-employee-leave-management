@@ -48,7 +48,6 @@ public class RecordLockServiceImple implements RecordLockServiceInterface {
                 if (pkRs.next()) tablePkMap.put(tableName.toLowerCase(), pkRs.getString("COLUMN_NAME"));
             }
         }
-        System.out.println("Primary keys loaded: " + tablePkMap);
     }
 
     @Override

@@ -46,11 +46,11 @@ public class Holidays {
     @Column(nullable = false)
     private int year;
 
-//    @CreatedDate
-//    @Column(name = "created_at", updatable = false)
-//    private LocalDateTime createdAt;
-//
-//    @LastModifiedDate
-//    @Column(name = "last_updated_at", insertable = false)
-//    private LocalDateTime lastUpdatedAt;
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "last_updated_at", insertable = false)
+    private LocalDateTime lastUpdatedAt;
 }
