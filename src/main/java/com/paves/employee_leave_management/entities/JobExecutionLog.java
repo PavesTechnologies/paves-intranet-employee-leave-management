@@ -16,12 +16,12 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class JobExecutionLog {
-
     @Id
     @GeneratedValue(generator = "uuid2")
     @GenericGenerator(name = "uuid2", strategy = "uuid2")
-    @Column(name = "id", updatable = false, nullable = false, length = 36)
+    @Column(columnDefinition = "BINARY(16)", updatable = false, nullable = false)
     private UUID id;
+
 
     @Column(name = "job_name", nullable = false)
     private String jobName;
