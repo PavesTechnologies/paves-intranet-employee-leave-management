@@ -278,7 +278,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
         // Columns to skip (audit/system fields)
         Set<String> excludeColumns = Set.of(
-                "id", "created_by", "created_at", "updated_by", "updated_at", "deleted_at"
+                "id", "created_by", "created_at", "updated_by", "updated_at", "deleted_at","is_active","last_updated_at"
         );
 
         try (Connection connection = dataSource.getConnection();
@@ -301,26 +301,10 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
         return headers;
     }
 
-    /**
-     * Connects to the database to retrieve the column names for the 'holidays' table.
-     * It dynamically reads the table name from the @Table annotation on the Holidays entity
-     * and excludes the primary key column.
-     *
-     * @return A list of column names.
-     * @throws SQLException if a database access error occurs.
-     */
 
-    /**
-     * Finds the primary key column name of an entity using reflection.
-     * @param entityClass The entity class.
-     * @return The name of the primary key column.
-     */
     private String getPrimaryKeyColumnName(Class<?> entityClass) {
         for (Field field : entityClass.getDeclaredFields()) {
             if (field.isAnnotationPresent(Id.class)) {
-                // In JPA, if @Column is not present, the column name is derived from the field name.
-                // This simple logic assumes snake_case, which is common.
-                // For a more robust solution, you'd check for a @Column(name="...") annotation.
                 return "holiday_id"; // Assuming the column name for holidayId is holiday_id
             }
         }
