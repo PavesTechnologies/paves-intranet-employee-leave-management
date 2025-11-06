@@ -102,9 +102,11 @@ public class LeaveBalance {
     private LocalDateTime lastUpdatedAt;
 
     // in LeaveRequest entity
-    @Version
-    @Column(name = "version")
-    private Long version;
+  
+//    @Version
+//    @Column(name = "version")
+//    private Long version;
+
 
 
     public void updateRemainingLeaves() {

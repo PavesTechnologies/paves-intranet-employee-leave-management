@@ -498,6 +498,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
         LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
 
+
         // Create and save the leave request
         LeaveRequest leaveRequest = LeaveRequest.builder()
                 .employee(employee)
