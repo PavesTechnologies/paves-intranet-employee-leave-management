@@ -158,6 +158,14 @@ public class SmtpEmailServiceImpl implements EmailServiceInterface {
         String body = buildLeaveRejectionEmailBody(employeeName, leaveType, startDate, endDate, rejectionReason);
         return sendEmail(employeeEmail, subject, body);
     }
+
+    @Override
+    public boolean sendLeaveRevokeNotification(String employeeEmail, String employeeName,
+                                                String leaveType, String startDate, String endDate) {
+        String subject = "Leave Application Rejected - " + leaveType;
+        String body = buildLeaveRevokeEmailBody(employeeName, leaveType, startDate, endDate);
+        return sendEmail(employeeEmail, subject, body);
+    }
     
     @Override
     public boolean sendLeaveUpdateNotification(String employeeEmail, String employeeName,
@@ -237,6 +245,25 @@ public class SmtpEmailServiceImpl implements EmailServiceInterface {
             Best regards,
             Paves Global Infotech Private Limited
             """, employeeName, leaveType, startDate, endDate, rejectionReason);
+    }
+
+    private String buildLeaveRevokeEmailBody(String employeeName, String leaveType,
+                                            String startDate, String endDate) {
+        return String.format("""
+            Dear %s,
+            
+            Your leave application has been REVOKED.
+            
+            Leave Details:
+            - Leave Type: %s
+            - Start Date: %s
+            - End Date: %s
+            
+            Please contact your manager for further clarification if needed.
+            
+            Best regards,
+            Paves Global Infotech Private Limited
+            """, employeeName, leaveType, startDate, endDate);
     }
     
     private String buildLeaveUpdateEmailBody(String employeeName, String leaveType, 

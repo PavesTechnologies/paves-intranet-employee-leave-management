@@ -14,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class LeaveRevoke {
     @Id
+    @Column(name = "revoke_id")
     private String id;
 
     @PrePersist
@@ -30,5 +31,9 @@ public class LeaveRevoke {
     private String reason;
 
     @Column(name = "status")
+    @Enumerated(EnumType.STRING)
     private LeaveRevokeStatus status;
+
+    @Column(name = "manager_id")
+    private String managerId;
 }
