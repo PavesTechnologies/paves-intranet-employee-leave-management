@@ -102,6 +102,14 @@ public class LeaveBalance {
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
 
+    // in LeaveRequest entity
+  
+//    @Version
+//    @Column(name = "version")
+//    private Long version;
+
+
+
     public void updateRemainingLeaves() {
         this.remainingLeaves = (accruedLeaves+carriedForward) - usedLeaves;
     }

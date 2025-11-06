@@ -1,11 +1,9 @@
 package com.paves.employee_leave_management.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.paves.employee_leave_management.dto.ApprovalRequestResponseDto;
-import com.paves.employee_leave_management.dto.ApproveRequestDto;
-import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
-import com.paves.employee_leave_management.dto.RejectRequestDto;
+import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.ApproverType;
@@ -14,10 +12,9 @@ import com.paves.employee_leave_management.repo.ApprovalRequestRepository;
 import com.paves.employee_leave_management.repo.ApprovalRuleRepository;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.FunctionalApproverRepository;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +26,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class ApprovalServiceImpl implements EmailServiceInterface.ApprovalService {
+public class ApprovalServiceImpl implements ApprovalServiceInterface {
 
     @Autowired
     private ApprovalRuleRepository approvalRuleRepository;
@@ -51,6 +48,9 @@ public class ApprovalServiceImpl implements EmailServiceInterface.ApprovalServic
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private HolidaysServiceInterface holidaysService;
 
     @Override
     @Transactional
@@ -224,6 +224,66 @@ public class ApprovalServiceImpl implements EmailServiceInterface.ApprovalServic
                     Map<String, Object> balanceUpdatePayload = objectMapper.readValue(payload, Map.class);
                     LeaveBalanceUpdateRequest balanceUpdateRequest = objectMapper.convertValue(balanceUpdatePayload.get("newData"), LeaveBalanceUpdateRequest.class);
                     leaveBalanceService.updateLeaveBalancesFromHr(balanceUpdateRequest);
+                    break;
+                case ADD_HOLIDAY:
+                    Map<String, Object> holidayPayload = objectMapper.readValue(payload, Map.class);
+                    List<Holidays> holidays = objectMapper.convertValue(holidayPayload.get("newData"), new TypeReference<List<Holidays>>() {
+                    });
+                    holidaysService.addHoliday(holidays);
+                    break;
+                case UPDATE_HOLIDAY:
+                    Map<String, Object> updateHolidayPayloadMap = objectMapper.readValue(payload, new TypeReference<Map<String, Object>>() {});
+                    Holidays updatedHolidayData = objectMapper.convertValue(
+                            updateHolidayPayloadMap.get("requestedState"), Holidays.class
+                    );
+                    // --- CALL EXISTING HOLIDAY SERVICE METHOD ---
+                    ResponseEntity<String> updateResponse = holidaysService.updateHoliday(updatedHolidayData);
+                    if (!updateResponse.getStatusCode().is2xxSuccessful()) {
+                        throw new RuntimeException("HolidaysService.updateHoliday failed: " + updateResponse.getBody());
+                    }
+//                    log.info("Successfully updated Holiday ID {} via approved workflow.", updatedHolidayData.getHolidayId());
+//                    success = true;
+                    break;
+                case DELETE_HOLIDAY:
+                    // Parse the payload as a Map
+//                    Map<String, Object> deleteHolidayPayload = objectMapper.readValue(
+//                            payload,
+//                            new TypeReference<Map<String, Object>>() {}
+//                    );
+//
+//                    // Extract nested holiday object
+//                    Map<String, Object> holidayMap = (Map<String, Object>) deleteHolidayPayload.get("holiday");
+//                    if (holidayMap == null) {
+//                        throw new IllegalArgumentException("Payload missing holiday details");
+//                    }
+//
+//                    Long holidayIdToDelete = ((Number) holidayMap.get("holidayId")).longValue();
+//                    if (holidayIdToDelete == null) {
+//                        throw new IllegalArgumentException("Holiday ID is missing in payload");
+//                    }
+//
+//                    // --- CALL EXISTING HOLIDAY SERVICE METHOD ---
+//                    ResponseEntity<String> deleteResponse = holidaysService.deleteHoliday(holidayIdToDelete);
+//                    if (!deleteResponse.getStatusCode().is2xxSuccessful()) {
+//                        throw new RuntimeException("HolidaysService.deleteHoliday failed: " + deleteResponse.getBody());
+//                    }
+//
+//                    // log.info("Successfully deleted Holiday ID {} via approved workflow.", holidayIdToDelete);
+//                    break;
+                    Map<String, Object> deleteHolidayPayload = objectMapper.readValue(
+                            payload,
+                            new TypeReference<Map<String, Object>>() {}
+                    );
+
+                    Long holidayIdToDelete = ((Number) deleteHolidayPayload.get("holidayId")).longValue();
+                    if (holidayIdToDelete == null) {
+                        throw new IllegalArgumentException("Holiday ID is missing in payload");
+                    }
+
+                    ResponseEntity<String> deleteResponse = holidaysService.deleteHoliday(holidayIdToDelete);
+                    if (!deleteResponse.getStatusCode().is2xxSuccessful()) {
+                        throw new RuntimeException("HolidaysService.deleteHoliday failed: " + deleteResponse.getBody());
+                    }
                     break;
                 default:
                     throw new IllegalStateException("Unsupported action type: " + actionType);

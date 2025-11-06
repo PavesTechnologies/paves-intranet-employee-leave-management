@@ -9,6 +9,7 @@ import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.validation.Valid;
@@ -35,7 +36,7 @@ public class LeaveTypeController {
     private LeaveTypeRepo leaveTypeRepo;
 
     @Autowired
-    private EmailServiceInterface.ApprovalService approvalService;
+    private ApprovalServiceInterface approvalService;
 
     @Autowired
     private EmployeeRepo employeeRepo;
@@ -92,7 +93,6 @@ public class LeaveTypeController {
                             null
                     ));
         }
-
 
 //        Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
 //        if (existingLeaveType.isPresent()) {

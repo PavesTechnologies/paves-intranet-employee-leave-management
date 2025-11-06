@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -62,6 +63,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
         LocalDate onboardingDate = LocalDate.now();
         LocalDate hireDate = emp.getHireDate();
+        List<LeaveBalance> balances = new ArrayList<>();
 
         for (LeaveType lt : leaveTypes) {
             if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(emp.getEmployeeId(), lt.getLeaveTypeId(), currentYear).isPresent()) {
@@ -138,6 +140,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
             double remainingLeaves = Math.max(0, (accruedLeaves + carriedForward) - usedLeaves);
 
+
             LeaveBalance balance = LeaveBalance.builder()
                     .employee(emp)
                     .leaveType(lt)
@@ -151,8 +154,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     .remainingLeaves(remainingLeaves)
                     .totalLeaves(totalLeaves)
                     .build();
-            leaveBalanceRepo.save(balance);
+            balances.add(balance);
         }
+        leaveBalanceRepo.saveAll(balances);
     }
 
     private double getEarnedLeave(LocalDate startDate, LocalDate endDate, double ratePerMonth) {
