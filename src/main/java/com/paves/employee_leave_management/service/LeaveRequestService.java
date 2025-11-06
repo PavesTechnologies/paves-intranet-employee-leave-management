@@ -213,6 +213,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     private void    validateBasicDateConstraints(LeaveRequestValidationDTO request, ValidationResultDTO result) {
         LocalDate startDate = request.getStartDate();
         LocalDate endDate = request.getEndDate();
+        int currentYear = LocalDate.now().getYear();
 
         // End date must be after or equal to start date
         if (endDate.isBefore(startDate)) {
@@ -220,6 +221,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
         if(request.getStartDate().getYear() != LocalDate.now().getYear() && request.getLeaveTypeId().equals("L-SL")){
             result.addError("Sick Leave request can only be made for the current year");
+        }
+        // 3. Earned leave cannot be applied for next year (if accrual is monthly)
+        if (request.getLeaveTypeId().equals("L-EL") && startDate.getYear() > currentYear) {
+            result.addError("Earned Leave cannot be applied in advance for the next year");
         }
     }
 
