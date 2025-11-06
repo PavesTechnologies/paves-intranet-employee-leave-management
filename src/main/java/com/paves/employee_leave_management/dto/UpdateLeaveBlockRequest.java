@@ -20,6 +20,7 @@ import java.util.List;
         private BlockStatus status;
         private List<MappingUpdateDto> mappingUpdates; // normal block updates
         private List<EmployeeUnblockRequest> unblockedRequests; // new addition ✅
+        private Updates updates;
 
         @Getter
         @Setter
@@ -28,6 +29,17 @@ import java.util.List;
         public static class EmployeeUnblockRequest {
             private String employeeId;
             private List<String> leaveTypeIds;
+        }
+
+        @Getter
+        @Setter
+        @AllArgsConstructor
+        @NoArgsConstructor
+        public static class Updates{
+            private String reason;
+            private LocalDate startDate;
+            private LocalDate endDate;
+            private BlockStatus status;
         }
     }
 

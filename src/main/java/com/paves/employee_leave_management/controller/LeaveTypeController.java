@@ -6,7 +6,6 @@ import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.ActionType;
-import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
@@ -68,7 +67,7 @@ public class LeaveTypeController {
     @GetMapping("/types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
     public List<Map<String, String>> getLeaveTypes() {
-        return Arrays.stream(ActionType.LeaveTypesEnum.values())
+        return Arrays.stream(LeaveTypesEnum.values())
                 .map(type -> Map.of(
                         "name", type.name(),
                         "label", type.getLabel()

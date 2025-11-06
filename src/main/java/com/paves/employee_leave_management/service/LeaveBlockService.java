@@ -302,7 +302,7 @@ public LeaveBlock updateLeaveBlock(UpdateLeaveBlockRequest requestDto) {
             || requestDto.getStatus() != null;
 
     if (requestDto.getMappingUpdates() != null || touchedMetadata) {
-        reapplyBlockLogic(block);
+        reapplyBlockLogic(block, requestDto.getMappingUpdates());
     }
 
     return block;
@@ -312,17 +312,17 @@ public LeaveBlock updateLeaveBlock(UpdateLeaveBlockRequest requestDto) {
 
     private void updateBlockDetailsPatch(LeaveBlock block, UpdateLeaveBlockRequest dto) {
         // only set fields that are provided (PATCH semantics)
-        if (dto.getReason() != null) {
-            block.setReason(dto.getReason());
+        if (dto.getUpdates().getReason()!= null) {
+            block.setReason(dto.getUpdates().getReason());
         }
-        if (dto.getStartDate() != null) {
-            block.setStartDate(dto.getStartDate());
+        if (dto.getUpdates().getStartDate() != null) {
+            block.setStartDate(dto.getUpdates().getStartDate());
         }
-        if (dto.getEndDate() != null) {
-            block.setEndDate(dto.getEndDate());
+        if (dto.getUpdates().getEndDate() != null) {
+            block.setEndDate(dto.getUpdates().getEndDate());
         }
-        if (dto.getStatus() != null) {
-            block.setStatus(dto.getStatus());
+        if (dto.getUpdates().getStatus() != null) {
+            block.setStatus(dto.getUpdates().getStatus());
         }
         block.setUpdatedAt(OffsetDateTime.now());
 
@@ -334,29 +334,40 @@ public LeaveBlock updateLeaveBlock(UpdateLeaveBlockRequest requestDto) {
         if (mappingUpdates == null) return;
 
         // delete old mappings
-        leaveBlockMappingRepo.deleteAllByLeaveBlock(block);
+//        leaveBlockMappingRepo.deleteAllByLeaveBlock(block);
 
         // if empty list was explicitly passed, that means "remove all mappings" - fine
         if (mappingUpdates.isEmpty()) {
             return;
         }
 
-        // insert new mappings
-        List<LeaveBlockMapping> mappings = mappingUpdates.stream()
-                .map(update -> LeaveBlockMapping.builder()
-                        .leaveBlock(block)
-                        .employeeId(update.getEmployeeId())
-                        .leaveTypeId(update.getLeaveTypeId())
-                        .status(update.getStatus())
-                        .year(block.getYear())
-                        .build())
-                .toList();
 
-        leaveBlockMappingRepo.saveAll(mappings);
+        // insert new mappings
+//        List<LeaveBlockMapping> mappings = mappingUpdates.stream()
+//                .map(update -> LeaveBlockMapping.builder()
+//                        .leaveBlock(block)
+//                        .employeeId(update.getEmployeeId())
+//                        .leaveTypeId(update.getLeaveTypeId())
+//                        .status(update.getStatus())
+//                        .year(block.getYear())
+//                        .build())
+//                .toList();
+
+//        leaveBlockMappingRepo.saveAll(mappings);
+
+        for(MappingUpdateDto map : mappingUpdates){
+            LeaveBlockMapping data = leaveBlockMappingRepo.getByLeaveBlockIdAndEmployeeIdAndLeaveTypeId(block.getId(), map.getEmployeeId(), map.getLeaveTypeId());
+            if(data != null){
+                data.setStatus(map.getStatus());
+                leaveBlockMappingRepo.save(data);
+            }
+        }
     }
 
 
-    private void reapplyBlockLogic(LeaveBlock block) {
+
+
+    private void reapplyBlockLogic(LeaveBlock block, List<MappingUpdateDto> mappingUpdates) {
 
         // 1. Reset balances that were previously blocked by this block
         List<LeaveBalance> oldBalances = leaveBalanceRepo.findByBlockId(block.getId());
@@ -368,7 +379,7 @@ public LeaveBlock updateLeaveBlock(UpdateLeaveBlockRequest requestDto) {
             leaveBalanceRepo.saveAll(oldBalances);
         }
 
-        // 2. Apply block only for ACTIVE mappings
+//         2. Apply block only for ACTIVE mappings
         List<LeaveBlockMapping> mappings = leaveBlockMappingRepo.findByLeaveBlock(block);
         if (mappings == null || mappings.isEmpty()) return;
 
@@ -389,6 +400,9 @@ public LeaveBlock updateLeaveBlock(UpdateLeaveBlockRequest requestDto) {
         if (!balancesToBlock.isEmpty()) {
             leaveBalanceRepo.saveAll(balancesToBlock);
         }
+
+
+
     }
 
 

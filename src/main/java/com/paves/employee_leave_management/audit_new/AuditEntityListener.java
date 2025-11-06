@@ -22,6 +22,8 @@ public class AuditEntityListener {
         try{
             SpringBeanAutowiringSupport.processInjectionBasedOnCurrentContext(this);
         }catch (Exception ignored){}
+
+        System.out.println("AuditEntityListener initialized");
     }
 
     @PrePersist

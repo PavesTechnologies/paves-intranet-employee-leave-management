@@ -20,6 +20,8 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.leaveId = :leaveId")
     Optional<LeaveRequest> findById(@Param("leaveId") String leaveId);
 
+    Optional<LeaveRequest> findByLeaveId(String id);
+
     List<LeaveRequest> findByEmployee(Employee employee);
 
     List<LeaveRequest> findByEmployeeAndStatus(Employee employee, LeaveStatus status);

@@ -1,15 +1,13 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.paves.employee_leave_management.audit.AuditEntityListener;
+import com.paves.employee_leave_management.audit_new.AuditEntityListener;
 import com.paves.employee_leave_management.audit_new.Auditable;
-import com.paves.employee_leave_management.enums.ActionType;
-import com.paves.employee_leave_management.audit                    .AuditEntityListener;
-import com.paves.employee_leave_management.enums.ApproverType;
+
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+//import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,7 +21,7 @@ import java.util.List;
 @Builder
 @Auditable
 //@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
-@EntityListeners({AuditEntityListener.class, AuditingEntityListener.class})
+@EntityListeners(AuditEntityListener.class)
 public class LeaveType {
 
     @Id
@@ -117,6 +115,13 @@ public class LeaveType {
 //    @Lob
 //    @Column(name = "policy_document", columnDefinition = "LONGBLOB",nullable = false)
 //    private byte[] policyDocument;
+
+
+    @Column(nullable = true)
+    private LocalDate effectiveStartDate;
+
+    @Column(name = "deactivation_effective_date")
+    private LocalDate deactivationEffectiveDate;
 
 
 //    @CreatedDate
