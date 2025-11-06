@@ -12,11 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-/**
- * Service to handle logging job executions in a separate transaction.
- * This ensures that log entries (especially failures) are saved
- * even if the main job transaction rolls back.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -26,40 +21,34 @@ public class JobLoggingService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public JobExecutionLog createJobLog(String jobName, String nodeId) {
+        log.info("Creating log for job: {} on node: {}", jobName, nodeId);
         JobExecutionLog entry = JobExecutionLog.builder()
                 .jobName(jobName)
                 .status(JobStatus.RUNNING)
                 .startTime(LocalDateTime.now())
                 .nodeIdentifier(nodeId)
-                .attempt(1) // You could build logic to increment this on retries
+                .attempt(1) // Placeholder for retry logic
                 .build();
-
-        JobExecutionLog saved = jobExecutionLogRepository.saveAndFlush(entry);
-        log.info("🚀 (Log ID: {}) Starting job {} on node {}", saved.getId(), jobName, nodeId);
-        return saved;
+        return jobExecutionLogRepository.saveAndFlush(entry);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateJobLog(JobExecutionLog entry, boolean success, String errorMessage) {
+    public void updateJobLog(JobExecutionLog logEntry, boolean success, String errorMessage) {
+        if (logEntry == null || logEntry.getId() == null) {
+            log.error("CRITICAL: Attempted to update a null or un-persisted job log entry.");
+            return;
+        }
+
+        String logId = logEntry.getId().toString();
         try {
-            // Re-fetch the entity if it's detached, or just use the passed one if managed
-            JobExecutionLog logEntry = jobExecutionLogRepository.findById(entry.getId())
-                    .orElse(entry);
+            JobStatus finalStatus = success ? JobStatus.SUCCESS : JobStatus.FAILED;
+            LocalDateTime endTime = LocalDateTime.now();
+            long duration = Duration.between(logEntry.getStartTime(), endTime).toMillis();
 
-            logEntry.setStatus(success ? JobStatus.SUCCESS : JobStatus.FAILED);
-            logEntry.setEndTime(LocalDateTime.now());
-            logEntry.setDurationMs(Duration.between(logEntry.getStartTime(), logEntry.getEndTime()).toMillis());
-            logEntry.setErrorMessage(errorMessage);
-
-            jobExecutionLogRepository.saveAndFlush(logEntry);
-
-            if (success) {
-                log.info("✅ (Log ID: {}) Job '{}' completed successfully.", logEntry.getId(), logEntry.getJobName());
-            } else {
-                log.warn("⚠️ (Log ID: {}) Job '{}' failed: {}", logEntry.getId(), logEntry.getJobName(), errorMessage);
-            }
+            jobExecutionLogRepository.updateJobStatus(logId, finalStatus, endTime, duration, errorMessage);
+            log.info("Successfully updated job log for job: {}", logEntry.getJobName());
         } catch (Exception e) {
-            log.error("CRITICAL: Failed to update job log {}: {}", entry.getId(), e.getMessage(), e);
+            log.error("CRITICAL: Failed to update job log for ID '{}': {}", logId, e.getMessage(), e);
         }
     }
 }
