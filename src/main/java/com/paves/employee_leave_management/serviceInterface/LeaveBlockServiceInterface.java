@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.LeaveBlockRequestDto;
 import com.paves.employee_leave_management.dto.UnblockLeaveRequestDto;
+import com.paves.employee_leave_management.dto.UpdateLeaveBlockRequest;
 import com.paves.employee_leave_management.entities.LeaveBlock;
 
 import java.time.OffsetDateTime;
@@ -11,7 +12,7 @@ public interface LeaveBlockServiceInterface {
     void blockLeave(LeaveBlockRequestDto requestDto);
     List<LeaveBlock> getAllActiveLeaveBlock(String managerId);
     void unblockLeave(UnblockLeaveRequestDto requestDto);
-    LeaveBlock updateLeaveBlock(String blockId, LeaveBlockRequestDto requestDto);
+    LeaveBlock updateLeaveBlock(UpdateLeaveBlockRequest requestDto);
 
     List<LeaveBlock> getAllLeaveBlocks();
 

@@ -4,7 +4,6 @@ import com.paves.employee_leave_management.dto.ManagerQueryDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
-import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +19,8 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.leaveId = :leaveId")
     Optional<LeaveRequest> findById(@Param("leaveId") String leaveId);
+
+    Optional<LeaveRequest> findByLeaveId(String id);
 
     List<LeaveRequest> findByEmployee(Employee employee);
 

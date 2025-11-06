@@ -50,6 +50,9 @@ public class LeaveBlock {
     @JsonManagedReference
     private List<LeaveBlockLeaveType> leaveTypes;
 
+    @OneToMany(mappedBy = "leaveBlock", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    private List<LeaveBlockMapping> mappings;
 
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;

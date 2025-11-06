@@ -2,7 +2,6 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.Holidays;
-import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.HolidayType;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
 import java.io.ByteArrayInputStream;

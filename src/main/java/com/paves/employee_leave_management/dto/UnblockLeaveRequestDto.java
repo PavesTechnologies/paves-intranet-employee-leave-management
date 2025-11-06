@@ -6,16 +6,23 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
-import java.util.UUID;
-
 
 @Setter
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class UnblockLeaveRequestDto {
+
     private String blockId;
-    private List<String> employeeIds;
-    private List<String> leaveTypeIds;
+    private List<EmployeeUnblockRequest> unblockRequests;
     private Integer year;
+
+    @Setter
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EmployeeUnblockRequest {
+        private String employeeId;
+        private List<String> leaveTypeIds;
+    }
 }

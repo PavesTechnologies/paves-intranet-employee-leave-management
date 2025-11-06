@@ -11,4 +11,5 @@ import lombok.*;
 public class LeaveTypeIdDTO {
     private String leaveTypeId;
     private String leaveName;
+    private boolean active;
 }
