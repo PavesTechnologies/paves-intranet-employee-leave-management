@@ -74,6 +74,18 @@ public interface EmailServiceInterface {
      */
     boolean sendLeaveRejectionNotification(String employeeEmail, String employeeName,
                                          String leaveType, String startDate, String endDate, String rejectionReason);
+
+    /**
+     * Send leave revoke notification to employee
+     * @param employeeEmail employee's email address
+     * @param employeeName employee name
+     * @param leaveType type of leave
+     * @param startDate leave start date
+     * @param endDate leave end date
+     * @return true if email sent successfully
+     */
+    boolean sendLeaveRevokeNotification(String employeeEmail, String employeeName,
+                                         String leaveType, String startDate, String endDate);
     
     /**
      * Send leave update notification to employee
