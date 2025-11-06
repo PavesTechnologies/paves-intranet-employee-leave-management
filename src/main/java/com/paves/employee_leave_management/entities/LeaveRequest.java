@@ -112,6 +112,14 @@ public class LeaveRequest {
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
 
+    // in LeaveRequest entity
+  
+//    @Version
+//    @Column(name = "version")
+//    private Long version;
+
+
+
     // Custom constructor for essential fields
     public LeaveRequest(Employee employee, LeaveType leaveType, LocalDate startDate,
                         LocalDate endDate, Integer daysRequested, String reason, String driveLink) {

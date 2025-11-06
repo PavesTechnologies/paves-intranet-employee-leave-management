@@ -12,4 +12,6 @@ public interface RecordLockServiceInterface {
 
 
     String getLockedBy(String tableName, String recordId);
+
+    boolean refreshLock(String table, String recordId, String user);
 }
