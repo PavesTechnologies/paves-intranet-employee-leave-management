@@ -18,6 +18,19 @@ public class LeaveBlockMapping {
 
     @Id
     private String id;
+    @ManyToOne
+    @JoinColumn(name = "leave_block_id", nullable = false)
+    @JsonBackReference
+    private LeaveBlock leaveBlock;
+    @Column(name = "employee_id", nullable = false)
+    private String employeeId;
+    @Column(name = "leave_type_id", nullable = false)
+    private String leaveTypeId;
+    @Column(name = "year", nullable = false)
+    private Integer year;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private BlockStatus status; // e.g., "BLOCKED", "UNBLOCKED"
 
     @PrePersist
     public void generateId() {
@@ -25,22 +38,4 @@ public class LeaveBlockMapping {
             id = UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase();
         }
     }
-
-    @ManyToOne
-    @JoinColumn(name = "leave_block_id", nullable = false)
-    @JsonBackReference
-    private LeaveBlock leaveBlock;
-
-    @Column(name = "employee_id", nullable = false)
-    private String employeeId;
-
-    @Column(name = "leave_type_id", nullable = false)
-    private String leaveTypeId;
-
-    @Column(name = "year", nullable = false)
-    private Integer year;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private BlockStatus status; // e.g., "BLOCKED", "UNBLOCKED"
 }

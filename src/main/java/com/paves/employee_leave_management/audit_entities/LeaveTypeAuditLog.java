@@ -7,7 +7,11 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "leave_type_audit_log")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class LeaveTypeAuditLog extends BaseAuditEntity {
 
     @Id

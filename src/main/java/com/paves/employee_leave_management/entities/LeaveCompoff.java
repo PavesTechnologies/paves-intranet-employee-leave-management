@@ -11,7 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name="leave_compoff")
+@Table(name = "leave_compoff")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,7 +27,7 @@ public class LeaveCompoff {
     private String employeeId;
 
     @ManyToOne
-    @JoinColumn(name = "employee_id", referencedColumnName = "employee_id",insertable = false,updatable = false)
+    @JoinColumn(name = "employee_id", referencedColumnName = "employee_id", insertable = false, updatable = false)
     private Employee employee;
 
     @Column(name = "manager_id")
@@ -49,14 +49,14 @@ public class LeaveCompoff {
 
     private String file;
 
-    @Column(name = "start_session",columnDefinition = "TEXT")
+    @Column(name = "start_session", columnDefinition = "TEXT")
     private String startSession;
 
-    @Column(name = "end_session",columnDefinition = "TEXT")
+    @Column(name = "end_session", columnDefinition = "TEXT")
     private String endSession;
 
     @Enumerated(EnumType.STRING)
-    @Column(name="status")
+    @Column(name = "status")
     private LeaveStatusCompoff status;
 
     @Column(name = "action_date")

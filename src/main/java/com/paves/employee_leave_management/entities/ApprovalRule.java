@@ -2,7 +2,6 @@ package com.paves.employee_leave_management.entities;
 
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.ApproverType;
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

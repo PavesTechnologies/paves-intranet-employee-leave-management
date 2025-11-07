@@ -1,6 +1,8 @@
 package com.paves.employee_leave_management.repo;
 
-import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.LeaveBalance;
+import com.paves.employee_leave_management.entities.LeaveType;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -49,6 +51,7 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
             "OR LOWER(lb.employee.firstName) LIKE LOWER(CONCAT('%', :query, '%')) " +
             "OR LOWER(lb.employee.lastName) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<String> autocompleteEmployee(@Param("query") String query);
+
     List<LeaveBalance> findByEmployee_EmployeeIdAndYear(String employeeId, Integer year);
 
     LeaveBalance getByEmployeeIdAndLeaveType_LeaveTypeId(String employeeId, String leaveTypeId);
@@ -59,9 +62,11 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
 //    LeaveBalance getByEmployeeIdAndLeaveTypeAndYear(String employeeId, String LeaveType, Integer year);
 
     List<LeaveBalance> getByEmployeeIdAndLeaveType_LeaveTypeIdAndYearAndBlockId(String employeeId, String leaveTypeId, Integer year, String blockId);
+
     List<LeaveBalance> findByBlockId(String blockId);
 
     List<LeaveBalance> findByEmployeeIdAndLeaveType_LeaveTypeIdAndYearAndBlockId(String employeeId, String leaveTypeId, Integer year, String blockId);
+
     List<LeaveBalance> findByEmployeeIdAndBlockId(String employeeId, String blockId);
 
     @Modifying

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface LeaveTypeRepo extends JpaRepository<LeaveType,String> {
+public interface LeaveTypeRepo extends JpaRepository<LeaveType, String> {
     Optional<LeaveType> findByLeaveName(String leaveName);
 
     Optional<LeaveType> findByLeaveTypeId(String leaveTypeId);

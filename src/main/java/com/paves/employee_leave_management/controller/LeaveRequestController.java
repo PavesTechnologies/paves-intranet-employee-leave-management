@@ -1,8 +1,6 @@
 package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.*;
-import com.paves.employee_leave_management.dto.ManagerQueryDTO;
-import com.paves.employee_leave_management.dto.ManagerUpdateRequestDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -30,9 +28,9 @@ public class LeaveRequestController {
     private final EmployeeServiceInterface employeeService;
     private final LeaveTypeServiceInterface leaveTypeService;
     private final LeaveRequestRepo leaveRequestRepo;
-    
+
     // ==================== EMPLOYEE OPERATIONS ====================
-    
+
     /**
      * Apply for leave - Employee submits a new leave request
      */
@@ -47,7 +45,7 @@ public class LeaveRequestController {
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(false, errorMessage, null));
             }
-            
+
             // Save the leave request
             LeaveRequest savedLeaveRequest = leaveRequestService.saveLeaveRequest(request);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully", savedLeaveRequest));
@@ -65,42 +63,42 @@ public class LeaveRequestController {
     @PreAuthorize("hasAnyRole('GENERAL', 'MANAGER', 'HR')")
     public ResponseEntity<ApiResponse<ValidationResultDTO>> updateLeaveRequest(@RequestBody LeaveRequestValidationDTO validationDTO) {
 
-            // Get the employee and leave type entities
-            Employee employee = employeeService.getByEmployeeId(validationDTO.getEmployeeId()).getBody();
-            LeaveType leaveType = leaveTypeService.getLeaveTypeById(validationDTO.getLeaveTypeId()).getBody();
-            
-            if (employee == null) {
-                return ResponseEntity.badRequest()
-                        .body(new ApiResponse<>(false, "Employee not found", null));
-            }
-            
-            if (leaveType == null) {
-                return ResponseEntity.badRequest()
-                        .body(new ApiResponse<>(false, "Leave type not found", null));
-            }
-            
-            // Create LeaveRequest object with proper entities
-            LeaveRequest leaveRequest = LeaveRequest.builder()
-                    .leaveId(validationDTO.getLeaveId())
-                    .employee(employee)
-                    .leaveType(leaveType)
-                    .startDate(validationDTO.getStartDate())
-                    .endDate(validationDTO.getEndDate())
-                    .daysRequested(validationDTO.getDaysRequested())
-                    .startSession(validationDTO.getStartSession())
-                    .endSession(validationDTO.getEndSession())
-                    .reason(validationDTO.getReason())
-                    .requestDate(LocalDate.now())
-                    .build();
-            
-            ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest,validationDTO);
-            if (result.isValid()) {
-                return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
-            } else {
-                String errorMessage = String.join("; ", result.getErrors());
-                return ResponseEntity.badRequest()
-                        .body(new ApiResponse<>(false, errorMessage, result));
-            }
+        // Get the employee and leave type entities
+        Employee employee = employeeService.getByEmployeeId(validationDTO.getEmployeeId()).getBody();
+        LeaveType leaveType = leaveTypeService.getLeaveTypeById(validationDTO.getLeaveTypeId()).getBody();
+
+        if (employee == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "Employee not found", null));
+        }
+
+        if (leaveType == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "Leave type not found", null));
+        }
+
+        // Create LeaveRequest object with proper entities
+        LeaveRequest leaveRequest = LeaveRequest.builder()
+                .leaveId(validationDTO.getLeaveId())
+                .employee(employee)
+                .leaveType(leaveType)
+                .startDate(validationDTO.getStartDate())
+                .endDate(validationDTO.getEndDate())
+                .daysRequested(validationDTO.getDaysRequested())
+                .startSession(validationDTO.getStartSession())
+                .endSession(validationDTO.getEndSession())
+                .reason(validationDTO.getReason())
+                .requestDate(LocalDate.now())
+                .build();
+
+        ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest, validationDTO);
+        if (result.isValid()) {
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
+        } else {
+            String errorMessage = String.join("; ", result.getErrors());
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, errorMessage, result));
+        }
     }
 
     /**
@@ -129,6 +127,7 @@ public class LeaveRequestController {
                     .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
         }
     }
+
     /**
      * Get a specific leave request by ID
      */
@@ -162,7 +161,7 @@ public class LeaveRequestController {
     }
 
     // ==================== VALIDATION OPERATIONS ====================
-    
+
     /**
      * Validate leave request without saving
      */
@@ -225,7 +224,7 @@ public class LeaveRequestController {
     }
 
     // ==================== MANAGER OPERATIONS ====================
-    
+
     /**
      * Get pending/filtered leave requests for manager
      */
@@ -268,6 +267,7 @@ public class LeaveRequestController {
                     .body(new ApiResponse<>(false, "Error retrieving pending count: " + e.getMessage(), null));
         }
     }
+
     /**
      * Approve leave request using request body
      */
@@ -304,7 +304,6 @@ public class LeaveRequestController {
         List<LeaveRequest> rejected = leaveRequestService.rejectMultipleRequests(batchApproval);
         return ResponseEntity.ok(rejected);
     }
-
 
 
     /**
@@ -350,9 +349,9 @@ public class LeaveRequestController {
 
     @GetMapping("employee/pendingAndApproved-leave/{employeeId}")
     @PreAuthorize("hasAnyRole('MANAGER')")
-    public ResponseEntity<ApiResponse<List<PendingAndApprovedLeaveRequestsDTO>>> getPendingLeaveAndApprovedLeaveByEmployeeId(@PathVariable String employeeId,@RequestParam LocalDate startDate,@RequestParam LocalDate endDate) {
+    public ResponseEntity<ApiResponse<List<PendingAndApprovedLeaveRequestsDTO>>> getPendingLeaveAndApprovedLeaveByEmployeeId(@PathVariable String employeeId, @RequestParam LocalDate startDate, @RequestParam LocalDate endDate) {
         try {
-            List<PendingAndApprovedLeaveRequestsDTO> leaveRequests = leaveRequestService.getPendingLeaveAndApprovedLeaveByEmployeeId(employeeId,startDate,endDate);
+            List<PendingAndApprovedLeaveRequestsDTO> leaveRequests = leaveRequestService.getPendingLeaveAndApprovedLeaveByEmployeeId(employeeId, startDate, endDate);
             return ResponseEntity.ok(new ApiResponse<>(
                     true,
                     "Leave requests retrieved successfully",
@@ -366,22 +365,22 @@ public class LeaveRequestController {
 
     @PutMapping("/cancel")
     @PreAuthorize("hasAnyRole('MANAGER')")
-    public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest){
-        try{
+    public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest) {
+        try {
             LeaveRequest cancelledRequest = leaveRequestService.rejectRequest(rejectionRequest);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request cancelled successfully", cancelledRequest));
-        }catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "Error cancelling request: " + e.getMessage(), null));
         }
     }
 
-   @GetMapping("/view-details")
-    public ResponseEntity<ApiResponse<List<LeaveRequest>>> leaveBalanceViewDetails(@RequestParam String employeeId, @RequestParam String leaveName, @RequestParam int year){
-        try{
+    @GetMapping("/view-details")
+    public ResponseEntity<ApiResponse<List<LeaveRequest>>> leaveBalanceViewDetails(@RequestParam String employeeId, @RequestParam String leaveName, @RequestParam int year) {
+        try {
             List<LeaveRequest> leaveRequests = leaveRequestService.leaveBalanceViewDetails(employeeId, leaveName, year);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaveRequests));
-        }catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
         }

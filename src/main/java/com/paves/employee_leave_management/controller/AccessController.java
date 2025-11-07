@@ -1,7 +1,6 @@
 package com.paves.employee_leave_management.controller;
 
 
-import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -19,7 +18,7 @@ import java.util.Map;
 public class AccessController {
 
     @GetMapping("leave-management")
-    public ResponseEntity<Map<String, Object>> getAccessDetails(Authentication authentication){
+    public ResponseEntity<Map<String, Object>> getAccessDetails(Authentication authentication) {
         JwtAuthenticationToken jwtAuthenticationToken = (JwtAuthenticationToken) authentication;
         Jwt jwt = jwtAuthenticationToken.getToken();
         List<String> roles = jwt.getClaimAsStringList("roles");

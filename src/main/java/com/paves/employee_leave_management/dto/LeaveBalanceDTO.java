@@ -22,7 +22,7 @@ public class LeaveBalanceDTO {
     private Double usedLeaves;
     private Double remainingLeaves;
     private Double carriedForward;
-//    private Integer availableBalance;
+    //    private Integer availableBalance;
     private Integer year;
-    private LeaveStatus status= LeaveStatus.APPROVED;
+    private LeaveStatus status = LeaveStatus.APPROVED;
 }

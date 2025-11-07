@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -39,12 +40,12 @@ public class AuditTrail {
     @Column(nullable = false)
     private LocalDateTime changedAt;
 
-    public enum ActionType {
-        INSERT, UPDATE, DELETE
-    }
-
     @PrePersist
     public void prePersist() {
         this.changedAt = LocalDateTime.now();
+    }
+
+    public enum ActionType {
+        INSERT, UPDATE, DELETE
     }
 }

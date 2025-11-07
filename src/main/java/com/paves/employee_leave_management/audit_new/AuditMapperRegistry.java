@@ -1,14 +1,10 @@
 package com.paves.employee_leave_management.audit_new;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.audit_entities.BaseAuditEntity;
-import com.paves.employee_leave_management.audit_entities.LeaveTypeAuditLog;
-import com.paves.employee_leave_management.entities.LeaveType;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.BiFunction;
 
 @Component

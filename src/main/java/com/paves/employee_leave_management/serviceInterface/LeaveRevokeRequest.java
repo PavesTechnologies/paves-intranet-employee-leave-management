@@ -1,6 +1,5 @@
 package com.paves.employee_leave_management.serviceInterface;
 
-import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveRevokeDTO;
 import com.paves.employee_leave_management.entities.LeaveRevoke;
 

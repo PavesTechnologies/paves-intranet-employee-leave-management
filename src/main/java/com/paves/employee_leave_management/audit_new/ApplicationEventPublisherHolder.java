@@ -17,6 +17,11 @@ public class ApplicationEventPublisherHolder {
         this.publisher = publisher;
     }
 
-    public ApplicationEventPublisher getPublisher() { return publisher; }
-    public EntityManager getEntityManager() { return entityManager; }
+    public ApplicationEventPublisher getPublisher() {
+        return publisher;
+    }
+
+    public EntityManager getEntityManager() {
+        return entityManager;
+    }
 }

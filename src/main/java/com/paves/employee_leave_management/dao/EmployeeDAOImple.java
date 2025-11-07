@@ -18,6 +18,7 @@ public class EmployeeDAOImple implements EmployeeDAO {
 
     @Autowired
     EmployeeRepo repo;
+
     @Override
     public Employee saveEmployee(Employee employee) {
         return (Employee) repo.findByEmployeeId(employee.getEmployeeId())
@@ -28,17 +29,17 @@ public class EmployeeDAOImple implements EmployeeDAO {
     }
 
     @Override
-    public Employee updateEmployee(String employeeId,Employee employee1) {
-            return repo.findById(employeeId).map(existingEmployee -> {
+    public Employee updateEmployee(String employeeId, Employee employee1) {
+        return repo.findById(employeeId).map(existingEmployee -> {
 
-                try {
-                    return repo.save(employee1);
-                } catch (DataIntegrityViolationException | PropertyValueException e) {
-                    throw new EmployeeExceptionHandler("Required fields are missing or duplicate value exists");
-                }
+            try {
+                return repo.save(employee1);
+            } catch (DataIntegrityViolationException | PropertyValueException e) {
+                throw new EmployeeExceptionHandler("Required fields are missing or duplicate value exists");
+            }
 
-            }).orElseThrow(() -> new EmployeeExceptionHandler("Employee not found with ID: " + employeeId));
-        }
+        }).orElseThrow(() -> new EmployeeExceptionHandler("Employee not found with ID: " + employeeId));
+    }
 
     @Override
     public Optional<Employee> findByEmployeeId(String employeeId) {

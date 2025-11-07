@@ -2,8 +2,6 @@ package com.paves.employee_leave_management.security;
 
 import org.springframework.stereotype.Component;
 
-import java.security.Key;
-
 @Component
 public class JwtUtils {
 //

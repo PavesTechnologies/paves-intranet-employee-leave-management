@@ -12,7 +12,7 @@ import java.util.concurrent.Executor;
 public class AuditAsyncConfig {
 
     @Bean(name = "auditExecutor")
-    public Executor auditExecutor(){
+    public Executor auditExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(6);

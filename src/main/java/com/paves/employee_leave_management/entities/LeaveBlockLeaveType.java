@@ -1,7 +1,6 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,20 +18,18 @@ import java.util.UUID;
 public class LeaveBlockLeaveType {
     @Id
     private String id;
-
-    @PrePersist
-    public void generateId(){
-        if (id == null){
-            id = UUID.randomUUID().toString().replace("-","").substring(0,5).toUpperCase();
-        }
-    }
-
     @ManyToOne
     @JoinColumn(name = "leave_block_id")
     @JsonBackReference
     private LeaveBlock leaveBlock;
-
     @Column(name = "leave_type_id")
     private String leaveTypeId;
+
+    @PrePersist
+    public void generateId() {
+        if (id == null) {
+            id = UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase();
+        }
+    }
 }
 

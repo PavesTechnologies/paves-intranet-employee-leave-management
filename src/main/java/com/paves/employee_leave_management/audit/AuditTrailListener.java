@@ -4,10 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.entities.AuditTrail;
 import com.paves.employee_leave_management.entities.AuditTrail.ActionType;
 import com.paves.employee_leave_management.repo.AuditTrailRepo;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-import jakarta.persistence.*;
 
 public class AuditTrailListener {
 
@@ -84,7 +86,8 @@ public class AuditTrailListener {
             if (auth != null && auth.isAuthenticated()) {
                 return auth.getName();
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return "SYSTEM";
     }
 

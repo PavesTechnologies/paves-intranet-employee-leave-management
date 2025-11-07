@@ -1,26 +1,31 @@
 package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
-import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.entities.LeaveBalance;
+import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
+import com.paves.employee_leave_management.entities.LeaveType;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
 /**
- * 
+ *
  */
 public interface LeaveBalanceServiceInterface {
     LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year);
 
     void createLeaveBalanceForNewEmployee(String EmpId);
+
     void processYearEndCarryForward();
 
     void triggerMonthlyLeaveAccrual();
 
     ResponseEntity<LeaveBalance> findByBalanceId(String balanceId);
+
     ResponseEntity<List<LeaveBalance>> getAllLeaveBalances();
-    ResponseEntity<List<LeaveBalance>>  findByEmployeeId(String employeeId);
+
+    ResponseEntity<List<LeaveBalance>> findByEmployeeId(String employeeId);
 
     public List<LeaveBalance> getCurrentYearBalances(String employeeId);
 
@@ -41,6 +46,7 @@ public interface LeaveBalanceServiceInterface {
     List<String> autocomplete(String query);
 
     List<LeaveBalance> searchLeaveBalances(String query);
+
     List<String> autocompleteEmployee(String query);
 }
 

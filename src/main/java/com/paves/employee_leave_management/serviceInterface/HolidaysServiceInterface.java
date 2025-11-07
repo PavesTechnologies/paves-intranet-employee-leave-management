@@ -10,9 +10,13 @@ import java.util.List;
 
 public interface HolidaysServiceInterface {
     ResponseEntity<List<Holidays>> getAllHolidays();
+
     ResponseEntity<Holidays> getHolidayById(Long id);
+
     ResponseEntity<String> addHoliday(List<Holidays> holidays);
+
     ResponseEntity<String> updateHoliday(Holidays holidays);
+
     ResponseEntity<String> deleteHoliday(Long id);
 
     ResponseEntity<List<Holidays>> getHolidaysByYear(int year);
@@ -24,6 +28,7 @@ public interface HolidaysServiceInterface {
     ResponseEntity<String> deleteHolidaysThreeYearsAgo();
 
     void importHolidaysFromExcel(MultipartFile file) throws IOException, IOException;
+
     ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(String state, String country);
 
     List<Holidays> getHolidaysByMonth(int month);

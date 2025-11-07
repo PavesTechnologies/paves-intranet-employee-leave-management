@@ -6,7 +6,10 @@ import com.paves.employee_leave_management.audit_entities.LeaveTypeAuditLog;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 
 @Component
@@ -43,8 +46,11 @@ public class AuditPerEntityMapperRegistry {
     }
 
     private String toJson(Object o) {
-        try { return o == null ? null : com.fasterxml.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(o); }
-        catch (Exception e) { return String.valueOf(o); }
+        try {
+            return o == null ? null : com.fasterxml.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(o);
+        } catch (Exception e) {
+            return String.valueOf(o);
+        }
     }
 
     // small context class used when building per-entity rows
@@ -54,13 +60,33 @@ public class AuditPerEntityMapperRegistry {
         private final String action;
         private final String changedBy;
         private final LocalDateTime changedAt;
-        public FieldChangeContext(String entityId, List<FieldChange> fieldChanges, String action, String changedBy, LocalDateTime changedAt){
-            this.entityId = entityId; this.fieldChanges = fieldChanges; this.action = action; this.changedBy = changedBy; this.changedAt = changedAt;
+
+        public FieldChangeContext(String entityId, List<FieldChange> fieldChanges, String action, String changedBy, LocalDateTime changedAt) {
+            this.entityId = entityId;
+            this.fieldChanges = fieldChanges;
+            this.action = action;
+            this.changedBy = changedBy;
+            this.changedAt = changedAt;
         }
-        public String getEntityId(){return entityId;}
-        public List<FieldChange> getFieldChanges(){return fieldChanges;}
-        public String getAction(){return action;}
-        public String getChangedBy(){return changedBy;}
-        public LocalDateTime getChangedAt(){return changedAt;}
+
+        public String getEntityId() {
+            return entityId;
+        }
+
+        public List<FieldChange> getFieldChanges() {
+            return fieldChanges;
+        }
+
+        public String getAction() {
+            return action;
+        }
+
+        public String getChangedBy() {
+            return changedBy;
+        }
+
+        public LocalDateTime getChangedAt() {
+            return changedAt;
+        }
     }
 }

@@ -16,30 +16,31 @@ public class EmailDTO {
     @NotBlank(message = "Recipient email is required")
     @Email(message = "Invalid email format")
     private String to;
-    
+
     private String[] cc;
-    
+
     private String[] bcc;
-    
+
     @NotBlank(message = "Subject is required")
     private String subject;
-    
+
     @NotBlank(message = "Email body is required")
     private String body;
-    
+
     private boolean isHtml = false;
-    
+
     private String attachmentPath;
-    
+
     // Constructors
-    public EmailDTO() {}
-    
+    public EmailDTO() {
+    }
+
     public EmailDTO(String to, String subject, String body) {
         this.to = to;
         this.subject = subject;
         this.body = body;
     }
-    
+
     public EmailDTO(String to, String subject, String body, boolean isHtml) {
         this.to = to;
         this.subject = subject;

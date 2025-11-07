@@ -5,16 +5,17 @@ import com.paves.employee_leave_management.auditRepo.*;
 import com.paves.employee_leave_management.audit_tables.*;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
-import jakarta.persistence.*;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.stereotype.Component;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+
 import java.time.LocalDateTime;
-import java.util.HashSet;
 
 //@Component
 public class AuditEntityListener {
@@ -23,14 +24,13 @@ public class AuditEntityListener {
 
     private static LeaveTypeRepo leaveTypeRepo;
 
+    public static void setApplicationContext(ApplicationContext ctx) {
+        context = ctx;
+    }
+
     @Autowired
     public void setLeaveTypeRepo(LeaveTypeRepo leaveTypeRepo) {
         this.leaveTypeRepo = leaveTypeRepo;
-    }
-
-
-    public static void setApplicationContext(ApplicationContext ctx) {
-        context = ctx;
     }
 
     @PrePersist
@@ -68,7 +68,6 @@ public class AuditEntityListener {
     }
 
 
-
     private BaseAuditEntity mapToAuditEntity(Object entity) {
         // Map entity to corresponding audit entity
         if (entity instanceof com.paves.employee_leave_management.entities.LeaveRequest lr) {
@@ -88,11 +87,10 @@ public class AuditEntityListener {
             BeanUtils.copyProperties(h, audit);
             if (h.getType() != null) audit.setType(h.getType().name());
             return audit;
-        }
-        else if(entity instanceof LeaveType lt){
+        } else if (entity instanceof LeaveType lt) {
             LeaveTypeAudit audit = new LeaveTypeAudit();
             BeanUtils.copyProperties(lt, audit);
-            if(lt.getLeaveTypeId() != null) audit.setLeaveTypeId(lt.getLeaveTypeId());
+            if (lt.getLeaveTypeId() != null) audit.setLeaveTypeId(lt.getLeaveTypeId());
             return audit;
         }
 

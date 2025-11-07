@@ -1,55 +1,48 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.*;
-import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.LeaveRequest;
+import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.LeaveStatus;
+import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
-import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
-import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @Service
 @Transactional
 public class LeaveRequestService implements LeaveRequestServiceInterface {
 
-    @Autowired
-    private LeaveRequestRepo leaveRequestRepo;
-
-    @Autowired
-    private EmployeeRepo employeeRepo;
-
-    @Autowired
-    private LeaveTypeRepo leaveTypeRepo;
-
-    @Autowired
-    private EmployeeServiceInterface employeeService;
-
-    @Autowired
-    private LeaveTypeServiceInterface leaveTypeService;
-
-    @Autowired
-    private LeaveBalanceServiceInterface leaveBalanceService;
-
-    @Autowired
-    private EmailServiceInterface emailService;
-
     private static final Pattern GOOGLE_DRIVE_URL_PATTERN = Pattern.compile(
             "^https?://(drive|docs)\\.google\\.com/(file/d/|folders/|spreadsheets/d/|document/d/|open\\?id=)([a-zA-Z0-9_-]+)(/.*)?$"
     );
+    @Autowired
+    private LeaveRequestRepo leaveRequestRepo;
+    @Autowired
+    private EmployeeRepo employeeRepo;
+    @Autowired
+    private LeaveTypeRepo leaveTypeRepo;
+    @Autowired
+    private EmployeeServiceInterface employeeService;
+    @Autowired
+    private LeaveTypeServiceInterface leaveTypeService;
+    @Autowired
+    private LeaveBalanceServiceInterface leaveBalanceService;
+    @Autowired
+    private EmailServiceInterface emailService;
 
     // ==================== VALIDATION METHODS ====================
 
@@ -152,8 +145,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             System.out.println("sgfhd;j");
             if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
                 result.addError("Drive link with medical certificate is mandatory for sick leave exceeding 3 days");
-            }
-            else{
+            } else {
                 System.out.println("From ValidateDriveLinkRequirements -SL");
                 validateDriveLinkFormat(request.getDriveLink(), result);
             }
@@ -168,8 +160,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     /**
      * Validates that a link is a correctly formatted Google Drive URL.
      * A null or empty link will now be considered an error.
+     *
      * @param driveLink The string URL to validate.
-     * @param result The DTO to add errors to.
+     * @param result    The DTO to add errors to.
      */
     private void validateDriveLinkFormat(String driveLink, ValidationResultDTO result) {
         // Step 1: Check if the link is null or empty. If so, add an error and stop.
@@ -209,7 +202,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     /**
      * Validates basic date constraints that apply to ALL leave types
      */
-    private void    validateBasicDateConstraints(LeaveRequestValidationDTO request, ValidationResultDTO result) {
+    private void validateBasicDateConstraints(LeaveRequestValidationDTO request, ValidationResultDTO result) {
         LocalDate startDate = request.getStartDate();
         LocalDate endDate = request.getEndDate();
         int currentYear = LocalDate.now().getYear();
@@ -218,7 +211,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         if (endDate.isBefore(startDate)) {
             result.addError("End date must be after or equal to start date");
         }
-        if(request.getStartDate().getYear() != LocalDate.now().getYear() && request.getLeaveTypeId().equals("L-SL")){
+        if (request.getStartDate().getYear() != LocalDate.now().getYear() && request.getLeaveTypeId().equals("L-SL")) {
             result.addError("Sick Leave request can only be made for the current year");
         }
         // 3. Earned leave cannot be applied for next year (if accrual is monthly)
@@ -748,15 +741,15 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Override
     public List<PendingAndApprovedLeaveRequestsDTO> getPendingLeaveAndApprovedLeaveByEmployeeId(String employeeId, LocalDate startDate, LocalDate endDate) {
         List<LeaveRequest> leaveRequests = leaveRequestRepo.findPendingOrApprovedByEmployee(employeeId);
-        if(leaveRequests.isEmpty()){
+        if (leaveRequests.isEmpty()) {
             return Collections.emptyList();
         }
         return leaveRequests.stream()
-                .filter(l -> (l.getStartDate().isEqual(startDate) || l.getStartDate().isAfter(startDate)|| l.getStartDate().isBefore(startDate))
-                    && (l.getEndDate().equals(endDate) || l.getEndDate().isBefore(endDate) || l.getEndDate().isAfter(endDate))
+                .filter(l -> (l.getStartDate().isEqual(startDate) || l.getStartDate().isAfter(startDate) || l.getStartDate().isBefore(startDate))
+                        && (l.getEndDate().equals(endDate) || l.getEndDate().isBefore(endDate) || l.getEndDate().isAfter(endDate))
                 ).map(l -> new PendingAndApprovedLeaveRequestsDTO(
                         l.getEmployee().getEmployeeId(),
-                        l.getEmployee().getFirstName()+" "+l.getEmployee().getLastName(),
+                        l.getEmployee().getFirstName() + " " + l.getEmployee().getLastName(),
                         l.getStartDate(),
                         l.getEndDate(),
                         l.getStatus().toString()
@@ -778,9 +771,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         Employee manager = employeeRepo.findById(rejectionRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + rejectionRequest.getManagerId()));
 
-        if(request.getStatus() == LeaveStatus.APPROVED){
+        if (request.getStatus() == LeaveStatus.APPROVED) {
             request.setStatus(LeaveStatus.CANCELLED);
-        }else{
+        } else {
             request.setStatus(LeaveStatus.REJECTED);
         }
         request.setApprovedBy(manager);
@@ -858,7 +851,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .leaveId(request.getLeaveId())
                 .employeeId(request.getEmployee().getEmployeeId())
 //                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
-                .leaveTypeId(updateRequest.getLeaveTypeId() != null ? updateRequest.getLeaveTypeId():updatedLeaveType.getLeaveTypeId())
+                .leaveTypeId(updateRequest.getLeaveTypeId() != null ? updateRequest.getLeaveTypeId() : updatedLeaveType.getLeaveTypeId())
 
                 // Use the new start date if provided, otherwise keep the old one
                 .startDate(updateRequest.getStartDate() != null ? updateRequest.getStartDate() : request.getStartDate())
@@ -1081,12 +1074,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .orElseThrow(() -> new LeaveBalanceExceptionHandler("Leave request not found for given ID and employee."));
     }
 
-    public List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId){
+    public List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId) {
         return leaveRequestRepo.findByEmployee_EmployeeIdAndStatus(employeeId, LeaveStatus.PENDING);
     }
 
     @Override
-    public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year){
+    public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year) {
         return leaveRequestRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(employeeId, leaveName, year).stream().filter(obj -> obj.getStatus().equals(LeaveStatus.APPROVED) || obj.getStatus().equals(LeaveStatus.PENDING)).toList();
     }
 

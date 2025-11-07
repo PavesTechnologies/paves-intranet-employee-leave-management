@@ -1,7 +1,6 @@
 package com.paves.employee_leave_management.entities;
 
 import com.paves.employee_leave_management.enums.RequestStatus;
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

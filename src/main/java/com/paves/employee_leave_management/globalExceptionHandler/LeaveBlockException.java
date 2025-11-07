@@ -1,7 +1,6 @@
 package com.paves.employee_leave_management.globalExceptionHandler;
 
 
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
