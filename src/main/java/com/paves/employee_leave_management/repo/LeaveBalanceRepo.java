@@ -1,7 +1,9 @@
 package com.paves.employee_leave_management.repo;
 
 import com.paves.employee_leave_management.entities.*;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -58,4 +60,16 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
 
     List<LeaveBalance> getByEmployeeIdAndLeaveType_LeaveTypeIdAndYearAndBlockId(String employeeId, String leaveTypeId, Integer year, String blockId);
     List<LeaveBalance> findByBlockId(String blockId);
+
+    List<LeaveBalance> findByEmployeeIdAndLeaveType_LeaveTypeIdAndYearAndBlockId(String employeeId, String leaveTypeId, Integer year, String blockId);
+    List<LeaveBalance> findByEmployeeIdAndBlockId(String employeeId, String blockId);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE LeaveBalance lb SET lb.blockId = null, lb.isBlocked = false WHERE lb.employeeId = :empId AND lb.blockId = :blockId AND lb.leaveType.leaveTypeId IN :leaveTypeIds")
+    int unblockBalancesForEmployeeAndTypes(
+            @Param("empId") String employeeId,
+            @Param("blockId") String blockId,
+            @Param("leaveTypeIds") List<String> leaveTypeIds
+    );
 }

@@ -2,7 +2,6 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
-import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
@@ -1090,4 +1089,5 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year){
         return leaveRequestRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(employeeId, leaveName, year).stream().filter(obj -> obj.getStatus().equals(LeaveStatus.APPROVED) || obj.getStatus().equals(LeaveStatus.PENDING)).toList();
     }
+
 }

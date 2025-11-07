@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.paves.employee_leave_management.audit.AuditEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.cglib.core.Block;
@@ -25,7 +26,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EntityListeners({AuditingEntityListener.class})
+@EntityListeners({AuditEntityListener.class})
 //@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 @ToString
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})

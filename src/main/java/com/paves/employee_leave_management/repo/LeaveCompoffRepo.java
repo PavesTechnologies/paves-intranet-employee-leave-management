@@ -4,6 +4,7 @@ import com.paves.employee_leave_management.entities.LeaveCompoff;
 import com.paves.employee_leave_management.enums.JobStatus;
 import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import org.springframework.data.jpa.repository.JpaRepository;
+import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 
 import java.util.List;
 

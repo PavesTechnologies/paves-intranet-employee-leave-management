@@ -310,6 +310,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 LeaveTypeIdDTO dto = new LeaveTypeIdDTO();
                 dto.setLeaveTypeId(leaveType.getLeaveTypeId());
                 dto.setLeaveName(leaveType.getLeaveName());
+                dto.setActive(leaveType.getActive());
                 leaveTypeDTOs.add(dto);
             }
         }

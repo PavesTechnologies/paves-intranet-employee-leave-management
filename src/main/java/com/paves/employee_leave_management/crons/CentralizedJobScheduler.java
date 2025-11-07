@@ -45,37 +45,37 @@ public class CentralizedJobScheduler {
     private static final String LOCK_AT_LEAST_10S = "PT10S";
     private static final String LOCK_AT_MOST_15M = "PT15M";
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 0 0 * * *",zone = "Asia/Kolkata")
     @SchedulerLock(name = "DailyTasks_LeaveBlock", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
     public void scheduleDailyLeaveBlock() {
         runJob(leaveBlockScheduler::processLeaveBlock, "Daily-Leave-Block");
     }
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 0 0 * * *",zone = "Asia/Kolkata")
     @SchedulerLock(name = "DailyTasks_ActivateLeaves", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
     public void scheduleDailyActivateLeaves() {
         runJob(leaveBlockScheduler::activatePendingLeaveTypes, "Daily-Activate-Leaves");
     }
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 0 0 * * *",zone = "Asia/Kolkata")
     @SchedulerLock(name = "DailyTasks_DeactivateLeaves", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
     public void scheduleDailyDeactivateLeaves() {
         runJob(leaveBlockScheduler::deactivateDueLeaveTypes, "Daily-Deactivate-Leaves");
     }
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 0 0 * * *",zone = "Asia/Kolkata")
     @SchedulerLock(name = "DailyTasks_CompoffExpiry", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
     public void scheduleDailyCompoffExpiry() {
         runJob(leaveCompoffService::expireUnusedCompoffs, "Daily-Compoff-Expiry");
     }
 
-    @Scheduled(cron = "0 5 0 1 * *")
+    @Scheduled(cron = "0 5 0 1 * *",zone = "Asia/Kolkata")
     @SchedulerLock(name = "Monthly_LeaveAccrual", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = "PT1H")
     public void scheduleMonthlyLeaveAccrual() {
         runJob(leaveBalanceService::triggerMonthlyLeaveAccrual, "Monthly-Leave-Accrual");
     }
 
-    @Scheduled(cron = "0 0 0 1 1 *")
+    @Scheduled(cron = "0 0 0 1 1 *",zone = "Asia/Kolkata")
     @SchedulerLock(name = "Yearly_LeaveClose", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = "PT2H")
     public void scheduleYearlyLeaveClose() {
         runJob(leaveBalanceService::processYearEndCarryForward, "Yearly-Leave-Close");
@@ -91,13 +91,14 @@ public class CentralizedJobScheduler {
      * This task cleans up its *own* log table.
      * ShedLock ensures it only runs on one node.
      */
-    @Scheduled(cron = "0 0 * * * *") // Runs hourly
+     // Runs hourly
+
+    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Kolkata")
     @SchedulerLock(name = "Cleanup_OldJobLogs", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
     public void cleanupOldJobLogs() {
         // We wrap this special job in the same logging mechanism
         runJob(() -> {
-            LocalDateTime cutoffDate = LocalDate.now().minusMonths(2).atStartOfDay();
-            int deleted = jobExecutionLogRepository.deleteByStartTimeBefore(cutoffDate);
+            int deleted = jobExecutionLogRepository.deleteByStartTimeBefore(LocalDateTime.now().minusWeeks(1));
         }, "Cleanup-Old-Job-Logs");
     }
 
