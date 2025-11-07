@@ -15,6 +15,7 @@ import java.util.List;
 public class CompoffRequestValidator implements ConstraintValidator<ValidCompoffRequest, LeaveCompoffRequestDTO> {
 
     private final LeaveCompoffRepo leaveCompoffRepo;
+
     public CompoffRequestValidator(LeaveCompoffRepo leaveCompoffRepo) {
         this.leaveCompoffRepo = leaveCompoffRepo;
     }
@@ -49,7 +50,7 @@ public class CompoffRequestValidator implements ConstraintValidator<ValidCompoff
             List<LeaveCompoff> existingCompoffs = leaveCompoffRepo.findByEmployeeId(dto.getEmployeeId());
 
             for (LeaveCompoff existing : existingCompoffs) {
-                if (existing.getStatus() == LeaveStatusCompoff.APPROVED||
+                if (existing.getStatus() == LeaveStatusCompoff.APPROVED ||
                         existing.getStatus() == LeaveStatusCompoff.PENDING) {
 
                     // Check for date overlap

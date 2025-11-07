@@ -1,19 +1,10 @@
 package com.paves.employee_leave_management.entities;
 
-import com.fasterxml.jackson.annotation.JsonIdentityInfo;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.ObjectIdGenerators;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.paves.employee_leave_management.audit.AuditEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.cglib.core.Block;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,83 +26,65 @@ public class LeaveBalance {
     @Id
     @Column(name = "balance_id")
     private String balanceId;
-
-    @PrePersist
-    public void generateId(){
-        if (balanceId == null){
-            balanceId = "BAL"+UUID.randomUUID().toString().replace("-","").substring(0,5).toUpperCase();
-        }
-    }
-
     @ManyToOne
     @JsonManagedReference
 //    @JsonIgnore
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
-
     @Column(name = "emp_id")
     private String employeeId;
-
     @ManyToOne
     @JoinColumn(name = "leave_type_id", nullable = false)
     private LeaveType leaveType;
-
     @Column(name = "total_leaves", nullable = false)
     private double totalLeaves;
-
     @Builder.Default
     @Column(name = "accrued_leaves")
     private double accruedLeaves = 0;
-
     @Builder.Default
     @Column(name = "used_leaves")
     private double usedLeaves = 0;
-
     @Column(name = "remaining_leaves", nullable = false)
     private double remainingLeaves;
-
     @Builder.Default
     @Column(name = "carried_forward")
     private double carriedForward = 0;
-
     @Builder.Default
     @Column(name = "expired_leaves")
     private double expiredLeaves = 0;
-
     @Builder.Default
     @Column(name = "encashed_leaves")
     private Integer encashedLeaves = 0;
-
     @Column(name = "year", nullable = false)
     private Integer year;
-
     @Column(name = "last_accrual_date")
     private LocalDate lastAccrualDate;
-
     @Column(name = "is_blocked")
     private Boolean isBlocked;
-
     @Column(name = "block_id")
     private String blockId;
-
- //   @CreatedDate
+    //   @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createAt;
-
-   // @LastModifiedDate
+    // @LastModifiedDate
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
 
+    @PrePersist
+    public void generateId() {
+        if (balanceId == null) {
+            balanceId = "BAL" + UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase();
+        }
+    }
+
     // in LeaveRequest entity
-  
+
 //    @Version
 //    @Column(name = "version")
 //    private Long version;
 
-
-
     public void updateRemainingLeaves() {
-        this.remainingLeaves = (accruedLeaves+carriedForward) - usedLeaves;
+        this.remainingLeaves = (accruedLeaves + carriedForward) - usedLeaves;
     }
 }
 

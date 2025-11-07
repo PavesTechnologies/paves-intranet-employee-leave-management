@@ -1,7 +1,6 @@
 package com.paves.employee_leave_management.auditLogRepo;
 
 import com.paves.employee_leave_management.audit_entities.LeaveTypeAuditLog;
-import com.paves.employee_leave_management.auditLogRepo.LeaveTypeAuditLogRepo;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;

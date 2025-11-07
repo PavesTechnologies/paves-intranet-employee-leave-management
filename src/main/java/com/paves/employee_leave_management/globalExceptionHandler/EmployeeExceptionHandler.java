@@ -1,6 +1,8 @@
 package com.paves.employee_leave_management.globalExceptionHandler;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 @Data

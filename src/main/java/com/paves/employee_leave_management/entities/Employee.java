@@ -27,6 +27,56 @@ public class Employee {
     @ToString.Include
     @EqualsAndHashCode.Include
     private String employeeId;
+    @Column(name = "first_name", length = 50, nullable = false)
+    @ToString.Include
+    private String firstName;
+    @Column(name = "last_name", length = 50, nullable = false)
+    @ToString.Include
+    private String lastName;
+    @Column(name = "email", length = 100, nullable = false, unique = true)
+    private String email;
+    @Column(name = "gender", length = 10, nullable = false)
+    private String gender;
+    @Column(name = "phone", length = 15)
+    private String phone;
+    @Column(name = "hire_date", nullable = false)
+    private LocalDate hireDate;
+    @Column(name = "salary", precision = 10, scale = 2)
+    private BigDecimal salary;
+    @Column(name = "job_title", length = 100)
+    private String jobTitle;
+    // 🔹 Self-reference to represent manager
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    @JsonIgnore
+    private Employee manager;
+    // 🔹 Reverse mapping: manager → subordinates
+    @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Employee> subordinates;
+    // 🔹 HR Administrator (optional)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hr_administrator_id")
+    @JsonIgnore
+    private Employee hrAdministrator;
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<LeaveRequest> leaveRequests;
+
+    // 🔹 Department linkage
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "department_id")
+//    @JsonIgnore
+//    private Department department;
+    @OneToMany(mappedBy = "approvedBy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<LeaveRequest> approvedRequests;
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<LeaveBalance> leaveBalances;
+    @Column(name = "password", length = 255, nullable = false)
+    @JsonIgnore
+    private String password;
 
     @PrePersist
     public void generateId() {
@@ -34,71 +84,6 @@ public class Employee {
             employeeId = "PAVEMP" + UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase();
         }
     }
-
-    @Column(name = "first_name", length = 50, nullable = false)
-    @ToString.Include
-    private String firstName;
-
-    @Column(name = "last_name", length = 50, nullable = false)
-    @ToString.Include
-    private String lastName;
-
-    @Column(name = "email", length = 100, nullable = false, unique = true)
-    private String email;
-
-    @Column(name = "gender", length = 10, nullable = false)
-    private String gender;
-
-    @Column(name = "phone", length = 15)
-    private String phone;
-
-    @Column(name = "hire_date", nullable = false)
-    private LocalDate hireDate;
-
-    @Column(name = "salary", precision = 10, scale = 2)
-    private BigDecimal salary;
-
-    @Column(name = "job_title", length = 100)
-    private String jobTitle;
-
-    // 🔹 Self-reference to represent manager
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "manager_id")
-    @JsonIgnore
-    private Employee manager;
-
-    // 🔹 Reverse mapping: manager → subordinates
-    @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<Employee> subordinates;
-
-    // 🔹 HR Administrator (optional)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hr_administrator_id")
-    @JsonIgnore
-    private Employee hrAdministrator;
-
-    // 🔹 Department linkage
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "department_id")
-//    @JsonIgnore
-//    private Department department;
-
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<LeaveRequest> leaveRequests;
-
-    @OneToMany(mappedBy = "approvedBy", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<LeaveRequest> approvedRequests;
-
-    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<LeaveBalance> leaveBalances;
-
-    @Column(name = "password", length = 255, nullable = false)
-    @JsonIgnore
-    private String password;
 
     // Convenience method
     public String getFullName() {

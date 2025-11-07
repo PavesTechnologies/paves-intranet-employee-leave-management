@@ -32,23 +32,17 @@ public class JobLoggingService {
         return jobExecutionLogRepository.saveAndFlush(entry);
     }
 
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateJobLog(JobExecutionLog logEntry, boolean success, String errorMessage) {
-        if (logEntry == null || logEntry.getId() == null) {
-            log.error("CRITICAL: Attempted to update a null or un-persisted job log entry.");
-            return;
-        }
+        JobExecutionLog dbEntry = jobExecutionLogRepository.findById(logEntry.getId()).orElse(null);
+        if (dbEntry == null) return;
 
-        String logId = logEntry.getId().toString();
-        try {
-            JobStatus finalStatus = success ? JobStatus.SUCCESS : JobStatus.FAILED;
-            LocalDateTime endTime = LocalDateTime.now();
-            long duration = Duration.between(logEntry.getStartTime(), endTime).toMillis();
-
-            jobExecutionLogRepository.updateJobStatus(logId, finalStatus, endTime, duration, errorMessage);
-            log.info("Successfully updated job log for job: {}", logEntry.getJobName());
-        } catch (Exception e) {
-            log.error("CRITICAL: Failed to update job log for ID '{}': {}", logId, e.getMessage(), e);
-        }
+        dbEntry.setStatus(success ? JobStatus.SUCCESS : JobStatus.FAILED);
+        dbEntry.setEndTime(LocalDateTime.now());
+        dbEntry.setDurationMs(Duration.between(logEntry.getStartTime(), dbEntry.getEndTime()).toMillis());
+        dbEntry.setErrorMessage(errorMessage);
+        jobExecutionLogRepository.save(dbEntry);
     }
+
 }

@@ -10,7 +10,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,18 +26,16 @@ import java.util.*;
 @RequiredArgsConstructor
 public class RecordLockServiceImple implements RecordLockServiceInterface {
 
+    private static final long LOCK_EXPIRY_MINUTES = 10;
+    // Only these tables can be locked (prevents accidental locking of reference tables)
+    private static final Set<String> LOCKABLE_TABLES = Set.of("leave_request", "leave_balance");
     private final RecordLockRepository lockRepository;
     private final JdbcTemplate jdbcTemplate;
     private final DataSource dataSource;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final LeaveRequestRepo leaveRequestRepo;
-
     // primary key lookup, lower-cased table name -> pk column
     private final Map<String, String> tablePkMap = new HashMap<>();
-    private static final long LOCK_EXPIRY_MINUTES = 10;
-
-    // Only these tables can be locked (prevents accidental locking of reference tables)
-    private static final Set<String> LOCKABLE_TABLES = Set.of("leave_request", "leave_balance");
 
     @PostConstruct
     public void init() throws SQLException {

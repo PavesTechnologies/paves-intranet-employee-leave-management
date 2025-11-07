@@ -1,6 +1,5 @@
 package com.paves.employee_leave_management.audit_new;
 
-import org.springframework.context.ApplicationEvent;
 import java.time.LocalDateTime;
 
 public class AuditPayload {
@@ -22,12 +21,33 @@ public class AuditPayload {
         this.changedBy = changedBy;
         this.changedAt = LocalDateTime.now();
     }
+
     // getters...
-    public Class<?> getEntityClass(){return entityClass;}
-    public String getEntityId(){return entityId;}
-    public Object getBeforeSnapshot(){return beforeSnapshot;}
-    public Object getAfterSnapshot(){return afterSnapshot;}
-    public String getAction(){return action;}
-    public String getChangedBy(){return changedBy;}
-    public LocalDateTime getChangedAt(){return changedAt;}
+    public Class<?> getEntityClass() {
+        return entityClass;
+    }
+
+    public String getEntityId() {
+        return entityId;
+    }
+
+    public Object getBeforeSnapshot() {
+        return beforeSnapshot;
+    }
+
+    public Object getAfterSnapshot() {
+        return afterSnapshot;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public String getChangedBy() {
+        return changedBy;
+    }
+
+    public LocalDateTime getChangedAt() {
+        return changedAt;
+    }
 }

@@ -4,7 +4,9 @@ package com.paves.employee_leave_management.entities;
 import com.paves.employee_leave_management.audit.AuditEntityListener;
 import com.paves.employee_leave_management.enums.HolidayType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 

@@ -5,8 +5,10 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
-import com.paves.employee_leave_management.entities.*;
-import com.paves.employee_leave_management.enums.ApproverType;
+import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.LeaveBalance;
+import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
+import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
@@ -20,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -377,12 +378,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     public void updateLeaveBalanceAfterRejected(String employeeId, String leaveTypeId, double daysRequested, int year) {
         LeaveBalance balance = leaveBalanceRepo
                 .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
-        System.out.println("used Leaves " + balance.getUsedLeaves());
-        System.out.println("remaining Leaves " + balance.getRemainingLeaves());
-        System.out.println("accrued Leaves " + balance.getAccruedLeaves());
-        System.out.println("daysRequested " + daysRequested);
-        System.out.println("year " + year);
-
         balance.setUsedLeaves(balance.getUsedLeaves() - daysRequested);
         if (!leaveTypeId.equalsIgnoreCase("L-UP")) {
             balance.setRemainingLeaves(balance.getRemainingLeaves() + daysRequested);

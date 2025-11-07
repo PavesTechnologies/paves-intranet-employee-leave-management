@@ -2,8 +2,8 @@ package com.paves.employee_leave_management.audit_tables;
 
 import jakarta.persistence.*;
 import lombok.Data;
+
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "holidays_audit")

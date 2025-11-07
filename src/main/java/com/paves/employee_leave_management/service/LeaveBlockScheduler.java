@@ -3,7 +3,6 @@ package com.paves.employee_leave_management.service;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBlock;
 import com.paves.employee_leave_management.entities.LeaveType;
-import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.BlockStatus;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
@@ -36,6 +35,7 @@ public class LeaveBlockScheduler {
     private final LeaveTypeRepo leaveTypeRepo;
     private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
     private final LeaveRequestRepo leaveRequestRepo;
+
     @Transactional
     public void processLeaveBlock() {
         LocalDate today = LocalDate.now();
@@ -97,7 +97,8 @@ public class LeaveBlockScheduler {
                     leaveType.getLeaveName(),
                     leaveType.getEffectiveStartDate());
         }
-}
+    }
+
     @Transactional
     public void deactivateDueLeaveTypes() {
         LocalDate today = LocalDate.now();

@@ -17,20 +17,18 @@ public class LeaveBlockMember {
 
     @Id
     private String id;
-
-    @PrePersist
-    public void generateId(){
-        if (id == null){
-            id = UUID.randomUUID().toString().replace("-","").substring(0,5).toUpperCase();
-        }
-    }
-
     @ManyToOne
     @JoinColumn(name = "leave_block_id", nullable = false)
     @JsonBackReference
     private LeaveBlock leaveBlock;
-
     @Column(name = "employee_id", nullable = false)
     private String employeeId; // just store the foreign system's employee ID
+
+    @PrePersist
+    public void generateId() {
+        if (id == null) {
+            id = UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase();
+        }
+    }
 }
 

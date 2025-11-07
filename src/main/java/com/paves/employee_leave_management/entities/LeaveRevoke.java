@@ -16,24 +16,20 @@ public class LeaveRevoke {
     @Id
     @Column(name = "revoke_id")
     private String id;
-
-    @PrePersist
-    private void generateId(){
-        if(id == null){
-            this.id = "LRV"+ UUID.randomUUID().toString().replace("-","").substring(0,5).toUpperCase();
-        }
-    }
-
     @Column(name = "leave_id")
     private String leaveRequestId;
-
-    @Column(name ="reason")
+    @Column(name = "reason")
     private String reason;
-
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     private LeaveRevokeStatus status;
-
     @Column(name = "manager_id")
     private String managerId;
+
+    @PrePersist
+    private void generateId() {
+        if (id == null) {
+            this.id = "LRV" + UUID.randomUUID().toString().replace("-", "").substring(0, 5).toUpperCase();
+        }
+    }
 }

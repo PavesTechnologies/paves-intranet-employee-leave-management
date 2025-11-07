@@ -4,15 +4,9 @@ import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.enums.HolidayType;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
-import java.io.ByteArrayInputStream;
 import com.paves.employee_leave_management.repo.HolidayRepo;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-
-import java.io.ByteArrayOutputStream;
-import java.sql.*;
-
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,8 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.sql.DataSource;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -37,11 +34,12 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
     @Autowired
     private DataSource dataSource;
+
     @Override
     public ResponseEntity<List<Holidays>> getAllHolidays() {
 
         List<Holidays> holidays = holidayRepo.findAll();
-        if(holidays.isEmpty())
+        if (holidays.isEmpty())
             throw new HolidayExceptionHandler("No holidays found");
         return ResponseEntity.ok(holidays);
     }
@@ -108,9 +106,6 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
         holidayRepo.saveAll(holidays);
         return ResponseEntity.ok(holidays);
     }
-
-
-
 
 
     @Override
@@ -277,7 +272,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
         // Columns to skip (audit/system fields)
         Set<String> excludeColumns = Set.of(
-                "id", "created_by", "created_at", "updated_by", "updated_at", "deleted_at","is_active","last_updated_at"
+                "id", "created_by", "created_at", "updated_by", "updated_at", "deleted_at", "is_active", "last_updated_at"
         );
 
         try (Connection connection = dataSource.getConnection();
@@ -313,7 +308,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     @Override
     public ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(String state, String country) {
         int year = LocalDate.now().getYear();
-        List<Holidays> holidays = holidayRepo.findByStateAndCountryAndYear(state, country,year);
+        List<Holidays> holidays = holidayRepo.findByStateAndCountryAndYear(state, country, year);
 
         if (holidays.isEmpty()) {
             throw new HolidayExceptionHandler("No holidays found for state: " + state + " and country: " + country);

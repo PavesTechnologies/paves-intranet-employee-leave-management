@@ -12,7 +12,6 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.HolidayRepo;
 import com.paves.employee_leave_management.service.HolidaysServiceImple;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -106,7 +105,7 @@ public class HolidaysController {
 
         approvalService.submitForApproval(dto, maker, "HR");
 //        return holidaysService.addHoliday(holidays);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Request to add holiday submitted successfully",null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Request to add holiday submitted successfully", null));
     }
 
     // 🔹 Update holiday
@@ -120,7 +119,7 @@ public class HolidaysController {
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<ApiResponse<Object>> submitUpdateHolidayRequest(
             @RequestBody Holidays updatedHolidayData // Body contains the full updated object
-            ) { // Inject maker
+    ) { // Inject maker
 
         Long holidayId = updatedHolidayData.getHolidayId(); // Get ID from the body
         if (holidayId == null) {
@@ -280,19 +279,20 @@ public class HolidaysController {
 
         int year = date.getYear();
 
-        Optional<Holidays> holidayOpt = holidayRepo.findByHolidayDateAndYear(date,year);
+        Optional<Holidays> holidayOpt = holidayRepo.findByHolidayDateAndYear(date, year);
 
         if (holidayOpt.isPresent()) {
             Holidays holiday = holidayOpt.get();
             return ResponseEntity.ok(
-                    new HolidayCheckResponse("yes", holiday.getHolidayName(),date)
+                    new HolidayCheckResponse("yes", holiday.getHolidayName(), date)
             );
         } else {
             return ResponseEntity.ok(
-                    new HolidayCheckResponse("no", "Not a holiday",date)
+                    new HolidayCheckResponse("no", "Not a holiday", date)
             );
         }
     }
+
     @GetMapping("/by-location")
     @PreAuthorize("hasAnyRole('GENERAL','HR','MANAGER')")
     public ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(
