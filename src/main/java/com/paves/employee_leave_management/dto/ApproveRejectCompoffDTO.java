@@ -8,6 +8,6 @@ import lombok.Data;
 public class ApproveRejectCompoffDTO {
     @NotNull(message = "required")
     private Long compoffId;
-    @NotBlank(message= "required")
+    @NotBlank(message = "required")
     private String managerId;
 }

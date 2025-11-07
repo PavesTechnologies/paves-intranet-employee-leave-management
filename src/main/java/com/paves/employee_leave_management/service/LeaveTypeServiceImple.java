@@ -1,17 +1,15 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
-//import com.paves.employee_leave_management.dto.LeaveTypeDto;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
-import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
-import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -62,11 +60,11 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             } else {
                 // Reactivate
                 double newAccrualRate = 0;
-                if(leaveType.getMaxDaysPerYear() == null){
+                if (leaveType.getMaxDaysPerYear() == null) {
                     newAccrualRate = 0;
-                }else{
-                    newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
-                    newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
+                } else {
+                    newAccrualRate = (double) leaveType.getMaxDaysPerYear() / 12;
+                    newAccrualRate = Math.round(newAccrualRate * 100.0) / 100.0;
                 }
 
                 boolean shouldActiveNow = !leaveType.getEffectiveStartDate().isAfter(LocalDate.now());
@@ -94,7 +92,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 dbLeaveType.setLastUpdatedAt(null);
                 LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
 
-                if(shouldActiveNow) {
+                if (shouldActiveNow) {
                     leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
                 }
                 return new ApiResponse<>(true,
@@ -108,11 +106,11 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
         // Create new
         double newAccrualRate = 0;
-        if(leaveType.getMaxDaysPerYear() == null){
+        if (leaveType.getMaxDaysPerYear() == null) {
             newAccrualRate = 0;
-        }else{
-            newAccrualRate = (double)leaveType.getMaxDaysPerYear()/12;
-            newAccrualRate = Math.round(newAccrualRate * 100.0)/100.0;
+        } else {
+            newAccrualRate = (double) leaveType.getMaxDaysPerYear() / 12;
+            newAccrualRate = Math.round(newAccrualRate * 100.0) / 100.0;
         }
 
         boolean shouldActivateNow = !leaveType.getEffectiveStartDate().isAfter(LocalDate.now());
@@ -120,7 +118,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         leaveType.setCreateAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
 
-        if(shouldActivateNow) {
+        if (shouldActivateNow) {
             leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
         }
         return new ApiResponse<>(true,
@@ -130,8 +128,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                         + leaveType.getEffectiveStartDate(),
                 savedLeaveType);
     }
-
-
 
 
     @Override
@@ -163,13 +159,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 //        LeaveType existingLeaveType = existingOpt.get();
         double newAccrualRate = 0;
-        if(updatedLeaveType.getLeaveTypeId() == "L-EL" || updatedLeaveType.getLeaveTypeId() == "L-SL"){
-            newAccrualRate = (double)updatedLeaveType.getMaxDaysPerYear()/12;
+        if (updatedLeaveType.getLeaveTypeId() == "L-EL" || updatedLeaveType.getLeaveTypeId() == "L-SL") {
+            newAccrualRate = (double) updatedLeaveType.getMaxDaysPerYear() / 12;
             newAccrualRate = new BigDecimal(newAccrualRate)
                     .setScale(2, RoundingMode.HALF_UP)
                     .doubleValue();
             updatedLeaveType.setAccrualRate(newAccrualRate);
-        }else{
+        } else {
             updatedLeaveType.setAccrualRate(newAccrualRate);
         }
         // Save updated LeaveType
@@ -214,7 +210,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     @Override
     public ResponseEntity<String> deleteLeaveType(String leaveTypeId) {
         LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
-                .orElseThrow(()-> new RuntimeException("Leave type not found."));
+                .orElseThrow(() -> new RuntimeException("Leave type not found."));
         List<LeaveBalance> leaveBalanceList = leaveBalanceRepo.findByLeaveType(leaveType);
         leaveTypeRepo.delete(leaveType);
         return new ResponseEntity<>("Leave type deleted successfully", HttpStatus.OK);

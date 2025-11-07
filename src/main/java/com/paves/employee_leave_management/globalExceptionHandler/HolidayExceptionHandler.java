@@ -7,6 +7,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class HolidayExceptionHandler extends RuntimeException{
+public class HolidayExceptionHandler extends RuntimeException {
     private String exMsg;
 }

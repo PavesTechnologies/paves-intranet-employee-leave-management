@@ -10,7 +10,6 @@ import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +55,7 @@ public class LeaveTypeController {
         if (principal instanceof Jwt jwt) {
             // You can fetch using email or user_id depending on your DB
             //String email = jwt.getClaim("email");  // "employee1@example.com"
-             Long userId = jwt.getClaim("user_id"); // If needed
+            Long userId = jwt.getClaim("user_id"); // If needed
 
             return employeeRepo.findByEmployeeId(String.valueOf(userId))
                     .orElseThrow(() -> new RuntimeException("Employee not found for id: " + userId));
@@ -107,7 +106,6 @@ public class LeaveTypeController {
         Optional<LeaveType> existingLeaveType = leaveTypeRepo.findByLeaveNameIgnoreCase(leaveType.getLeaveName());
 
 
-
         if (existingLeaveType.isPresent()) {
             LeaveType existing = existingLeaveType.get();
 
@@ -132,7 +130,7 @@ public class LeaveTypeController {
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
-        return ResponseEntity.ok(new ApiResponse<>(true,"Request to add leave type has been submitted for approval.",null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Request to add leave type has been submitted for approval.", null));
     }
 
     @GetMapping("/get-all-leave-types")
@@ -160,7 +158,7 @@ public class LeaveTypeController {
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
-        return ResponseEntity.ok(new ApiResponse<>(true,"Request to update leave type has been submitted for approval.",null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type has been submitted for approval.", null));
     }
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")

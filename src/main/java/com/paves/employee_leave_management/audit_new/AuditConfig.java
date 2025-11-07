@@ -2,7 +2,6 @@ package com.paves.employee_leave_management.audit_new;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import org.springframework.context.annotation.EnableLoadTimeWeaving;
 
 @Configuration
 @EnableAspectJAutoProxy

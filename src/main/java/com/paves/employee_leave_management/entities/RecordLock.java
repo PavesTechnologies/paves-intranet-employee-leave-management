@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 

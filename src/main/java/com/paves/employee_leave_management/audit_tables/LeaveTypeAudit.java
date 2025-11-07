@@ -1,12 +1,10 @@
 package com.paves.employee_leave_management.audit_tables;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.paves.employee_leave_management.entities.LeaveBalance;
 import jakarta.persistence.*;
-import lombok.*;
-
-import java.time.LocalDate;
-import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "leave_type_audit")
@@ -41,8 +39,6 @@ public class LeaveTypeAudit extends BaseAuditEntity {
 
 //    @JsonIgnore
 //    private Set<LeaveBalance> leaveBalances;
-
-
 
 
 //    @Column(name = "changed_by")

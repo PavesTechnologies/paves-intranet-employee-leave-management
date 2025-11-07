@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 
 @Repository
 public interface LeaveBlockRepo extends JpaRepository<LeaveBlock, String> {
@@ -23,16 +22,16 @@ public interface LeaveBlockRepo extends JpaRepository<LeaveBlock, String> {
     List<LeaveBlock> findByManagerIdAndStatus(String managerId, BlockStatus status);
 
     @Query("""
-    SELECT CASE WHEN COUNT(lb) > 0 THEN TRUE ELSE FALSE END
-    FROM LeaveBlock lb
-    WHERE lb.projectId = :projectId
-      AND lb.startDate <= :endDate
-      AND lb.endDate >= :startDate
-      AND lb.status = :status
-""")
+                SELECT CASE WHEN COUNT(lb) > 0 THEN TRUE ELSE FALSE END
+                FROM LeaveBlock lb
+                WHERE lb.projectId = :projectId
+                  AND lb.startDate <= :endDate
+                  AND lb.endDate >= :startDate
+                  AND lb.status = :status
+            """)
     boolean existsByProjectIdAndDateRangeOverlapAndStatus(@Param("projectId") String projectId,
-                                                 @Param("startDate") LocalDate startDate,
-                                                 @Param("endDate") LocalDate endDate,
+                                                          @Param("startDate") LocalDate startDate,
+                                                          @Param("endDate") LocalDate endDate,
                                                           @Param("status") BlockStatus status);
 
 }

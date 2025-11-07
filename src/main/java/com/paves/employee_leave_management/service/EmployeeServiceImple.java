@@ -5,7 +5,6 @@ import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
-import org.hibernate.PropertyValueException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +25,7 @@ public class EmployeeServiceImple implements EmployeeServiceInterface {
     @Override
     public ResponseEntity<Employee> saveEmployee(Employee employee) {
         Employee emp = employeeDAO.saveEmployee(employee);
-        if(emp != null) {
+        if (emp != null) {
             leaveBalanceService.createLeaveBalanceForNewEmployee(employee.getEmployeeId());
             return new ResponseEntity<Employee>(emp, HttpStatus.ACCEPTED);
         } else {
@@ -37,12 +36,12 @@ public class EmployeeServiceImple implements EmployeeServiceInterface {
     @Override
     public ResponseEntity<Employee> updateEmployee(String employeeId, Employee employee) {
 
-            Employee emp = employeeDAO.updateEmployee(employeeId, employee);
-            if (emp != null) {
-                return new ResponseEntity<Employee>(emp, HttpStatus.ACCEPTED);
-            } else {
-                throw new EmployeeExceptionHandler("Employee not found with id: " + employeeId);
-            }
+        Employee emp = employeeDAO.updateEmployee(employeeId, employee);
+        if (emp != null) {
+            return new ResponseEntity<Employee>(emp, HttpStatus.ACCEPTED);
+        } else {
+            throw new EmployeeExceptionHandler("Employee not found with id: " + employeeId);
+        }
 
     }
 

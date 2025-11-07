@@ -1,7 +1,11 @@
 package com.paves.employee_leave_management.audit_tables;
 
-import jakarta.persistence.*;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
 import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @MappedSuperclass

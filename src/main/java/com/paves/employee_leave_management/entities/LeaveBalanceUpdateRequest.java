@@ -1,6 +1,5 @@
 package com.paves.employee_leave_management.entities;
 
-import com.paves.employee_leave_management.dto.LeaveBalanceUpdateHandleDTO;
 import lombok.*;
 
 import java.util.List;

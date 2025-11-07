@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.audit_tables;
 
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 
 @Entity

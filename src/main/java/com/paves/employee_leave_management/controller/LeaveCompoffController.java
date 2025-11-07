@@ -29,7 +29,7 @@ public class LeaveCompoffController {
             return ResponseEntity.ok(new ApiResponse<>(true, "Compoff requested successfully.", null));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, " "+e.getMessage(), null));
+                    .body(new ApiResponse<>(false, " " + e.getMessage(), null));
         }
     }
 
@@ -83,11 +83,11 @@ public class LeaveCompoffController {
 
     @PutMapping("/employee/cancel/{compOffId}")
     @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
-    public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@PathVariable Long compOffId ){
-        try{
+    public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@PathVariable Long compOffId) {
+        try {
             compoffService.cancelPendingCompOffByEmployee(compOffId);
             return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled", null));
-        }    catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(false, "Cancellation failed: " + e.getMessage(), null));
         }

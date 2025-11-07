@@ -14,7 +14,9 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Aspect
@@ -47,7 +49,8 @@ public class AuditAspect {
                     // Implement a generic repository fetch if needed
                     // oldEntity = genericRepo.findById(idValue).orElse(null);
                 }
-            } catch (NoSuchFieldException ignored) {}
+            } catch (NoSuchFieldException ignored) {
+            }
         }
 
         // Execute the original method
@@ -91,7 +94,8 @@ public class AuditAspect {
                 idField.setAccessible(true);
                 return String.valueOf(idField.get(dto));
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return "UNKNOWN_ID";
     }
 
@@ -127,7 +131,8 @@ public class AuditAspect {
                             var compareField = oldEntity.getClass().getDeclaredField(field.getName());
                             compareField.setAccessible(true);
                             value = compareField.get(oldEntity);
-                        } catch (NoSuchFieldException ignored) {}
+                        } catch (NoSuchFieldException ignored) {
+                        }
                     }
                     if (value != null) map.put(field.getName(), value);
                 }

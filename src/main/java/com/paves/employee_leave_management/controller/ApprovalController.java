@@ -4,11 +4,9 @@ import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.ApprovalRequestResponseDto;
 import com.paves.employee_leave_management.dto.ApproveRequestDto;
 import com.paves.employee_leave_management.dto.RejectRequestDto;
-//import com.paves.employee_leave_management.entities.ApprovalRequest;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,6 +15,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 @RestController
 @RequestMapping("/api/approvals")
 public class ApprovalController {
@@ -57,7 +56,7 @@ public class ApprovalController {
         Employee checker = getAuthenticatedUser();
 
         approvalService.approveRequest(requestId, dto, checker);
-        return ResponseEntity.ok(new ApiResponse<>(true,"Request approved successfully.",null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Request approved successfully.", null));
     }
 
     @PostMapping("/{requestId}/reject")
@@ -66,7 +65,7 @@ public class ApprovalController {
         Employee checker = getAuthenticatedUser();
 
         approvalService.rejectRequest(requestId, dto, checker);
-        return ResponseEntity.ok(new ApiResponse<>(true,"Request rejected successfully.",null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Request rejected successfully.", null));
     }
 
 //
@@ -74,6 +73,7 @@ public class ApprovalController {
 //    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'GENERAL', 'HR_ADMINISTRATOR')") // Roles that can be approvers
 //    public ResponseEntity<List<ApprovalRequest>> getPendingRequests() {
 //        Employee checker = getAuthenticatedUser();
+
     /// /        System.out.println(checker);
     /// /        System.out.println("eyuuuuuuuuuuu");
 //        List<ApprovalRequest> pendingRequests = approvalService.getPendingApprovalsForUser(checker);
@@ -86,6 +86,6 @@ public class ApprovalController {
         System.out.println(checker);
         List<ApprovalRequestResponseDto> pendingRequests = approvalService.getPendingApprovalsForUser(checker);
         System.out.println(pendingRequests);
-        return ResponseEntity.ok(new ApiResponse<>(true,"Pending Requests",pendingRequests));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Pending Requests", pendingRequests));
     }
 }

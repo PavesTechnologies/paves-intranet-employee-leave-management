@@ -10,11 +10,11 @@ import java.util.List;
 
 public interface ApprovalServiceInterface {
 
-        void submitForApproval(MCApprovalRequestDto dto, Employee maker, String makerRole);
+    void submitForApproval(MCApprovalRequestDto dto, Employee maker, String makerRole);
 
-        List<ApprovalRequestResponseDto> getPendingApprovalsForUser(Employee approver);
+    List<ApprovalRequestResponseDto> getPendingApprovalsForUser(Employee approver);
 
-        void approveRequest(Long requestId, ApproveRequestDto dto, Employee checker);
+    void approveRequest(Long requestId, ApproveRequestDto dto, Employee checker);
 
-        void rejectRequest(Long requestId, RejectRequestDto dto, Employee checker);
-    }
+    void rejectRequest(Long requestId, RejectRequestDto dto, Employee checker);
+}

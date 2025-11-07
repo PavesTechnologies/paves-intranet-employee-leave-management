@@ -5,7 +5,8 @@ import jakarta.persistence.*;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class AuditSnapshotUtil {
 
@@ -44,7 +45,8 @@ public class AuditSnapshotUtil {
                     // convert complex objects (like nested DTOs) to canonical JSON strings
                     Object normalized = normalizeValue(value);
                     map.put(field.getName(), normalized);
-                } catch (IllegalAccessException ignored) {}
+                } catch (IllegalAccessException ignored) {
+                }
             }
             cls = cls.getSuperclass();
         }
