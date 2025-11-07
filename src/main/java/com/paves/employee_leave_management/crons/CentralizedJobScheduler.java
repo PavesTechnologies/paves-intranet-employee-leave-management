@@ -24,19 +24,21 @@ public class CentralizedJobScheduler {
 
     // Unique identifier for this application instance
     private static final String NODE_ID = "NODE-" + UUID.randomUUID().toString().substring(0, 8);
-    // ---------------- CRONS ----------------
+
+    // Lock configuration
     private static final String LOCK_AT_LEAST_10S = "PT10S";
     private static final String LOCK_AT_MOST_15M = "PT15M";
-    // ShedLock handles the locking
+
+    // Injected services
     private final LeaveBlockScheduler leaveBlockScheduler;
     private final LeaveRequestService leaveRequestService;
     private final LeaveBalanceServiceInterface leaveBalanceService;
     private final LeaveCompoffSerivceInterface leaveCompoffService;
     private final RecordLockServiceImple recordLockService;
-    // We inject our new service to handle custom logging
     private final JobLoggingService jobLoggingService;
-    // This repository is now only needed for the cleanup task
     private final JobExecutionLogRepository jobExecutionLogRepository;
+
+    /* ---------------- DAILY JOBS ---------------- */
 
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Kolkata")
     @SchedulerLock(name = "DailyTasks_LeaveBlock", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
@@ -62,11 +64,15 @@ public class CentralizedJobScheduler {
         runJob(leaveCompoffService::expireUnusedCompoffs, "Daily-Compoff-Expiry");
     }
 
+    /* ---------------- MONTHLY JOB ---------------- */
+
     @Scheduled(cron = "0 5 0 1 * *", zone = "Asia/Kolkata")
     @SchedulerLock(name = "Monthly_LeaveAccrual", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = "PT1H")
     public void scheduleMonthlyLeaveAccrual() {
         runJob(leaveBalanceService::triggerMonthlyLeaveAccrual, "Monthly-Leave-Accrual");
     }
+
+    /* ---------------- YEARLY JOB ---------------- */
 
     @Scheduled(cron = "0 0 0 1 1 *", zone = "Asia/Kolkata")
     @SchedulerLock(name = "Yearly_LeaveClose", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = "PT2H")
@@ -74,46 +80,43 @@ public class CentralizedJobScheduler {
         runJob(leaveBalanceService::processYearEndCarryForward, "Yearly-Leave-Close");
     }
 
-    @Scheduled(fixedRate = 5 * 60 * 1000)
+    /* ---------------- FREQUENT JOB ---------------- */
+
+    @Scheduled(fixedRate = 5 * 60 * 1000) // every 5 minutes
     @SchedulerLock(name = "Frequent_RecordLockCleanup", lockAtLeastFor = "PT1M", lockAtMostFor = "PT5M")
     public void scheduleFrequentRecordLockCleanup() {
         runJob(recordLockService::cleanupExpiredLocks, "Frequent-RecordLock-Cleanup");
     }
 
-    /**
-     * This task cleans up its *own* log table.
-     * ShedLock ensures it only runs on one node.
-     */
-    // Runs hourly
-    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Kolkata")
+    /* ---------------- LOG CLEANUP JOB ---------------- */
+
+    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Kolkata") // daily midnight
     @SchedulerLock(name = "Cleanup_OldJobLogs", lockAtLeastFor = LOCK_AT_LEAST_10S, lockAtMostFor = LOCK_AT_MOST_15M)
     public void cleanupOldJobLogs() {
-        // We wrap this special job in the same logging mechanism
         runJob(() -> {
             int deleted = jobExecutionLogRepository.deleteByStartTimeBefore(LocalDateTime.now().minusWeeks(1));
+            log.info("Old job logs cleanup completed. {} entries deleted.", deleted);
         }, "Cleanup-Old-Job-Logs");
     }
 
+    /* ---------------- CENTRAL RUNNER ---------------- */
+
     /**
-     * A wrapper to run the job, now with custom logging.
-     * ShedLock ensures this *method* is only called on one node.
+     * Wraps any job in consistent logging and error handling.
+     * Ensures every job has a start, success/failure, and duration recorded.
      */
     private void runJob(Runnable jobFunction, String jobName) {
-        // 1. Create the log entry. This runs in its own transaction.
         JobExecutionLog logEntry = jobLoggingService.createJobLog(jobName, NODE_ID);
-
         boolean success = false;
         String errorMessage = null;
 
         try {
-            // 2. Run the actual business logic
             jobFunction.run();
             success = true;
         } catch (Exception e) {
-
             errorMessage = e.getMessage();
+            log.error("Job '{}' failed: {}", jobName, errorMessage, e);
         } finally {
-            // 3. Update the log entry. This also runs in its own transaction.
             jobLoggingService.updateJobLog(logEntry, success, errorMessage);
         }
     }
