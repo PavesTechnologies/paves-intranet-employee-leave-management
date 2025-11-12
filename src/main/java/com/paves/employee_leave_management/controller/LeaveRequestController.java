@@ -385,4 +385,17 @@ public class LeaveRequestController {
                     .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
         }
     }
+
+    @GetMapping("/getLeaveRequests/{employeeId}")
+    public ResponseEntity<List<LeaveRequest>> getActiveLeavesForCurrentMonth(
+            @PathVariable("employeeId") String employeeId) {
+
+        List<LeaveRequest> leaves = leaveRequestService.getAllLeaveReuestsExceptCancelled(employeeId);
+
+        if (leaves.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(leaves);
+    }
 }
