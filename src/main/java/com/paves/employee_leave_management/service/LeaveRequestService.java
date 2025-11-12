@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -1079,13 +1080,18 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
-    public List<LeaveRequest> getAllLeaveReuestsExceptCancelled(String empId) {
+    public List<LeaveRequestDTO> getAllLeaveReuestsExceptCancelled(String empId) {
         LocalDate today = LocalDate.now();
         LocalDate monthStart = today.withDayOfMonth(1);
         LocalDate monthEnd = today.withDayOfMonth(today.lengthOfMonth());
 
-        return leaveRequestRepo.findActiveNonCancelledLeavesForMonth(empId, monthStart, monthEnd);
+        return leaveRequestRepo
+                .findActiveNonCancelledLeavesForMonth(empId, monthStart, monthEnd)
+                .stream()
+                .map(LeaveRequestDTO::new)
+                .collect(Collectors.toList());
     }
+
 
     @Override
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year) {

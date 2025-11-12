@@ -53,6 +53,6 @@ public interface LeaveRequestServiceInterface {
 
     List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId);
 
-    List<LeaveRequest> getAllLeaveReuestsExceptCancelled(String empId);
+    List<LeaveRequestDTO> getAllLeaveReuestsExceptCancelled(String empId);
 }
 
