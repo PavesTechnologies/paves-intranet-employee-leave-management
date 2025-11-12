@@ -387,10 +387,10 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/getLeaveRequests/{employeeId}")
-    public ResponseEntity<List<LeaveRequest>> getActiveLeavesForCurrentMonth(
+    public ResponseEntity<List<LeaveRequestDTO>> getActiveLeavesForCurrentMonth(
             @PathVariable("employeeId") String employeeId) {
 
-        List<LeaveRequest> leaves = leaveRequestService.getAllLeaveReuestsExceptCancelled(employeeId);
+        List<LeaveRequestDTO> leaves = leaveRequestService.getAllLeaveReuestsExceptCancelled(employeeId);
 
         if (leaves.isEmpty()) {
             return ResponseEntity.noContent().build();
