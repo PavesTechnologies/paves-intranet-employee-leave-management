@@ -128,4 +128,22 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     void deleteByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
 
     List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus leaveStatus);
+
+    @Query("""
+     SELECT lr
+     FROM LeaveRequest lr
+     WHERE lr.employee.employeeId = :employeeId
+       AND lr.status IN ('PENDING', 'APPROVED')
+       AND lr.startDate <= :monthEnd
+       AND lr.endDate >= :monthStart
+     """)
+    List<LeaveRequest> findActiveNonCancelledLeavesForMonth(
+            @Param("employeeId") String employeeId,
+            @Param("monthStart") LocalDate monthStart,
+            @Param("monthEnd") LocalDate monthEnd
+    );
+
+
+
+
 }

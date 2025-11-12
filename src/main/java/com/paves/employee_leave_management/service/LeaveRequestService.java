@@ -1079,6 +1079,15 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
+    public List<LeaveRequest> getAllLeaveReuestsExceptCancelled(String empId) {
+        LocalDate today = LocalDate.now();
+        LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDate monthEnd = today.withDayOfMonth(today.lengthOfMonth());
+
+        return leaveRequestRepo.findActiveNonCancelledLeavesForMonth(empId, monthStart, monthEnd);
+    }
+
+    @Override
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year) {
         return leaveRequestRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(employeeId, leaveName, year).stream().filter(obj -> obj.getStatus().equals(LeaveStatus.APPROVED) || obj.getStatus().equals(LeaveStatus.PENDING)).toList();
     }
