@@ -4,6 +4,7 @@ import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceInterface;
@@ -386,16 +387,36 @@ public class LeaveRequestController {
         }
     }
 
-    @GetMapping("/getLeaveRequests/{employeeId}")
-    public ResponseEntity<List<LeaveRequestDTO>> getActiveLeavesForCurrentMonth(
-            @PathVariable("employeeId") String employeeId) {
-
-        List<LeaveRequestDTO> leaves = leaveRequestService.getAllLeaveReuestsExceptCancelled(employeeId);
-
-        if (leaves.isEmpty()) {
-            return ResponseEntity.noContent().build();
+    @GetMapping("/getLeaveRequests/{employeeId}/{year}/{month}")
+    public ResponseEntity<?> getActiveLeavesForEmployee(
+            @PathVariable("employeeId") String employeeId,
+            @PathVariable(value = "year", required = false) Integer year,
+            @PathVariable(value = "month", required = false) Integer month) {
+        try {
+            List<LeaveRequestDTO> leaves = leaveRequestService.getAllLeaveRequestsExceptCancelled(employeeId, month, year);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaves));
+        } catch (LeaveBalanceExceptionHandler ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, ex.getMessage(), null));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "An error occurred while fetching leave requests", null));
         }
-
-        return ResponseEntity.ok(leaves);
+    }
+    
+    @GetMapping("/getAllLeaves/{year}/{month}")
+    public ResponseEntity<?> getAllLeavesForMonthYear(
+            @PathVariable(value = "year", required = false) Integer year,
+            @PathVariable(value = "month", required = false) Integer month) {
+        try {
+            List<LeaveRequestDTO> leaves = leaveRequestService.getAllEmployeesLeaveRequestsByMonthYear(month, year);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaves));
+        } catch (LeaveBalanceExceptionHandler ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(false, ex.getMessage(), null));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "An error occurred while fetching leave requests", null));
+        }
     }
 }

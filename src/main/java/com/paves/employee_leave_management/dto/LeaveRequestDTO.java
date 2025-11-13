@@ -17,6 +17,7 @@ public class LeaveRequestDTO {
     private LocalDate endDate;
     private String reason;
     private Employee approvedBy;
+    private String employeeId;
 
     public LeaveRequestDTO(LeaveRequest leaveRequest) {
         this.startDate = leaveRequest.getStartDate();
@@ -24,5 +25,6 @@ public class LeaveRequestDTO {
         this.reason = leaveRequest.getReason();
         this.status = leaveRequest.getStatus().name(); // Enum to String
         this.approvedBy = leaveRequest.getApprovedBy();
+        this.employeeId = leaveRequest.getEmployee().getEmployeeId();
     }
 }

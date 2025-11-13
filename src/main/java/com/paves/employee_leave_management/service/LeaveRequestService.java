@@ -1078,16 +1078,43 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     public List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId) {
         return leaveRequestRepo.findByEmployee_EmployeeIdAndStatus(employeeId, LeaveStatus.PENDING);
     }
-
+    
     @Override
-    public List<LeaveRequestDTO> getAllLeaveReuestsExceptCancelled(String empId) {
+    public List<LeaveRequestDTO> getAllLeaveRequestsExceptCancelled(String empId, Integer month, Integer year) {
         LocalDate today = LocalDate.now();
-        LocalDate monthStart = today.withDayOfMonth(1);
-        LocalDate monthEnd = today.withDayOfMonth(today.lengthOfMonth());
+        int targetMonth = (month != null) ? month : today.getMonthValue();
+        int targetYear = (year != null) ? year : today.getYear();
+        
+        LocalDate monthStart = LocalDate.of(targetYear, targetMonth, 1);
+        LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
 
-        return leaveRequestRepo
-                .findActiveNonCancelledLeavesForMonth(empId, monthStart, monthEnd)
-                .stream()
+        List<LeaveRequest> leaves = leaveRequestRepo.findActiveNonCancelledLeavesForMonth(empId, monthStart, monthEnd);
+        
+        if (leaves.isEmpty()) {
+            throw new LeaveBalanceExceptionHandler("No leave requests found for the specified period");
+        }
+
+        return leaves.stream()
+                .map(LeaveRequestDTO::new)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<LeaveRequestDTO> getAllEmployeesLeaveRequestsByMonthYear(Integer month, Integer year) {
+        LocalDate today = LocalDate.now();
+        int targetMonth = (month != null) ? month : today.getMonthValue();
+        int targetYear = (year != null) ? year : today.getYear();
+        
+        LocalDate monthStart = LocalDate.of(targetYear, targetMonth, 1);
+        LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+
+        List<LeaveRequest> leaves = leaveRequestRepo.findAllActiveNonCancelledLeavesForMonth(monthStart, monthEnd);
+        
+        if (leaves.isEmpty()) {
+            throw new LeaveBalanceExceptionHandler("No leave requests found for the specified period");
+        }
+
+        return leaves.stream()
                 .map(LeaveRequestDTO::new)
                 .collect(Collectors.toList());
     }
