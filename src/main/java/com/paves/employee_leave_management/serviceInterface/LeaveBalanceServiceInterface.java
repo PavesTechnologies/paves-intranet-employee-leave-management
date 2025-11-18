@@ -17,6 +17,12 @@ public interface LeaveBalanceServiceInterface {
 
     void createLeaveBalanceForNewEmployee(String EmpId);
 
+    void processAccrualForLeaveType();
+
+    void runMonthlyAccrual(LeaveType type);
+
+    void runYearlyAccrual(LeaveType type);
+
     void processYearEndCarryForward();
 
     void triggerMonthlyLeaveAccrual();
