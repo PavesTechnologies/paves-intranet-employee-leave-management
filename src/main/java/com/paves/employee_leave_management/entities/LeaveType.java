@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.entities;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.paves.employee_leave_management.audit_new.AuditEntityListener;
 import com.paves.employee_leave_management.audit_new.Auditable;
+import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import jakarta.persistence.*;
 import lombok.*;
@@ -43,8 +44,12 @@ public class LeaveType {
     @Builder.Default
     @Column(name = "accrual_rate", nullable = true, columnDefinition = "DOUBLE PRECISION DEFAULT 0.0")
     private Double accrualRate = 0.0;
-    @Column(name = "accrual_frequency", length = 20)
-    private String accrualFrequency;
+
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "accrual_frequency", length = 20, nullable = false)
+    private AccrualFrequency accrualFrequency;
+
     @Column(name = "expiry_days", columnDefinition = "INT DEFAULT 0")
     private Integer expiryDays;
     @Builder.Default

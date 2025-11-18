@@ -170,13 +170,6 @@ public class LeaveBalanceController {
         ));
     }
 
-    @PostMapping("/trigger-monthly-process")
-    @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<String> triggerMonthlyProcess() {
-        leaveBalanceService.triggerMonthlyLeaveAccrual();
-        return ResponseEntity.ok("Monthly process triggered successfully.");
-    }
-
     @GetMapping("/search")
     public ResponseEntity<List<LeaveBalance>> search(@RequestParam(value = "query", required = false) String query) {
         List<LeaveBalance> results = leaveBalanceService.searchLeaveBalances(query);
@@ -188,6 +181,13 @@ public class LeaveBalanceController {
     public ResponseEntity<List<String>> autocomplete(@RequestParam("query") String query) {
         List<String> suggestions = leaveBalanceService.autocompleteEmployee(query);
         return ResponseEntity.ok(suggestions);
+    }
+
+    @GetMapping("/monthly")
+    @PreAuthorize("hasAnyRole('HR')")
+    public ResponseEntity<String> monthly() {
+        leaveBalanceService.processAccrualForLeaveType();
+        return ResponseEntity.ok("Monthly process triggered successfully.");
     }
 
 }

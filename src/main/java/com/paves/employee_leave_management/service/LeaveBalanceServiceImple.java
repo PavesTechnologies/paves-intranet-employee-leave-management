@@ -9,6 +9,7 @@ import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
@@ -51,9 +52,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Autowired
     EmployeeRepo employeeRepo;
 
-
-    AuditLogService auditLogService;
-
+    @Autowired
     HolidaysServiceInterface holidayService;
 
     @Override
@@ -205,116 +204,272 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         return totalCarried;
     }
 
+
     @Override
-    public void processYearEndCarryForward() {
-        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear() - 1);
+    public void processAccrualForLeaveType() {
+        List<LeaveType> types = leaveTypeRepo.findAll();
+        for (LeaveType type : types) {
+            AccrualFrequency frequency = AccrualFrequency.valueOf(type.getAccrualFrequency().toString().toUpperCase());
+            LocalDate today = LocalDate.now();
+
+            switch (frequency) {
+
+                case DAILY:
+                    runMonthlyAccrual(type);
+                    break;
+
+                case WEEKLY:
+                    if (today.getDayOfWeek().getValue() == 1) { // Monday
+                        runMonthlyAccrual(type);
+                    }
+                    break;
+
+                case FORTNIGHTLY:
+                    if (today.getDayOfMonth() == 1 || today.getDayOfMonth() == 15) {
+                        runMonthlyAccrual(type);
+                    }
+                    break;
+
+                case MONTHLY:
+                    if (today.getDayOfMonth() == 1) {
+                        runMonthlyAccrual(type);   // ← calls your exact monthly logic
+                    }
+                    break;
+
+                case QUARTERLY:
+                    if (today.getDayOfMonth() == 1 &&
+                            (today.getMonthValue() == 1 ||
+                                    today.getMonthValue() == 4 ||
+                                    today.getMonthValue() == 7 ||
+                                    today.getMonthValue() == 10)) {
+
+                        runMonthlyAccrual(type);
+                    }
+                    break;
+
+                case YEARLY:
+                    if (today.getMonthValue() == 1 && today.getDayOfMonth() == 1) {
+                        runMonthlyAccrual(type);   // ← calls your exact yearly logic
+                    }
+                    break;
+                case NONE:
+                    break;
+            }
+        }
+    }
+
+    @Override
+    public void runMonthlyAccrual(LeaveType type) {
+
+        // Only process leave balances for THIS specific leave type this year
+        LocalDate today = LocalDate.now();
+        if (today.getMonthValue() == 1 && today.getDayOfMonth() == 1 && type.getMaxCarryForward() > 0) {
+            runYearlyAccrual(type);   // ← calls your exact yearly logic
+        }
+        List<LeaveBalance> balances =
+                leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                        today.getYear(),
+                        type.getLeaveTypeId()
+                );
+
+        if (balances.isEmpty()) {
+            throw new LeaveBalanceExceptionHandler("No Leave Balances found");
+        }
+
+        LocalDate now = LocalDate.now();
+        for (LeaveBalance balance : balances) {
+            Employee emp = balance.getEmployee();
+            LeaveType lt = balance.getLeaveType(); // dynamic
+            LocalDate hireDate = emp.getHireDate();
+            LocalDate accrualDate = balance.getLastAccrualDate();
+
+             //Prevent double accrual in same month
+            if (accrualDate != null &&
+                    accrualDate.getMonth() == now.getMonth() &&
+                    accrualDate.getYear() == now.getYear() && lt.getAccrualFrequency().equals(AccrualFrequency.MONTHLY)){
+                continue;
+            }
+
+            // ---- DYNAMIC Monthly Rules ----
+            double accrualRate = lt.getAccrualRate() != null ? lt.getAccrualRate() : 0;
+
+            if (accrualRate > 0) {
+                balance.setAccruedLeaves(balance.getAccruedLeaves() + accrualRate);
+                balance.updateRemainingLeaves();
+                balance.setLastAccrualDate(now);
+            }
+        }
+        leaveBalanceRepo.saveAll(balances);
+    }
+
+
+
+    @Override
+    public void runYearlyAccrual(LeaveType type) {
+
+        List<LeaveBalance> balances =
+                leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                        LocalDate.now().getYear(),
+                        type.getLeaveTypeId()
+                );
+
         if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
 
         for (LeaveBalance balance : balances) {
+
             LeaveBalance newbalance = new LeaveBalance();
             newbalance.setEmployee(balance.getEmployee());
             newbalance.setLeaveType(balance.getLeaveType());
 
-            String name = balance.getLeaveType().getLeaveName();
             double unused = balance.getRemainingLeaves();
             double carryForward = balance.getCarriedForward();
 
+            // DYNAMIC RULES FROM LeaveType (NOT HARDCODED!)
+            double maxCFPerYear = type.getMaxCarryForwardPerYear() != null ? type.getMaxCarryForwardPerYear() : 0;
+            double maxTotalCF = type.getMaxCarryForward() != null ? type.getMaxCarryForward() : 0;
+            double maxYearLeaves = type.getMaxDaysPerYear() != null ? type.getMaxDaysPerYear() : 0;
 
-            switch (name) {
-                case "EARNED_LEAVE":
-                    double forward;
-                    if (unused >= carryForward) {
-                        unused = unused - carryForward;
-                        forward = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
-                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), carryForward + forward);
-                    } else {
-                        forward = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
-                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), forward);
-                    }
-                    newbalance.setCarriedForward(carryForward);
-                    newbalance.setExpiredLeaves(unused - forward);
-                    newbalance.setTotalLeaves(
-                            (balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0)
-                    );
-                    newbalance.setAccruedLeaves(0);
-                    break;
-                case "SICK_LEAVE":
-                    double forwardSick;
-                    if (unused >= carryForward) {
-                        unused = unused - carryForward;
-                        forwardSick = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
-                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), carryForward + forwardSick);
-                    } else {
-                        forwardSick = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
-                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), forwardSick);
-                    }
-                    newbalance.setCarriedForward(carryForward);
-                    newbalance.setExpiredLeaves(unused - forwardSick);
-                    newbalance.setTotalLeaves(
-                            (balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0)
-                    );
-                    newbalance.setAccruedLeaves(0);
-                    break;
-                default:
-                    newbalance.setCarriedForward(0);
-                    newbalance.setExpiredLeaves(unused);
+            // core carry-forward logic (DYNAMIC, not tied to leaveName)
+            double forward;
+
+            if (unused >= carryForward) {
+                unused = unused - carryForward;
+                forward = Math.min(maxCFPerYear, unused);
+                carryForward = Math.min(maxTotalCF, carryForward + forward);
+            } else {
+                forward = Math.min(maxCFPerYear, unused);
+                carryForward = Math.min(maxTotalCF, forward);
             }
+
+            newbalance.setCarriedForward(carryForward);
+            newbalance.setExpiredLeaves(unused - forward);
+            newbalance.setTotalLeaves(maxYearLeaves);
+            newbalance.setAccruedLeaves(0);
+
             newbalance.setYear(balance.getYear() + 1);
             newbalance.setLastAccrualDate(LocalDate.now());
             newbalance.setUsedLeaves(0);
             newbalance.setEncashedLeaves(0);
             newbalance.updateRemainingLeaves();
-            leaveBalanceDao.save(newbalance);
+            leaveBalanceRepo.save(newbalance);
         }
         holidayService.deleteHolidaysThreeYearsAgo();
     }
 
+
+
+
+    @Override
+    public void processYearEndCarryForward() {
+//        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear() - 1);
+//        if (balances.isEmpty()) {
+//            throw new LeaveBalanceExceptionHandler("No Leave Balances found");
+//        }
+//
+//        for (LeaveBalance balance : balances) {
+//            LeaveBalance newbalance = new LeaveBalance();
+//            newbalance.setEmployee(balance.getEmployee());
+//            newbalance.setLeaveType(balance.getLeaveType());
+//
+//            String name = balance.getLeaveType().getLeaveName();
+//            double unused = balance.getRemainingLeaves();
+//            double carryForward = balance.getCarriedForward();
+//
+//
+//            switch (name) {
+//                case "EARNED_LEAVE":
+//                    double forward;
+//                    if (unused >= carryForward) {
+//                        unused = unused - carryForward;
+//                        forward = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
+//                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), carryForward + forward);
+//                    } else {
+//                        forward = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
+//                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), forward);
+//                    }
+//                    newbalance.setCarriedForward(carryForward);
+//                    newbalance.setExpiredLeaves(unused - forward);
+//                    newbalance.setTotalLeaves(
+//                            (balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0)
+//                    );
+//                    newbalance.setAccruedLeaves(0);
+//                    break;
+//                case "SICK_LEAVE":
+//                    double forwardSick;
+//                    if (unused >= carryForward) {
+//                        unused = unused - carryForward;
+//                        forwardSick = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
+//                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), carryForward + forwardSick);
+//                    } else {
+//                        forwardSick = Math.min(balance.getLeaveType().getMaxCarryForwardPerYear(), unused);
+//                        carryForward = Math.min(balance.getLeaveType().getMaxCarryForward(), forwardSick);
+//                    }
+//                    newbalance.setCarriedForward(carryForward);
+//                    newbalance.setExpiredLeaves(unused - forwardSick);
+//                    newbalance.setTotalLeaves(
+//                            (balance.getLeaveType().getMaxDaysPerYear() != null ? balance.getLeaveType().getMaxDaysPerYear() : 0)
+//                    );
+//                    newbalance.setAccruedLeaves(0);
+//                    break;
+//                default:
+//                    newbalance.setCarriedForward(0);
+//                    newbalance.setExpiredLeaves(unused);
+//            }
+//            newbalance.setYear(balance.getYear() + 1);
+//            newbalance.setLastAccrualDate(LocalDate.now());
+//            newbalance.setUsedLeaves(0);
+//            newbalance.setEncashedLeaves(0);
+//            newbalance.updateRemainingLeaves();
+//            leaveBalanceDao.save(newbalance);
+//        }
+//        holidayService.deleteHolidaysThreeYearsAgo();
+    }
+
     @Override
     public void triggerMonthlyLeaveAccrual() {
-        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear());
-        if (balances.isEmpty()) {
-            throw new LeaveBalanceExceptionHandler("No Leave Balances found");
-        }
-        LocalDate now = LocalDate.now();
-
-        if (now.getDayOfMonth() != 1)
-            throw new LeaveBalanceExceptionHandler("Accrual can only be triggered on the first day of the month");
-
-        for (LeaveBalance balance : balances) {
-            System.out.println(balance.toString());
-            Employee emp = balance.getEmployee();
-            LeaveType type = balance.getLeaveType();
-            LocalDate hireDate = emp.getHireDate();
-            LocalDate accrualDate = balance.getLastAccrualDate();
-
-            if (hireDate.isAfter(now.withDayOfMonth(1))) continue;
-
-            if (accrualDate != null &&
-                    accrualDate.getMonth() == now.getMonth() &&
-                    accrualDate.getYear() == now.getYear()) {
-                continue;
-            }
-
-            double accrual = 0;
-
-            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
-                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
-            }
-
-            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
-                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
-                ;
-            }
-
-            if (accrual > 0) {
-                balance.setAccruedLeaves(balance.getAccruedLeaves() + accrual);
-                balance.updateRemainingLeaves();
-                balance.setLastAccrualDate(now);
-                leaveBalanceDao.save(balance);
-            }
-        }
+//        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear());
+//        if (balances.isEmpty()) {
+//            throw new LeaveBalanceExceptionHandler("No Leave Balances found");
+//        }
+//        LocalDate now = LocalDate.now();
+//
+//        if (now.getDayOfMonth() != 1)
+//            throw new LeaveBalanceExceptionHandler("Accrual can only be triggered on the first day of the month");
+//
+//        for (LeaveBalance balance : balances) {
+//            Employee emp = balance.getEmployee();
+//            LeaveType type = balance.getLeaveType();
+//            LocalDate hireDate = emp.getHireDate();
+//            LocalDate accrualDate = balance.getLastAccrualDate();
+//
+//            if (hireDate.isAfter(now.withDayOfMonth(1))) continue;
+//
+//            if (accrualDate != null &&
+//                    accrualDate.getMonth() == now.getMonth() &&
+//                    accrualDate.getYear() == now.getYear()) {
+//                continue;
+//            }
+//
+//            double accrual = 0;
+//
+//            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
+//                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
+//            }
+//
+//            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
+//                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
+//                ;
+//            }
+//
+//            if (accrual > 0) {
+//                balance.setAccruedLeaves(balance.getAccruedLeaves() + accrual);
+//                balance.updateRemainingLeaves();
+//                balance.setLastAccrualDate(now);
+//                leaveBalanceDao.save(balance);
+//            }
+//        }
     }
 
     @Override
