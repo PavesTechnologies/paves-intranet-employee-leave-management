@@ -9,7 +9,8 @@ import java.util.List;
 
 @Repository
 public interface LeaveRevokeRepo extends JpaRepository<LeaveRevoke, String> {
-    LeaveRevoke findByLeaveRequestId(String leaveRequestId);
+//    LeaveRevoke findByLeaveRequestId(String leaveRequestId);
+    List<LeaveRevoke> findByLeaveRequestId(String leaveRequestId);
 
     List<LeaveRevoke> findByManagerIdAndStatus(String managerId, LeaveRevokeStatus status);
 

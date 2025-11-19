@@ -47,10 +47,12 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
             throw new RuntimeException("Leave Type not found");
         }
 
-        LeaveRevoke request = leaveRevokeRepo.findByLeaveRequestId(revokeRequest.getLeaveRequestId());
-        if (request != null) {
-            if (request.getStatus() == LeaveRevokeStatus.PENDING || request.getStatus() == LeaveRevokeStatus.APPROVED) {
-                throw new RuntimeException("Leave revoke request already exists");
+        List<LeaveRevoke> requests = leaveRevokeRepo.findByLeaveRequestId(revokeRequest.getLeaveRequestId());
+        if (requests != null) {
+            for(LeaveRevoke request:requests){
+                if (request.getStatus() == LeaveRevokeStatus.PENDING || request.getStatus() == LeaveRevokeStatus.APPROVED) {
+                    throw new RuntimeException("Leave revoke request already exists");
+                }
             }
         }
         revokeRequest.setStatus(LeaveRevokeStatus.PENDING);

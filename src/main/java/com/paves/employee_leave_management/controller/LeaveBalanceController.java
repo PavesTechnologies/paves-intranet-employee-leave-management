@@ -13,6 +13,7 @@ import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceI
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,6 +42,9 @@ public class LeaveBalanceController {
 
     @Autowired
     private EmployeeRepo employeeRepo;
+
+    @Autowired
+    private SimpMessagingTemplate template;
 
 //    @Autowired
 //    LeaveBalanceDAO leaveBalanceDao;
@@ -99,6 +103,7 @@ public class LeaveBalanceController {
     @GetMapping("/employee/{employeeId}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeId(@PathVariable String employeeId) {
+        template.convertAndSend("/topic/data-updated", "updated");
         return leaveBalanceService.findByEmployeeId(employeeId);
     }
 
