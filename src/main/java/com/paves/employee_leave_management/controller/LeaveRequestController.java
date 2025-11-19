@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +30,7 @@ public class LeaveRequestController {
     private final EmployeeServiceInterface employeeService;
     private final LeaveTypeServiceInterface leaveTypeService;
     private final LeaveRequestRepo leaveRequestRepo;
+    private final SimpMessagingTemplate template;
 
     // ==================== EMPLOYEE OPERATIONS ====================
 
@@ -49,6 +51,7 @@ public class LeaveRequestController {
 
             // Save the leave request
             LeaveRequest savedLeaveRequest = leaveRequestService.saveLeaveRequest(request);
+            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully", savedLeaveRequest));
 
         } catch (Exception e) {
@@ -94,6 +97,7 @@ public class LeaveRequestController {
 
         ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest, validationDTO);
         if (result.isValid()) {
+            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
         } else {
             String errorMessage = String.join("; ", result.getErrors());
@@ -154,6 +158,7 @@ public class LeaveRequestController {
             @PathVariable String employeeId) {
         try {
             LeaveRequest cancelledRequest = leaveRequestService.cancelLeaveRequest(leaveId, employeeId);
+            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Cancelled By employee", cancelledRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -248,7 +253,9 @@ public class LeaveRequestController {
     @PreAuthorize("hasAnyRole('MANAGER')")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> getLeaveHistoryForManager(@Valid @RequestBody ManagerQueryDTO queryDTO) {
         try {
+
             List<LeaveRequest> leaveHistory = leaveRequestService.getLeaveHistoryForManager(queryDTO);
+            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave history retrieved successfully", leaveHistory));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
