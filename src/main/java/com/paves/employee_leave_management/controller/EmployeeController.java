@@ -21,13 +21,8 @@ public class EmployeeController {
     }
 
     @PutMapping("/update/{employeeId}")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasRole('HR') or @permissionService.isOwner(authentication, #employeeId)")
     public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId, @RequestBody Employee employee) {
         return serviceInterface.updateEmployee(employeeId, employee);
     }
 }
-
-
-
-
-

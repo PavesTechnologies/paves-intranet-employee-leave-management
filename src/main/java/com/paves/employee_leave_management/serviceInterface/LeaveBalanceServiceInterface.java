@@ -31,9 +31,9 @@ public interface LeaveBalanceServiceInterface {
 
     ResponseEntity<List<LeaveBalance>> getAllLeaveBalances();
 
-    ResponseEntity<List<LeaveBalance>> findByEmployeeId(String employeeId);
-
     public List<LeaveBalance> getCurrentYearBalances(String employeeId);
+
+    ResponseEntity<List<LeaveBalance>> findByEmployeeId(String employeeId);
 
     ResponseEntity<List<LeaveBalance>> findByLeaveId(String leaveId);
 

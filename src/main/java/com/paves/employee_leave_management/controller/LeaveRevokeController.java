@@ -37,7 +37,7 @@ public class LeaveRevokeController {
     }
 
     @GetMapping("/pending/{managerId}")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isOwner(authentication, #managerId)")
     public ApiResponse<List<LeaveRevokeDTO>> getPendingRequests(@PathVariable String managerId) {
         List<LeaveRevokeDTO> pendingRequests = leaveRevokeRequestService.getPendingRequests(managerId);
         return new ApiResponse<>(true, "Pending requests retrieved successfully", pendingRequests);
