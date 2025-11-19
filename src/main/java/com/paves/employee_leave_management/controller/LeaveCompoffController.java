@@ -22,7 +22,7 @@ public class LeaveCompoffController {
     LeaveCompoffSerivceInterface compoffService;
 
     @PostMapping("/request")
-    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #dto.employeeId)")
     public ResponseEntity<ApiResponse<String>> requestCompoff(@Valid @RequestBody LeaveCompoffRequestDTO dto) {
         try {
             compoffService.requestCompoff(dto);
@@ -34,7 +34,7 @@ public class LeaveCompoffController {
     }
 
     @PutMapping("/approve")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isManagerOfCompoffRequest(authentication, #dto.compoffId)")
     public ResponseEntity<ApiResponse<String>> approveCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
         try {
             compoffService.approveCompoff(dto.getCompoffId());
@@ -46,7 +46,7 @@ public class LeaveCompoffController {
     }
 
     @PutMapping("/reject")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isManagerOfCompoffRequest(authentication, #dto.compoffId)")
     public ResponseEntity<ApiResponse<String>> rejectCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
         try {
             compoffService.rejectCompoff(dto.getCompoffId());
@@ -58,21 +58,21 @@ public class LeaveCompoffController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasAnyRole('MANAGER','GENERAL', 'HR')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByEmployee(@PathVariable String employeeId) {
         List<LeaveCompoff> compoffs = compoffService.getCompoffsByEmployee(employeeId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Compoff list fetched", compoffs));
     }
 
     @PostMapping("/manager/status")
-    @PreAuthorize("hasAnyRole('GENERAL')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isOwner(authentication, #dto.managerId)")
     public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByManagerAndStatus(@RequestBody ManagerCompoffStatusDTO dto) {
         List<LeaveCompoff> compoffs = compoffService.getCompoffsByManagerAndStatus(dto.getManagerId(), dto.getStatus());
         return ResponseEntity.ok(new ApiResponse<>(true, "Filtered Compoff list", compoffs));
     }
 
     @PostMapping("/pending")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isOwner(authentication, #managerDTO.managerId)")
     public ResponseEntity<ApiResponse<List<PendingCompoffResponseDTO>>> getPendingCompoffs(
             @RequestBody ManagerPendingCompoffDTO managerDTO) {
 
@@ -82,7 +82,7 @@ public class LeaveCompoffController {
     }
 
     @PutMapping("/employee/cancel/{compOffId}")
-    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
+    @PreAuthorize("@permissionService.isOwnerOfCompoffRequest(authentication, #compOffId)")
     public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@PathVariable Long compOffId) {
         try {
             compoffService.cancelPendingCompOffByEmployee(compOffId);

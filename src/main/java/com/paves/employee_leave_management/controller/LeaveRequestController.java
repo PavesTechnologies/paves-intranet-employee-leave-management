@@ -36,7 +36,7 @@ public class LeaveRequestController {
      * Apply for leave - Employee submits a new leave request
      */
     @PostMapping("/apply")
-    @PreAuthorize("hasAnyRole('GENERAL','HR', 'MANAGER') and hasAuthority('EDIT_TIMESHEET')")
+    @PreAuthorize("hasAnyRole('GENERAL','HR', 'MANAGER') and hasAuthority('EDIT_TIMESHEET') and @permissionService.isOwner(authentication, #request.employeeId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> applyLeave(@Valid @RequestBody LeaveRequestValidationDTO request) {
         try {
             // Validate the leave request
@@ -61,7 +61,7 @@ public class LeaveRequestController {
      * Update leave request by employee
      */
     @PutMapping("/employee/update")
-    @PreAuthorize("hasAnyRole('GENERAL', 'MANAGER', 'HR')")
+    @PreAuthorize("@permissionService.isOwnerOfLeaveRequest(authentication, #validationDTO.leaveId)")
     public ResponseEntity<ApiResponse<ValidationResultDTO>> updateLeaveRequest(@RequestBody LeaveRequestValidationDTO validationDTO) {
 
         // Get the employee and leave type entities
@@ -106,7 +106,7 @@ public class LeaveRequestController {
      * Get all leave requests for an employee
      */
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'GENERAL')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> getEmployeeLeaveRequests(@PathVariable String employeeId) {
         try {
             List<LeaveRequest> leaveRequests = leaveRequestService.getLeaveRequestsByEmployee(employeeId);
@@ -118,7 +118,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/employee/pending/{employeeId}")
-    @PreAuthorize("hasAnyRole('MANAGER', 'HR', 'GENERAL')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> getEmployeePendingLeaveRequests(@PathVariable String employeeId) {
         try {
             List<LeaveRequest> leaveRequests = leaveRequestService.getPendingLeaveRequestsByEmployee(employeeId);
@@ -133,7 +133,7 @@ public class LeaveRequestController {
      * Get a specific leave request by ID
      */
     @GetMapping("/{leaveId}")
-    @PreAuthorize("hasAnyRole('GENERAL','MANAGER','HR')")
+    @PreAuthorize("@permissionService.isOwnerOfLeaveRequest(authentication, #leaveId) or @permissionService.isManagerOfLeaveRequest(authentication, #leaveId) or hasRole('HR')")
     public ResponseEntity<ApiResponse<LeaveRequest>> getLeaveRequestById(@PathVariable String leaveId) {
         try {
             LeaveRequest leaveRequest = leaveRequestService.getLeaveRequestById(leaveId);
@@ -148,7 +148,7 @@ public class LeaveRequestController {
      * Cancel leave request by employee
      */
     @PutMapping("/{leaveId}/cancel/{employeeId}")
-    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
+    @PreAuthorize("@permissionService.isOwnerOfLeaveRequest(authentication, #leaveId) and @permissionService.isOwner(authentication, #employeeId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequest(
             @PathVariable String leaveId,
             @PathVariable String employeeId) {
@@ -185,7 +185,7 @@ public class LeaveRequestController {
      * Get employee leave balance
      */
     @GetMapping("/balance/{employeeId}/{leaveTypeId}")
-    @PreAuthorize("hasAnyRole('GENERAL','MANAGER','HR')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<ApiResponse<LeaveBalanceDTO>> getLeaveBalance(
             @PathVariable String employeeId,
             @PathVariable String leaveTypeId,
@@ -230,7 +230,7 @@ public class LeaveRequestController {
      * Get pending/filtered leave requests for manager
      */
     @PostMapping("/manager/requests")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isOwner(authentication, #queryDTO.managerId)")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> getRequestsForManager(@Valid @RequestBody ManagerQueryDTO queryDTO) {
         try {
             List<LeaveRequest> requests = leaveRequestService.getRequestsForManager(queryDTO);
@@ -245,7 +245,7 @@ public class LeaveRequestController {
      * Get leave history for manager with filtering
      */
     @PostMapping("/manager/history")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isOwner(authentication, #queryDTO.managerId)")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> getLeaveHistoryForManager(@Valid @RequestBody ManagerQueryDTO queryDTO) {
         try {
             List<LeaveRequest> leaveHistory = leaveRequestService.getLeaveHistoryForManager(queryDTO);
@@ -258,7 +258,7 @@ public class LeaveRequestController {
 
 
     @GetMapping("/manager/pending-count/{managerId}")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isOwner(authentication, #managerId)")
     public ResponseEntity<ApiResponse<Long>> getPendingCountForManager(@PathVariable String managerId) {
         try {
             Long count = leaveRequestRepo.countPendingLeavesByManager(managerId);
@@ -273,7 +273,7 @@ public class LeaveRequestController {
      * Approve leave request using request body
      */
     @PutMapping("/approve")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isManagerOfLeaveRequest(authentication, #approvalRequest.leaveId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(@Valid @RequestBody ApprovalRequestDTO approvalRequest) {
         try {
             LeaveRequest approvedRequest = leaveRequestService.approveRequest(approvalRequest);
@@ -311,7 +311,7 @@ public class LeaveRequestController {
      * Reject leave request using request body
      */
     @PutMapping("/reject")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isManagerOfLeaveRequest(authentication, #rejectionRequest.leaveId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(@Valid @RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(rejectionRequest);
@@ -326,7 +326,7 @@ public class LeaveRequestController {
      * Update leave request by manager using request body
      */
     @PutMapping("/update")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isManagerOfLeaveRequest(authentication, #updateRequest.leaveId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(@Valid @RequestBody ManagerUpdateRequestDTO updateRequest) {
         try {
             LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(updateRequest);
@@ -338,7 +338,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/history/{employeeId}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<List<LeaveRequest>> getLeaveHistoryByYear(
             @PathVariable String employeeId,
             @RequestParam int year
@@ -349,7 +349,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("employee/pendingAndApproved-leave/{employeeId}")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<ApiResponse<List<PendingAndApprovedLeaveRequestsDTO>>> getPendingLeaveAndApprovedLeaveByEmployeeId(@PathVariable String employeeId, @RequestParam LocalDate startDate, @RequestParam LocalDate endDate) {
         try {
             List<PendingAndApprovedLeaveRequestsDTO> leaveRequests = leaveRequestService.getPendingLeaveAndApprovedLeaveByEmployeeId(employeeId, startDate, endDate);
@@ -365,7 +365,7 @@ public class LeaveRequestController {
     }
 
     @PutMapping("/cancel")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') and @permissionService.isManagerOfLeaveRequest(authentication, #rejectionRequest.leaveId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest cancelledRequest = leaveRequestService.rejectRequest(rejectionRequest);
@@ -377,6 +377,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/view-details")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> leaveBalanceViewDetails(@RequestParam String employeeId, @RequestParam String leaveName, @RequestParam int year) {
         try {
             List<LeaveRequest> leaveRequests = leaveRequestService.leaveBalanceViewDetails(employeeId, leaveName, year);
@@ -388,6 +389,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/getLeaveRequests/{employeeId}/{year}/{month}")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<?> getActiveLeavesForEmployee(
             @PathVariable("employeeId") String employeeId,
             @PathVariable(value = "year", required = false) Integer year,
@@ -405,6 +407,7 @@ public class LeaveRequestController {
     }
     
     @GetMapping("/getAllLeaves/{year}/{month}")
+    @PreAuthorize("hasRole('HR')")
     public ResponseEntity<?> getAllLeavesForMonthYear(
             @PathVariable(value = "year", required = false) Integer year,
             @PathVariable(value = "month", required = false) Integer month) {
