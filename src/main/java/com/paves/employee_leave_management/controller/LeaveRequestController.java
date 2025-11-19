@@ -284,6 +284,7 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(@Valid @RequestBody ApprovalRequestDTO approvalRequest) {
         try {
             LeaveRequest approvedRequest = leaveRequestService.approveRequest(approvalRequest);
+            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request approved successfully", approvedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -299,8 +300,8 @@ public class LeaveRequestController {
     @PreAuthorize("hasAnyRole('MANAGER')")
     public ResponseEntity<List<LeaveRequest>> approveLeaveBatch(
             @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
-
         List<LeaveRequest> approved = leaveRequestService.approveMultipleRequests(batchApproval);
+        template.convertAndSend("/topic/data-updated", "updated");
         return ResponseEntity.ok(approved);
     }
 
@@ -308,8 +309,8 @@ public class LeaveRequestController {
     @PreAuthorize("hasAnyRole('MANAGER')")
     public ResponseEntity<List<LeaveRequest>> rejectLeaveBatch(
             @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
-
         List<LeaveRequest> rejected = leaveRequestService.rejectMultipleRequests(batchApproval);
+        template.convertAndSend("/topic/data-updated", "updated");
         return ResponseEntity.ok(rejected);
     }
 
@@ -322,12 +323,14 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(@Valid @RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(rejectionRequest);
+            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request rejected successfully", rejectedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "Error rejecting request: " + e.getMessage(), null));
         }
     }
+
 
     /**
      * Update leave request by manager using request body
@@ -337,6 +340,7 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(@Valid @RequestBody ManagerUpdateRequestDTO updateRequest) {
         try {
             LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(updateRequest);
+            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", updatedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -376,6 +380,7 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest cancelledRequest = leaveRequestService.rejectRequest(rejectionRequest);
+            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request cancelled successfully", cancelledRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -414,7 +419,7 @@ public class LeaveRequestController {
     }
     
     @GetMapping("/getAllLeaves/{year}/{month}")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
     public ResponseEntity<?> getAllLeavesForMonthYear(
             @PathVariable(value = "year", required = false) Integer year,
             @PathVariable(value = "month", required = false) Integer month) {

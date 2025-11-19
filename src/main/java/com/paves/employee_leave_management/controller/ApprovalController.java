@@ -52,7 +52,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/{requestId}/approve")
-    @PreAuthorize("hasRole('HR','HR-MANAGER')") // Or a more specific checker role
+    @PreAuthorize("hasAnyRole('HR','HR-MANAGER')") // Or a more specific checker role
     public ResponseEntity<ApiResponse<Object>> approveRequest(@PathVariable Long requestId, @RequestBody ApproveRequestDto dto) {
         Employee checker = getAuthenticatedUser();
 
@@ -61,7 +61,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/{requestId}/reject")
-    @PreAuthorize("hasRole('HR','HR-MANAGER')") // Or a more specific checker role
+    @PreAuthorize("hasAnyRole('HR','HR-MANAGER')") // Or a more specific checker role
     public ResponseEntity<ApiResponse<Object>> rejectRequest(@PathVariable Long requestId, @RequestBody RejectRequestDto dto) {
         Employee checker = getAuthenticatedUser();
 
