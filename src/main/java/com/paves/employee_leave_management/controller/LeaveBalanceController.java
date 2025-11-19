@@ -95,13 +95,13 @@ public class LeaveBalanceController {
     }
 
     @GetMapping("/all-leave-balances")
-    @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<List<LeaveBalance>> getAllLeaveBalances() {
         return leaveBalanceService.getAllLeaveBalances();
     }
 
     @GetMapping("/employee/{employeeId}")
-    @PreAuthorize("hasAnyRole('GENERAL','MANAGER','HR')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeId(@PathVariable String employeeId) {
         template.convertAndSend("/topic/data-updated", "updated");
         return leaveBalanceService.findByEmployeeId(employeeId);
@@ -113,18 +113,19 @@ public class LeaveBalanceController {
 //    }
 
     @GetMapping("/type/{leaveTypeId}")
-    @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByLeaveName(@PathVariable String leaveTypeId) {
         return leaveBalanceService.findByLeaveId(leaveTypeId);
     }
 
     @PutMapping("/update-leave-balance-employee")
-    @PreAuthorize("hasRole('GENERAL')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #leaveBalance[0].employee.employeeId)")
     public ResponseEntity<List<LeaveBalance>> UpdateLeaveBalancesByEmployeeId(@RequestBody List<LeaveBalance> leaveBalance) {
         return leaveBalanceService.UpdateLeaveBalancesByEmployeeId(leaveBalance);
     }
 
     @PostMapping("/update-leave-balance")
+    @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<String> approveLeave(
             @RequestParam String employeeId,
             @RequestParam String leaveTypeId,
@@ -175,14 +176,8 @@ public class LeaveBalanceController {
         ));
     }
 
-    @PostMapping("/trigger-monthly-process")
-    @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<String> triggerMonthlyProcess() {
-        leaveBalanceService.triggerMonthlyLeaveAccrual();
-        return ResponseEntity.ok("Monthly process triggered successfully.");
-    }
-
     @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<List<LeaveBalance>> search(@RequestParam(value = "query", required = false) String query) {
         List<LeaveBalance> results = leaveBalanceService.searchLeaveBalances(query);
         return ResponseEntity.ok(results);
@@ -190,9 +185,17 @@ public class LeaveBalanceController {
 
 
     @GetMapping("/autocomplete")
+    @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<List<String>> autocomplete(@RequestParam("query") String query) {
         List<String> suggestions = leaveBalanceService.autocompleteEmployee(query);
         return ResponseEntity.ok(suggestions);
+    }
+
+    @GetMapping("/monthly")
+    @PreAuthorize("hasAnyRole('HR')")
+    public ResponseEntity<String> monthly() {
+        leaveBalanceService.processAccrualForLeaveType();
+        return ResponseEntity.ok("Monthly process triggered successfully.");
     }
 
 }
