@@ -45,6 +45,9 @@ public class Employee {
     private BigDecimal salary;
     @Column(name = "job_title", length = 100)
     private String jobTitle;
+
+    @Column(name = "role", length = 50)
+    private String role;
     // 🔹 Self-reference to represent manager
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")
@@ -75,7 +78,6 @@ public class Employee {
     @JsonIgnore
     private List<LeaveBalance> leaveBalances;
     @Column(name = "password", length = 255, nullable = false)
-    @JsonIgnore
     private String password;
 
     @PrePersist
