@@ -31,7 +31,7 @@ public class LeaveRevokeController {
     @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'GENERAL', 'HR_MANAGER')")
     public ApiResponse<String> newRevokeRequest(@RequestBody LeaveRevoke revokeRequest) {
         String responds = leaveRevokeRequestService.newRevokeRequest(revokeRequest);
-        template.convertAndSend("/topic/leave-update", "updated");
+        template.convertAndSend("/topic/leave-updated", "updated");
         return new ApiResponse<>(true, responds, null);
     }
 
@@ -39,7 +39,7 @@ public class LeaveRevokeController {
     @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<String> approveRequest(@PathVariable String revokeId) {
         leaveRevokeRequestService.approveRequest(revokeId);
-        template.convertAndSend("/topic/leave-update", "updated");
+        template.convertAndSend("/topic/leave-updated", "updated");
         return new ApiResponse<>(true, "Leave revoke request approved successfully", null);
     }
 
@@ -47,7 +47,7 @@ public class LeaveRevokeController {
     @PreAuthorize("hasRole('MANAGER') and @permissionService.isOwner(authentication, #managerId)")
     public ApiResponse<List<LeaveRevokeDTO>> getPendingRequests(@PathVariable String managerId) {
         List<LeaveRevokeDTO> pendingRequests = leaveRevokeRequestService.getPendingRequests(managerId);
-        template.convertAndSend("/topic/leave-update", "updated");
+        template.convertAndSend("/topic/leave-updated", "updated");
         return new ApiResponse<>(true, "Pending requests retrieved successfully", pendingRequests);
     }
 
@@ -55,7 +55,7 @@ public class LeaveRevokeController {
     @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<String> rejectRequest(@PathVariable String revokeId) {
         leaveRevokeRequestService.rejectRequest(revokeId);
-        template.convertAndSend("/topic/leave-update", "updated");
+        template.convertAndSend("/topic/leave-updated", "updated");
         return new ApiResponse<>(true, "Leave revoke request rejected successfully", null);
     }
 

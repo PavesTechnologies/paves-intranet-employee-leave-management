@@ -78,7 +78,7 @@ public class LeaveTypeController {
     }
 
     @GetMapping("/accrual-frequencies")
-    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR')")
     public List<String> getAccrualFrequencies() {
         return Arrays.stream(AccrualFrequency.values())
                 .map(Enum::name)

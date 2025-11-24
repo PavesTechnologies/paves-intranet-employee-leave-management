@@ -264,7 +264,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         // Only process leave balances for THIS specific leave type this year
         LocalDate today = LocalDate.now();
         if (today.getMonthValue() == 1 && today.getDayOfMonth() == 1 && type.getMaxCarryForward() > 0) {
-            runYearlyAccrual(type);   // ← calls your exact yearly logic
+            runYearlyAccrual();// ← calls your exact yearly logic
         }
         List<LeaveBalance> balances =
                 leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
@@ -278,6 +278,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
         LocalDate now = LocalDate.now();
         for (LeaveBalance balance : balances) {
+            if(!balance.getEmployee().getHireDate().isBefore(now))
+            {
+                continue;
+            }
             Employee emp = balance.getEmployee();
             LeaveType lt = balance.getLeaveType(); // dynamic
             LocalDate hireDate = emp.getHireDate();
@@ -305,55 +309,57 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
 
     @Override
-    public void runYearlyAccrual(LeaveType type) {
+    public void runYearlyAccrual() {
 
         List<LeaveBalance> balances =
-                leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
-                        LocalDate.now().getYear(),
-                        type.getLeaveTypeId()
+                leaveBalanceRepo.findAllByYear(
+                        LocalDate.now().getYear()
                 );
 
         if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
 
-        for (LeaveBalance balance : balances) {
+        List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
+        for (LeaveType type : leaveTypes) {
+            for (LeaveBalance balance : balances) {
 
-            LeaveBalance newbalance = new LeaveBalance();
-            newbalance.setEmployee(balance.getEmployee());
-            newbalance.setLeaveType(balance.getLeaveType());
+                LeaveBalance newbalance = new LeaveBalance();
+                newbalance.setEmployee(balance.getEmployee());
+                newbalance.setLeaveType(balance.getLeaveType());
 
-            double unused = balance.getRemainingLeaves();
-            double carryForward = balance.getCarriedForward();
+                double unused = balance.getRemainingLeaves();
+                double carryForward = balance.getCarriedForward();
 
-            // DYNAMIC RULES FROM LeaveType (NOT HARDCODED!)
-            double maxCFPerYear = type.getMaxCarryForwardPerYear() != null ? type.getMaxCarryForwardPerYear() : 0;
-            double maxTotalCF = type.getMaxCarryForward() != null ? type.getMaxCarryForward() : 0;
-            double maxYearLeaves = type.getMaxDaysPerYear() != null ? type.getMaxDaysPerYear() : 0;
+                // DYNAMIC RULES FROM LeaveType (NOT HARDCODED!)
+                double maxCFPerYear = type.getMaxCarryForwardPerYear() != null ? type.getMaxCarryForwardPerYear() : 0;
+                double maxTotalCF = type.getMaxCarryForward() != null ? type.getMaxCarryForward() : 0;
+                double maxYearLeaves = type.getMaxDaysPerYear() != null ? type.getMaxDaysPerYear() : 0;
 
-            // core carry-forward logic (DYNAMIC, not tied to leaveName)
-            double forward;
+                // core carry-forward logic (DYNAMIC, not tied to leaveName)
+                double forward;
 
-            if (unused >= carryForward) {
-                unused = unused - carryForward;
-                forward = Math.min(maxCFPerYear, unused);
-                carryForward = Math.min(maxTotalCF, carryForward + forward);
-            } else {
-                forward = Math.min(maxCFPerYear, unused);
-                carryForward = Math.min(maxTotalCF, forward);
+                if (unused >= carryForward) {
+                    unused = unused - carryForward;
+                    forward = Math.min(maxCFPerYear, unused);
+                    carryForward = Math.min(maxTotalCF, carryForward + forward);
+                } else {
+                    forward = Math.min(maxCFPerYear, unused);
+                    carryForward = Math.min(maxTotalCF, forward);
+                }
+
+                newbalance.setCarriedForward(carryForward);
+                newbalance.setExpiredLeaves(unused - forward);
+                newbalance.setTotalLeaves(maxYearLeaves);
+                newbalance.setAccruedLeaves(0);
+
+                newbalance.setYear(balance.getYear() + 1);
+                newbalance.setLastAccrualDate(LocalDate.now());
+                newbalance.setUsedLeaves(0);
+                newbalance.setEncashedLeaves(0);
+                newbalance.updateRemainingLeaves();
+                leaveBalanceRepo.save(newbalance);
             }
-
-            newbalance.setCarriedForward(carryForward);
-            newbalance.setExpiredLeaves(unused - forward);
-            newbalance.setTotalLeaves(maxYearLeaves);
-            newbalance.setAccruedLeaves(0);
-
-            newbalance.setYear(balance.getYear() + 1);
-            newbalance.setLastAccrualDate(LocalDate.now());
-            newbalance.setUsedLeaves(0);
-            newbalance.setEncashedLeaves(0);
-            newbalance.updateRemainingLeaves();
-            leaveBalanceRepo.save(newbalance);
         }
         holidayService.deleteHolidaysThreeYearsAgo();
     }
@@ -500,6 +506,15 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         List<LeaveBalance> balance = leaveBalanceDao.findByEmployeeId(employeeId);
         if (balance.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("Leave Balances not found for employee: " + employeeId);
+        }
+        return new ResponseEntity<>(balance, HttpStatus.OK);
+    }
+
+    @Override
+    public ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId, int year) {
+        List<LeaveBalance> balance = leaveBalanceDao.findByEmployeeIdAndYear(employeeId,year);
+        if (balance.isEmpty()) {
+            return null;
         }
         return new ResponseEntity<>(balance, HttpStatus.OK);
     }

@@ -21,7 +21,7 @@ public interface LeaveBalanceServiceInterface {
 
     void runMonthlyAccrual(LeaveType type);
 
-    void runYearlyAccrual(LeaveType type);
+    void runYearlyAccrual();
 
     void processYearEndCarryForward();
 
@@ -34,6 +34,8 @@ public interface LeaveBalanceServiceInterface {
     public List<LeaveBalance> getCurrentYearBalances(String employeeId);
 
     ResponseEntity<List<LeaveBalance>> findByEmployeeId(String employeeId);
+
+    ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId,int year);
 
     ResponseEntity<List<LeaveBalance>> findByLeaveId(String leaveId);
 
