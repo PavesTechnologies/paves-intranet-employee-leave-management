@@ -89,6 +89,7 @@ public class LeaveBalanceController {
     }
 
     @GetMapping("/{balanceID}")
+
     @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL')")
     public ResponseEntity<LeaveBalance> getLeaveBalancesByBalanceId(@PathVariable String balanceID) {
         return leaveBalanceService.findByBalanceId(balanceID);
@@ -105,6 +106,15 @@ public class LeaveBalanceController {
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeId(@PathVariable String employeeId) {
         template.convertAndSend("/topic/data-updated", "updated");
         return leaveBalanceService.findByEmployeeId(employeeId);
+    }
+    
+    @GetMapping("/employee/{employeeId}/{year}")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasAnyRole('HR','MANAGER','GENERAL')")
+    public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeIdAndYear(
+            @PathVariable String employeeId, 
+            @PathVariable Integer year) {
+        template.convertAndSend("/topic/data-updated", "updated");
+        return leaveBalanceService.findByEmployeeIdAndYear(employeeId, year);
     }
 
 //    @PutMapping("/update-leave-balance-employee")

@@ -152,6 +152,11 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     );
 
 
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.status = 'APPROVED' " +
+            "AND lr.startDate <= CURRENT_DATE " +
+            "AND lr.endDate >= CURRENT_DATE")
+    List<LeaveRequest> findTodayApproved();
 
-
+    List<LeaveRequest> findByStatus(LeaveStatus status);
 }

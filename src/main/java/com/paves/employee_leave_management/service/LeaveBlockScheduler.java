@@ -1,14 +1,18 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBlock;
+import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.BlockStatus;
 import com.paves.employee_leave_management.enums.LeaveStatus;
+import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveBlockRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -17,24 +21,23 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LeaveBlockScheduler {
 
-//    Blocks first (00:00) → ensures no blocked types activate by mistake.
-//
-//            Activations next (00:05) → adds new valid leave types.
-//
-//            Deactivations last (00:10) → cleans up old ones safely.
-
     private final LeaveBlockRepo leaveBlockRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final LeaveTypeRepo leaveTypeRepo;
     private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
     private final LeaveRequestRepo leaveRequestRepo;
+    private final EmailServiceInterface emailService;
+    private final EmployeeRepo employeeRepo;
 
     @Transactional
     public void processLeaveBlock() {
@@ -78,8 +81,6 @@ public class LeaveBlockScheduler {
             });
             if (!balances.isEmpty()) leaveBalanceRepo.saveAll(balances);
         }
-
-
     }
 
     public void activatePendingLeaveTypes() {
@@ -121,5 +122,31 @@ public class LeaveBlockScheduler {
         }
     }
 
+    public void sendDailyLeaveDigest() {
+        List<LeaveRequest> onLeaveToday = leaveRequestRepo.findTodayApproved();
 
+        Map<String, String> employeesOnLeave = onLeaveToday.stream()
+                .filter(lr -> !lr.getLeaveType().getLeaveTypeId().equalsIgnoreCase("L-SICK"))
+                .collect(Collectors.toMap(
+                        lr -> lr.getEmployee().getFirstName() + " " + lr.getEmployee().getLastName(),
+                        lr -> lr.getLeaveType().getLeaveName(),
+                        (v1, v2) -> v1, // In case of duplicates, keep the first one
+                        LinkedHashMap::new
+                ));
+
+        if (!employeesOnLeave.isEmpty()) {
+            List<Employee> allEmployees = employeeRepo.findAll();
+
+            for (Employee employee : allEmployees) {
+                Map<String, Object> templateModel = new LinkedHashMap<>();
+                templateModel.put("title", "Daily Leave Digest");
+                templateModel.put("recipientName", employee.getFirstName());
+                templateModel.put("messageBody", "Here is the list of employees on leave today:");
+                templateModel.put("detailsTitle", "Employees on Leave");
+                templateModel.put("details", employeesOnLeave);
+
+                emailService.sendEmailFromTemplate(employee.getEmail(), "Daily Leave Digest", "generic-notification.html", templateModel);
+            }
+        }
+    }
 }
