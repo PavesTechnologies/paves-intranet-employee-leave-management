@@ -212,6 +212,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             AccrualFrequency frequency = AccrualFrequency.valueOf(type.getAccrualFrequency().toString().toUpperCase());
             LocalDate today = LocalDate.now();
 
+            if(!type.getEffectiveStartDate().isBefore(today) || type.getActive() == false)
+                continue;
+
             switch (frequency) {
 
                 case DAILY:
@@ -829,6 +832,15 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             return leaveBalanceRepo.findAll();
         }
         return leaveBalanceRepo.searchByEmployee(query);
+    }
+    
+    @Override
+    public ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId, Integer year) {
+        List<LeaveBalance> balances = leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
+        if (balances.isEmpty()) {
+            throw new LeaveBalanceExceptionHandler("No leave balances found for employee ID: " + employeeId + " and year: " + year);
+        }
+        return new ResponseEntity<>(balances, HttpStatus.OK);
     }
 
     @Override

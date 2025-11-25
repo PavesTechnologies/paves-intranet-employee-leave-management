@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -18,13 +19,15 @@ import java.time.LocalDateTime;
 public class JobLoggingService {
 
     private final JobExecutionLogRepository jobExecutionLogRepository;
+    private static final int LOG_RETENTION_DAYS = 30;
+
 
     /**
      * Creates a new job log entry when a job starts.
      * Runs in a separate transaction so it's persisted immediately.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public JobExecutionLog createJobLog(String jobName, String nodeId) {
+    public UUID createJobLog(String jobName, String nodeId) {
         log.info("Creating log for job '{}' on node '{}'", jobName, nodeId);
 
         JobExecutionLog entry = JobExecutionLog.builder()
@@ -35,7 +38,8 @@ public class JobLoggingService {
                 .attempt(1) // Reserved for future retry logic
                 .build();
 
-        return jobExecutionLogRepository.saveAndFlush(entry);
+        JobExecutionLog saved = jobExecutionLogRepository.saveAndFlush(entry);
+        return saved.getId();
     }
 
     /**
@@ -44,14 +48,14 @@ public class JobLoggingService {
      * even if the main job transaction fails or rolls back.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateJobLog(JobExecutionLog logEntry, boolean success, String errorMessage) {
-        jobExecutionLogRepository.findById(logEntry.getId()).ifPresent(dbEntry -> {
+    public void updateJobLog(UUID logId, boolean success, String errorMessage) {
+        jobExecutionLogRepository.findById(logId).ifPresent(dbEntry -> {
             dbEntry.setStatus(success ? JobStatus.SUCCESS : JobStatus.FAILED);
             dbEntry.setEndTime(LocalDateTime.now());
 
             // Compute duration safely
-            if (logEntry.getStartTime() != null && dbEntry.getEndTime() != null) {
-                dbEntry.setDurationMs(Duration.between(logEntry.getStartTime(), dbEntry.getEndTime()).toMillis());
+            if (dbEntry.getStartTime() != null && dbEntry.getEndTime() != null) {
+                dbEntry.setDurationMs(Duration.between(dbEntry.getStartTime(), dbEntry.getEndTime()).toMillis());
             }
 
             dbEntry.setErrorMessage(errorMessage);
@@ -62,5 +66,16 @@ public class JobLoggingService {
                     dbEntry.getStatus(),
                     errorMessage != null ? " | Error: " + errorMessage : "");
         });
+    }
+
+    /**
+     * Deletes job logs older than a configured retention period.
+     * @return The number of deleted log entries.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int deleteOldJobLogs() {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(LOG_RETENTION_DAYS);
+        log.info("Deleting job logs older than {}", cutoff);
+        return jobExecutionLogRepository.deleteByStartTimeBefore(cutoff);
     }
 }

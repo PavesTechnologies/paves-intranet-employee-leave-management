@@ -1,6 +1,5 @@
 package com.paves.employee_leave_management.service;
 
-
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
 import com.paves.employee_leave_management.entities.Employee;
@@ -12,12 +11,15 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveCompoffRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +29,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final EmployeeRepo employeeRepo;
     private final LeaveTypeRepo leaveTypeRepo;
+    private final EmailServiceInterface emailService;
 
     @Override
     public void requestCompoff(LeaveCompoffRequestDTO dto) {
@@ -53,6 +56,24 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                 .build();
 
         LeaveCompoff cf = leaveCompoffRepo.save(compoff);
+
+        // Send notification to manager
+        String employeeFullName = employee.getFirstName() + " " + employee.getLastName();
+        Map<String, Object> templateModel = new LinkedHashMap<>();
+        templateModel.put("title", "New Comp-Off Request");
+        templateModel.put("recipientName", manager.getFirstName());
+        templateModel.put("messageBody", "A new comp-off request has been submitted by <strong>" + employeeFullName + "</strong>.");
+        templateModel.put("detailsTitle", "Request Details");
+
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("Employee", employeeFullName);
+        details.put("Date", cf.getStartDate().toString());
+        details.put("Reason", cf.getNote());
+        templateModel.put("details", details);
+
+        templateModel.put("closingMessage", "Please review the request in the Leave Management System.");
+
+        emailService.sendEmailFromTemplate(manager.getEmail(), "New Comp-Off Request", "generic-notification.html", templateModel);
     }
 
 
@@ -99,6 +120,21 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
         leaveCompoffRepo.save(compoff);
         leaveBalanceRepo.save(balance);
+
+        // Send notification to employee
+        Employee employee = compoff.getEmployee();
+        Map<String, Object> templateModel = new LinkedHashMap<>();
+        templateModel.put("title", "Comp-Off Request Approved");
+        templateModel.put("recipientName", employee.getFirstName());
+        templateModel.put("messageBody", "Your comp-off request has been <strong>approved</strong>.");
+        templateModel.put("detailsTitle", "Request Details");
+
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("Date", compoff.getStartDate().toString());
+        details.put("Reason", compoff.getNote());
+        templateModel.put("details", details);
+
+        emailService.sendEmailFromTemplate(employee.getEmail(), "Comp-Off Request Approved", "generic-notification.html", templateModel);
     }
 
     @Override
@@ -134,6 +170,21 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         compoff.setExpiryDate(null); // Optional
 
         leaveCompoffRepo.save(compoff);
+
+        // Send notification to employee
+        Employee employee = compoff.getEmployee();
+        Map<String, Object> templateModel = new LinkedHashMap<>();
+        templateModel.put("title", "Comp-Off Request Rejected");
+        templateModel.put("recipientName", employee.getFirstName());
+        templateModel.put("messageBody", "Your comp-off request has been <strong>rejected</strong>.");
+        templateModel.put("detailsTitle", "Request Details");
+
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("Date", compoff.getStartDate().toString());
+        details.put("Reason", compoff.getNote());
+        templateModel.put("details", details);
+
+        emailService.sendEmailFromTemplate(employee.getEmail(), "Comp-Off Request Rejected", "generic-notification.html", templateModel);
     }
 
 
@@ -206,6 +257,21 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
 
         leaveCompoffRepo.save(compOff);
+
+        // Send notification to employee
+        Employee employee = compOff.getEmployee();
+        Map<String, Object> templateModel = new LinkedHashMap<>();
+        templateModel.put("title", "Comp-Off Request Cancelled");
+        templateModel.put("recipientName", employee.getFirstName());
+        templateModel.put("messageBody", "Your comp-off request has been <strong>cancelled</strong>.");
+        templateModel.put("detailsTitle", "Request Details");
+
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("Date", compOff.getStartDate().toString());
+        details.put("Reason", compOff.getNote());
+        templateModel.put("details", details);
+
+        emailService.sendEmailFromTemplate(employee.getEmail(), "Comp-Off Request Cancelled", "generic-notification.html", templateModel);
 
     }
 

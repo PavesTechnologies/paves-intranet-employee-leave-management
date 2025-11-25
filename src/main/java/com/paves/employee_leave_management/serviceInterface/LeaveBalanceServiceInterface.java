@@ -56,5 +56,7 @@ public interface LeaveBalanceServiceInterface {
     List<LeaveBalance> searchLeaveBalances(String query);
 
     List<String> autocompleteEmployee(String query);
+    
+    ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId, Integer year);
 }
 
