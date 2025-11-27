@@ -6,6 +6,7 @@ import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.LeaveStatus;
+import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
@@ -179,7 +180,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 //        LeaveType existingLeaveType = existingOpt.get();
         double newAccrualRate = 0;
-        if (updatedLeaveType.getLeaveTypeId() == "L-EL" || updatedLeaveType.getLeaveTypeId() == "L-SL") {
+        if (updatedLeaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString()) || updatedLeaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
             newAccrualRate = (double) updatedLeaveType.getMaxDaysPerYear() / 12;
             newAccrualRate = new BigDecimal(newAccrualRate)
                     .setScale(2, RoundingMode.HALF_UP)
