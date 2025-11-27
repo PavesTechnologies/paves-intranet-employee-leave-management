@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Overdue Approval Escalation</title>
+</head>
+<body style="margin:0; padding:0; background:#f3f5f9; font-family:Arial, Helvetica, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0; background:#f3f5f9;">
+    <tr>
+        <td align="center">
+            <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:10px; border:1px solid #e0e4ec;">
+                <tr>
+                    <td style="height:8px; background:linear-gradient(90deg, #D32F2F, #B71C1C, #FF1744);"></td>
+                </tr>
+                <tr>
+                    <td style="padding:32px 40px 20px;">
+                        <h2 style="margin:0; font-size:22px; color:#B71C1C; font-weight:700;">
+                            Escalation: Overdue Leave Approval
+                        </h2>
+                        <p style="margin:8px 0 0; font-size:14px; color:#666;">
+                            Notification from Paves HR Management System
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:10px 40px 30px; font-size:15px; color:#444; line-height:1.7;">
+                        <p style="margin:0 0 18px;" th:text="'Dear Manager,'">
+                            Dear Manager,
+                        </p>
+                        <p style="margin:0 0 25px;" th:text="'This is an escalation notification for a leave request from ' + ${employeeName} + ' that is overdue for approval.'">
+                            This is an escalation notification for a leave request that is overdue for approval.
+                        </p>
+                        <!-- Optional Details Section -->
+                        <div th:if="${employeeName != null}">
+                            <div style="margin:0 0 15px;">
+                                <div style="font-size:15px; font-weight:700; color:#B71C1C; border-left:4px solid #D32F2F; padding-left:10px;">
+                                    Overdue Leave Details
+                                </div>
+                            </div>
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff5f5; border:1px solid #fbe2e2; border-radius:8px;">
+                                <tr>
+                                    <td style="padding:20px 25px;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px; color:#333;">
+                                            <tr>
+                                                <td style="padding:8px 0; width:150px; font-weight:bold;">Employee Name</td>
+                                                <td style="padding:8px 0;" th:text="${employeeName}"></td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:8px 0; width:150px; font-weight:bold;">Leave Type</td>
+                                                <td style="padding:8px 0;" th:text="${leaveType}"></td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:8px 0; width:150px; font-weight:bold;">Start Date</td>
+                                                <td style="padding:8px 0;" th:text="${startDate}"></td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:8px 0; width:150px; font-weight:bold;">End Date</td>
+                                                <td style="padding:8px 0;" th:text="${endDate}"></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <p style="margin:25px 0 10px; color:#555;">
+                            Please prioritize this request and take immediate action.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background:#f6f7fb; text-align:center; padding:14px; font-size:12px; color:#888;">
+                        © 2024 Paves Global Infotech Private Limited. All rights reserved.
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
