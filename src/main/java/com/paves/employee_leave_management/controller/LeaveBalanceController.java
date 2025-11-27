@@ -117,12 +117,12 @@ public class LeaveBalanceController {
         return leaveBalanceService.findByEmployeeIdAndYear(employeeId, year);
     }
 
-    @GetMapping("/employee/{employeeId}/{year}")
-    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
-    public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeId(@PathVariable String employeeId,@PathVariable int year) {
-        template.convertAndSend("/topic/data-updated", "updated");
-        return leaveBalanceService.findByEmployeeIdAndYear(employeeId,year);
-    }
+//    @GetMapping("/employee/{employeeId}/{year}")
+//    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
+//    public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeId(@PathVariable String employeeId,@PathVariable int year) {
+//        template.convertAndSend("/topic/data-updated", "updated");
+//        return leaveBalanceService.findByEmployeeIdAndYear(employeeId,year);
+//    }
 
 
 //    @PutMapping("/update-leave-balance-employee")
