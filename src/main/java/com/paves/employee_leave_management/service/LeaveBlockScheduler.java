@@ -136,17 +136,18 @@ public class LeaveBlockScheduler {
 
         if (!employeesOnLeave.isEmpty()) {
             List<Employee> allEmployees = employeeRepo.findAll();
+            String[] recipientEmails = allEmployees.stream()
+                                                   .map(Employee::getEmail)
+                                                   .toArray(String[]::new);
 
-            for (Employee employee : allEmployees) {
-                Map<String, Object> templateModel = new LinkedHashMap<>();
-                templateModel.put("title", "Daily Leave Digest");
-                templateModel.put("recipientName", employee.getFirstName());
-                templateModel.put("messageBody", "Here is the list of employees on leave today:");
-                templateModel.put("detailsTitle", "Employees on Leave");
-                templateModel.put("details", employeesOnLeave);
+            Map<String, Object> templateModel = new LinkedHashMap<>();
+            templateModel.put("title", "Daily Leave Digest");
+            templateModel.put("recipientName", "Team"); // Generic recipient name
+            templateModel.put("messageBody", "Here is the list of employees on leave today:");
+            templateModel.put("detailsTitle", "Employees on Leave");
+            templateModel.put("details", employeesOnLeave);
 
-                emailService.sendEmailFromTemplate(employee.getEmail(), "Daily Leave Digest", "generic-notification.html", templateModel);
-            }
+            emailService.sendBulkEmailFromTemplate(recipientEmails, "Daily Leave Digest", "generic-notification.html", templateModel);
         }
     }
 }

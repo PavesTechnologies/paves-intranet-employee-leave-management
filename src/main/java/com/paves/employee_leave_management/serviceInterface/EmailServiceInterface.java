@@ -188,5 +188,24 @@ public interface EmailServiceInterface {
      */
     boolean sendOverdueApprovalEscalationDigest(String managerEmail, List<LeaveRequest> requests);
 
+    /**
+     * Send email to multiple recipients using BCC
+     *
+     * @param recipients array of email addresses
+     * @param subject    email subject
+     * @param body       email content
+     * @return true if email sent successfully, false otherwise
+     */
+    boolean sendBulkEmail(String[] recipients, String subject, String body);
 
+    /**
+     * Send email to multiple recipients using a template and BCC
+     *
+     * @param recipients    array of email addresses
+     * @param subject       email subject
+     * @param templateName  template name
+     * @param templateModel template model
+     * @return true if email sent successfully
+     */
+    boolean sendBulkEmailFromTemplate(String[] recipients, String subject, String templateName, Map<String, Object> templateModel);
 }

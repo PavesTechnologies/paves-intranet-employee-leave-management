@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.EmailDTO;
 import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.Holidays;
@@ -7,7 +8,7 @@ import com.paves.employee_leave_management.enums.HolidayType;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.HolidayRepo;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import jakarta.persistence.Id;
 import org.apache.poi.ss.usermodel.*;
@@ -39,7 +40,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     private DataSource dataSource;
 
     @Autowired
-    private EmailServiceInterface emailService;
+    private AsyncNotificationServiceInterface asyncNotificationService;
 
     @Autowired
     private EmployeeRepo employeeRepo;
@@ -80,23 +81,29 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
         holidayRepo.saveAll(holidays);
 
-        // Notify all employees
         List<Employee> employees = employeeRepo.findAll();
+        String[] recipientEmails = employees.stream()
+                                           .map(Employee::getEmail)
+                                           .toArray(String[]::new);
+
         for (Holidays holiday : holidays) {
-            for (Employee employee : employees) {
-                Map<String, Object> templateModel = new LinkedHashMap<>();
-                templateModel.put("title", "New Holiday Announcement");
-                templateModel.put("recipientName", employee.getFirstName());
-                templateModel.put("messageBody", "Please be informed of a new upcoming holiday.");
-                templateModel.put("detailsTitle", "Holiday Details");
+            Map<String, Object> templateModel = new LinkedHashMap<>();
+            templateModel.put("title", "New Holiday Announcement");
+            templateModel.put("recipientName", "Team");
+            templateModel.put("messageBody", "Please be informed of a new upcoming holiday.");
+            templateModel.put("detailsTitle", "Holiday Details");
 
-                Map<String, String> details = new LinkedHashMap<>();
-                details.put("Holiday", holiday.getHolidayName());
-                details.put("Date", holiday.getHolidayDate().toString());
-                templateModel.put("details", details);
+            Map<String, String> details = new LinkedHashMap<>();
+            details.put("Holiday", holiday.getHolidayName());
+            details.put("Date", holiday.getHolidayDate().toString());
+            templateModel.put("details", details);
 
-                emailService.sendEmailFromTemplate(employee.getEmail(), "New Holiday: " + holiday.getHolidayName(), "generic-notification.html", templateModel);
-            }
+            EmailDTO emailDTO = new EmailDTO();
+            emailDTO.setBcc(recipientEmails);
+            emailDTO.setSubject("New Holiday: " + holiday.getHolidayName());
+            emailDTO.setBody("generic-notification.html");
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
         }
 
         return ResponseEntity.ok("Holidays added successfully");
@@ -112,20 +119,27 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
         // Notify all employees
         List<Employee> employees = employeeRepo.findAll();
-        for (Employee employee : employees) {
-            Map<String, Object> templateModel = new LinkedHashMap<>();
-            templateModel.put("title", "Holiday Updated");
-            templateModel.put("recipientName", employee.getFirstName());
-            templateModel.put("messageBody", "A holiday has been updated. Please see the details below.");
-            templateModel.put("detailsTitle", "Updated Holiday Details");
+        String[] recipientEmails = employees.stream()
+                                           .map(Employee::getEmail)
+                                           .toArray(String[]::new);
 
-            Map<String, String> details = new LinkedHashMap<>();
-            details.put("Holiday", updatedHoliday.getHolidayName());
-            details.put("New Date", updatedHoliday.getHolidayDate().toString());
-            templateModel.put("details", details);
+        Map<String, Object> templateModel = new LinkedHashMap<>();
+        templateModel.put("title", "Holiday Updated");
+        templateModel.put("recipientName", "Team");
+        templateModel.put("messageBody", "A holiday has been updated. Please see the details below.");
+        templateModel.put("detailsTitle", "Updated Holiday Details");
 
-            emailService.sendEmailFromTemplate(employee.getEmail(), "Holiday Updated: " + updatedHoliday.getHolidayName(), "generic-notification.html", templateModel);
-        }
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("Holiday", updatedHoliday.getHolidayName());
+        details.put("New Date", updatedHoliday.getHolidayDate().toString());
+        templateModel.put("details", details);
+
+        EmailDTO emailDTO = new EmailDTO();
+        emailDTO.setBcc(recipientEmails);
+        emailDTO.setSubject("Holiday Updated: " + updatedHoliday.getHolidayName());
+        emailDTO.setBody("generic-notification.html");
+        emailDTO.setTemplateModel(templateModel);
+        asyncNotificationService.queueEmail(emailDTO);
 
         return ResponseEntity.ok("Holiday updated successfully");
     }
@@ -137,20 +151,27 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
         // Notify all employees
         List<Employee> employees = employeeRepo.findAll();
-        for (Employee employee : employees) {
-            Map<String, Object> templateModel = new LinkedHashMap<>();
-            templateModel.put("title", "Holiday Cancelled");
-            templateModel.put("recipientName", employee.getFirstName());
-            templateModel.put("messageBody", "A holiday has been cancelled. Please see the details below.");
-            templateModel.put("detailsTitle", "Cancelled Holiday Details");
+        String[] recipientEmails = employees.stream()
+                                           .map(Employee::getEmail)
+                                           .toArray(String[]::new);
 
-            Map<String, String> details = new LinkedHashMap<>();
-            details.put("Holiday", holiday.getHolidayName());
-            details.put("Date", holiday.getHolidayDate().toString());
-            templateModel.put("details", details);
+        Map<String, Object> templateModel = new LinkedHashMap<>();
+        templateModel.put("title", "Holiday Cancelled");
+        templateModel.put("recipientName", "Team");
+        templateModel.put("messageBody", "A holiday has been cancelled. Please see the details below.");
+        templateModel.put("detailsTitle", "Cancelled Holiday Details");
 
-            emailService.sendEmailFromTemplate(employee.getEmail(), "Holiday Cancelled: " + holiday.getHolidayName(), "generic-notification.html", templateModel);
-        }
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("Holiday", holiday.getHolidayName());
+        details.put("Date", holiday.getHolidayDate().toString());
+        templateModel.put("details", details);
+
+        EmailDTO emailDTO = new EmailDTO();
+        emailDTO.setBcc(recipientEmails);
+        emailDTO.setSubject("Holiday Cancelled: " + holiday.getHolidayName());
+        emailDTO.setBody("generic-notification.html");
+        emailDTO.setTemplateModel(templateModel);
+        asyncNotificationService.queueEmail(emailDTO);
 
         return ResponseEntity.ok("Holiday deleted successfully");
     }

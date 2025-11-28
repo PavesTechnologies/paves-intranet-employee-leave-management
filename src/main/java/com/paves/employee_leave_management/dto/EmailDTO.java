@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Map;
+
 /**
  * Data Transfer Object for email operations
  */
@@ -30,6 +32,8 @@ public class EmailDTO {
     private boolean isHtml = false;
 
     private String attachmentPath;
+
+    private Map<String, Object> templateModel;
 
     // Constructors
     public EmailDTO() {

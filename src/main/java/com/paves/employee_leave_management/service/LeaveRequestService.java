@@ -45,7 +45,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Autowired
     private LeaveBalanceServiceInterface leaveBalanceService;
     @Autowired
-    private EmailServiceInterface emailService;
+    private AsyncNotificationServiceInterface asyncNotificationService;
 
     // ==================== VALIDATION METHODS ====================
 
@@ -410,7 +410,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
                 templateModel.put("closingMessage", "Please review the application in the Leave Management System.");
 
-                emailService.sendEmailFromTemplate(employee.getManager().getEmail(), "New Leave Application - " + employee.getFullName(), "generic-notification.html", templateModel);
+                EmailDTO emailDTO = new EmailDTO(employee.getManager().getEmail(), "New Leave Application - " + employee.getFullName(), "generic-notification.html", true);
+                emailDTO.setTemplateModel(templateModel);
+                asyncNotificationService.queueEmail(emailDTO);
             }
         }
 
@@ -469,7 +471,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             details.put("End Date", cancelledRequest.getEndDate().toString());
             templateModel.put("details", details);
 
-            emailService.sendEmailFromTemplate(manager.getEmail(), "Leave Request Cancelled - " + employee.getFullName(), "generic-notification.html", templateModel);
+            EmailDTO emailDTO = new EmailDTO(manager.getEmail(), "Leave Request Cancelled - " + employee.getFullName(), "generic-notification.html", true);
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
         }
 
         return cancelledRequest;
@@ -538,7 +542,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             }
             templateModel.put("details", details);
 
-            emailService.sendEmailFromTemplate(request.getEmployee().getEmail(), "Leave Application Approved", "generic-notification.html", templateModel);
+            EmailDTO emailDTO = new EmailDTO(request.getEmployee().getEmail(), "Leave Application Approved", "generic-notification.html", true);
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
         }
 
         return approvedRequest;
@@ -649,7 +655,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             details.put("Rejection Reason", rejectionRequest.getComment());
             templateModel.put("details", details);
 
-            emailService.sendEmailFromTemplate(request.getEmployee().getEmail(), "Leave Application Rejected", "generic-notification.html", templateModel);
+            EmailDTO emailDTO = new EmailDTO(request.getEmployee().getEmail(), "Leave Application Rejected", "generic-notification.html", true);
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
         }
 
         return rejectedRequest;
@@ -734,7 +742,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 templateModel.put("messageBody", "Your leave request has been updated by your manager, <strong>" + request.getEmployee().getManager().getFirstName() + "</strong>.");
                 templateModel.put("detailsTitle", "Updated Details");
                 templateModel.put("details", changes);
-                emailService.sendEmailFromTemplate(email, "Leave Request Updated", "generic-notification.html", templateModel);
+                EmailDTO emailDTO = new EmailDTO(email, "Leave Request Updated", "generic-notification.html", true);
+                emailDTO.setTemplateModel(templateModel);
+                asyncNotificationService.queueEmail(emailDTO);
             }
         }
 
@@ -823,7 +833,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                             templateModel.put("messageBody", "A leave request from <strong>" + updatedRequest.getEmployee().getFullName() + "</strong> has been updated.");
                             templateModel.put("detailsTitle", "Updated Details");
                             templateModel.put("details", changes);
-                            emailService.sendEmailFromTemplate(managerEmail, "Leave Request Updated", "generic-notification.html", templateModel);
+                            EmailDTO emailDTO = new EmailDTO(managerEmail, "Leave Request Updated", "generic-notification.html", true);
+                            emailDTO.setTemplateModel(templateModel);
+                            asyncNotificationService.queueEmail(emailDTO);
                         }
                     }
 
