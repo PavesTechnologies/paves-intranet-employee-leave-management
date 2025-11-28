@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.crons;
 
+import com.paves.employee_leave_management.dto.EmailDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.enums.LeaveStatus;
@@ -7,7 +8,7 @@ import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.service.JobLoggingService;
 import com.paves.employee_leave_management.service.LeaveBlockScheduler;
 import com.paves.employee_leave_management.service.RecordLockServiceImple;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ public class CentralizedJobScheduler {
     private final RecordLockServiceImple recordLockService;
     private final JobLoggingService jobLoggingService;
     private final LeaveRequestRepo leaveRequestRepository;
-    private final EmailServiceInterface emailService;
+    private final AsyncNotificationServiceInterface asyncNotificationService;
 
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Kolkata")
     @SchedulerLock(name = "Centralized_Daily_Master_Batch", lockAtLeastFor = "PT10S", lockAtMostFor = "PT30M")
@@ -64,27 +65,59 @@ public class CentralizedJobScheduler {
 
     private void sendPendingApprovalReminders() {
         List<LeaveRequest> pendingRequests = leaveRequestRepository.findByStatus(LeaveStatus.PENDING);
+        if (pendingRequests.isEmpty()) {
+            return;
+        }
+
         Map<Employee, List<LeaveRequest>> requestsByManager = pendingRequests.stream()
                 .filter(request -> request.getEmployee().getManager() != null)
                 .collect(Collectors.groupingBy(request -> request.getEmployee().getManager()));
 
+        if (requestsByManager.isEmpty()) {
+            return;
+        }
+
         for (Map.Entry<Employee, List<LeaveRequest>> entry : requestsByManager.entrySet()) {
             Employee manager = entry.getKey();
             List<LeaveRequest> requests = entry.getValue();
-            emailService.sendPendingApprovalReminderDigest(manager.getEmail(), requests);
+            Map<String, Object> templateModel = new java.util.LinkedHashMap<>();
+            templateModel.put("title", "Pending Leave Approval Digest");
+            templateModel.put("recipientName", manager.getFirstName());
+            templateModel.put("messageBody", "This is a digest of pending leave requests that require your approval.");
+            templateModel.put("detailsTitle", "Pending Requests");
+            templateModel.put("requests", requests);
+            EmailDTO emailDTO = new EmailDTO(manager.getEmail(), "Pending Leave Approval Digest", "pending-approval-digest.html", true);
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
         }
     }
 
     private void sendOverdueApprovalEscalations() {
         List<LeaveRequest> overdueRequests = leaveRequestRepository.findByStatus(LeaveStatus.PENDING);
+        if (overdueRequests.isEmpty()) {
+            return;
+        }
+
         Map<Employee, List<LeaveRequest>> requestsByManager = overdueRequests.stream()
                 .filter(request -> request.getEmployee().getManager() != null)
                 .collect(Collectors.groupingBy(request -> request.getEmployee().getManager()));
 
+        if (requestsByManager.isEmpty()) {
+            return;
+        }
+
         for (Map.Entry<Employee, List<LeaveRequest>> entry : requestsByManager.entrySet()) {
             Employee manager = entry.getKey();
             List<LeaveRequest> requests = entry.getValue();
-            emailService.sendOverdueApprovalEscalationDigest(manager.getEmail(), requests);
+            Map<String, Object> templateModel = new java.util.LinkedHashMap<>();
+            templateModel.put("title", "Overdue Leave Approval Escalation Digest");
+            templateModel.put("recipientName", manager.getFirstName());
+            templateModel.put("messageBody", "This is a digest of overdue leave requests that require your immediate attention.");
+            templateModel.put("detailsTitle", "Overdue Requests");
+            templateModel.put("requests", requests);
+            EmailDTO emailDTO = new EmailDTO(manager.getEmail(), "Overdue Leave Approval Escalation Digest", "overdue-approval-digest.html", true);
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
         }
     }
 

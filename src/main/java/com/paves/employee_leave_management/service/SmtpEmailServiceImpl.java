@@ -231,7 +231,7 @@ public class SmtpEmailServiceImpl implements EmailServiceInterface {
                 ),
                 "closingMessage", "Please log in to the system to approve or reject the request immediately."
         );
-        return sendEmailFromTemplate(managerEmail, subject, "pending-approval-reminder.html", templateModel);
+        return sendEmailFromTemplate(managerEmail, subject, "overdue-approval-escalation.html", templateModel);
     }
 
     @Override
@@ -252,5 +252,30 @@ public class SmtpEmailServiceImpl implements EmailServiceInterface {
                 "requests", requests
         );
         return sendEmailFromTemplate(managerEmail, subject, "overdue-approval-digest.html", templateModel);
+    }
+
+    @Override
+    public boolean sendBulkEmail(String[] recipients, String subject, String body) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            helper.setBcc(recipients);
+            helper.setSubject(subject);
+            helper.setText(body, true);
+            mailSender.send(message);
+            logger.info("Bulk email sent successfully to {} recipients", recipients.length);
+            return true;
+        } catch (MessagingException e) {
+            logger.error("Failed to send bulk email. Error: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean sendBulkEmailFromTemplate(String[] recipients, String subject, String templateName, Map<String, Object> templateModel) {
+        Context context = new Context();
+        context.setVariables(templateModel);
+        String htmlBody = templateEngine.process(templateName, context);
+        return sendBulkEmail(recipients, subject, htmlBody);
     }
 }

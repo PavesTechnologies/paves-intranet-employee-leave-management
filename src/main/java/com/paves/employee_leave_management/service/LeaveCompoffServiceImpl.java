@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.EmailDTO;
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
 import com.paves.employee_leave_management.entities.Employee;
@@ -11,7 +12,7 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveCompoffRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final EmployeeRepo employeeRepo;
     private final LeaveTypeRepo leaveTypeRepo;
-    private final EmailServiceInterface emailService;
+    private final AsyncNotificationServiceInterface asyncNotificationService;
 
     @Override
     public void requestCompoff(LeaveCompoffRequestDTO dto) {
@@ -73,7 +74,9 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
         templateModel.put("closingMessage", "Please review the request in the Leave Management System.");
 
-        emailService.sendEmailFromTemplate(manager.getEmail(), "New Comp-Off Request", "generic-notification.html", templateModel);
+        EmailDTO emailDTO = new EmailDTO(manager.getEmail(), "New Comp-Off Request", "generic-notification.html", true);
+        emailDTO.setTemplateModel(templateModel);
+        asyncNotificationService.queueEmail(emailDTO);
     }
 
 
@@ -134,7 +137,9 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         details.put("Reason", compoff.getNote());
         templateModel.put("details", details);
 
-        emailService.sendEmailFromTemplate(employee.getEmail(), "Comp-Off Request Approved", "generic-notification.html", templateModel);
+        EmailDTO emailDTO = new EmailDTO(employee.getEmail(), "Comp-Off Request Approved", "generic-notification.html", true);
+        emailDTO.setTemplateModel(templateModel);
+        asyncNotificationService.queueEmail(emailDTO);
     }
 
     @Override
@@ -184,7 +189,9 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         details.put("Reason", compoff.getNote());
         templateModel.put("details", details);
 
-        emailService.sendEmailFromTemplate(employee.getEmail(), "Comp-Off Request Rejected", "generic-notification.html", templateModel);
+        EmailDTO emailDTO = new EmailDTO(employee.getEmail(), "Comp-Off Request Rejected", "generic-notification.html", true);
+        emailDTO.setTemplateModel(templateModel);
+        asyncNotificationService.queueEmail(emailDTO);
     }
 
 
@@ -271,7 +278,9 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         details.put("Reason", compOff.getNote());
         templateModel.put("details", details);
 
-        emailService.sendEmailFromTemplate(employee.getEmail(), "Comp-Off Request Cancelled", "generic-notification.html", templateModel);
+        EmailDTO emailDTO = new EmailDTO(employee.getEmail(), "Comp-Off Request Cancelled", "generic-notification.html", true);
+        emailDTO.setTemplateModel(templateModel);
+        asyncNotificationService.queueEmail(emailDTO);
 
     }
 
