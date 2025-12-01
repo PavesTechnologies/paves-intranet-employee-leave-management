@@ -17,6 +17,12 @@ public interface LeaveBalanceServiceInterface {
 
     void createLeaveBalanceForNewEmployee(String EmpId);
 
+    void processAccrualForLeaveType();
+
+    void runMonthlyAccrual(LeaveType type);
+
+    void runYearlyAccrual();
+
     void processYearEndCarryForward();
 
     void triggerMonthlyLeaveAccrual();
@@ -25,9 +31,11 @@ public interface LeaveBalanceServiceInterface {
 
     ResponseEntity<List<LeaveBalance>> getAllLeaveBalances();
 
+    public List<LeaveBalance> getCurrentYearBalances(String employeeId);
+
     ResponseEntity<List<LeaveBalance>> findByEmployeeId(String employeeId);
 
-    public List<LeaveBalance> getCurrentYearBalances(String employeeId);
+    ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId,int year);
 
     ResponseEntity<List<LeaveBalance>> findByLeaveId(String leaveId);
 
@@ -48,5 +56,7 @@ public interface LeaveBalanceServiceInterface {
     List<LeaveBalance> searchLeaveBalances(String query);
 
     List<String> autocompleteEmployee(String query);
+    
+    ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId, Integer year);
 }
 

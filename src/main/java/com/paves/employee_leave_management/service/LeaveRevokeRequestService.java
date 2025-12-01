@@ -31,10 +31,7 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
     @Autowired
     private final EmailServiceInterface emailService;
 
-    public LeaveRevokeRequestService(LeaveRevokeRepo leaveRevokeRepo,
-                                     LeaveRequestRepo leaveRequestRepo,
-                                     LeaveBalanceServiceImple leaveBalanceService,
-                                     EmailServiceInterface emailService) {
+    public LeaveRevokeRequestService(LeaveRevokeRepo leaveRevokeRepo, LeaveRequestRepo leaveRequestRepo, LeaveBalanceServiceImple leaveBalanceService, EmailServiceInterface emailService) {
         this.leaveRevokeRepo = leaveRevokeRepo;
         this.leaveRequestRepo = leaveRequestRepo;
         this.leaveBalanceService = leaveBalanceService;
@@ -50,9 +47,13 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
             throw new RuntimeException("Leave Type not found");
         }
 
-        LeaveRevoke request = leaveRevokeRepo.findByLeaveRequestId(revokeRequest.getLeaveRequestId());
-        if (request != null && request.getStatus() == LeaveRevokeStatus.PENDING || request.getStatus() == LeaveRevokeStatus.APPROVED) {
-            throw new RuntimeException("Leave revoke request already exists");
+        List<LeaveRevoke> requests = leaveRevokeRepo.findByLeaveRequestId(revokeRequest.getLeaveRequestId());
+        if (requests != null) {
+            for(LeaveRevoke request:requests){
+                if (request.getStatus() == LeaveRevokeStatus.PENDING || request.getStatus() == LeaveRevokeStatus.APPROVED) {
+                    throw new RuntimeException("Leave revoke request already exists");
+                }
+            }
         }
         revokeRequest.setStatus(LeaveRevokeStatus.PENDING);
         revokeRequest.setManagerId(leaveRequest.get().getEmployee().getManager().getEmployeeId());
@@ -63,11 +64,9 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
     @Override
     public void approveRequest(String id) {
         System.out.println("id: " + id);
-        LeaveRevoke revokeRequest = leaveRevokeRepo.findById(id.trim()).orElseThrow(
-                () -> {
-                    throw new RuntimeException("Leave revoke request not found");
-                }
-        );
+        LeaveRevoke revokeRequest = leaveRevokeRepo.findById(id.trim()).orElseThrow(() -> {
+            throw new RuntimeException("Leave revoke request not found");
+        });
         System.out.println(revokeRequest);
         Optional<LeaveRequest> leaveRequest = leaveRequestRepo.findByLeaveId(revokeRequest.getLeaveRequestId());
         if (leaveRequest.isEmpty()) {
@@ -78,24 +77,14 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
         request.setStatus(LeaveStatus.CANCELLED);
         leaveRequestRepo.save(request);
 
-        leaveBalanceService.updateLeaveBalanceAfterRejected(
-                request.getEmployee().getEmployeeId(),
-                request.getLeaveType().getLeaveTypeId(),
-                request.getDaysRequested(),
-                request.getRequestDate().getYear());
+        leaveBalanceService.updateLeaveBalanceAfterRejected(request.getEmployee().getEmployeeId(), request.getLeaveType().getLeaveTypeId(), request.getDaysRequested(), request.getRequestDate().getYear());
 
         revokeRequest.setStatus(LeaveRevokeStatus.APPROVED);
         leaveRevokeRepo.save(revokeRequest);
 
         try {
             if (request.getEmployee().getEmail() != null) {
-                emailService.sendLeaveRevokeNotification(
-                        request.getEmployee().getEmail(),
-                        request.getEmployee().getFullName(),
-                        request.getLeaveType().getLeaveName(),
-                        request.getStartDate().toString(),
-                        request.getEndDate().toString()
-                );
+                emailService.sendLeaveRevokeNotification(request.getEmployee().getEmail(), request.getEmployee().getFullName(), request.getLeaveType().getLeaveName(), request.getStartDate().toString(), request.getEndDate().toString());
             }
         } catch (Exception e) {
             System.err.println("Failed to send revoke email: " + e.getMessage());
@@ -126,11 +115,9 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
 
     @Override
     public void rejectRequest(String id) {
-        LeaveRevoke revokeRequest = leaveRevokeRepo.findById(id.trim()).orElseThrow(
-                () -> {
-                    throw new RuntimeException("Leave revoke request not found");
-                }
-        );
+        LeaveRevoke revokeRequest = leaveRevokeRepo.findById(id.trim()).orElseThrow(() -> {
+            throw new RuntimeException("Leave revoke request not found");
+        });
         revokeRequest.setStatus(LeaveRevokeStatus.REJECTED);
         leaveRevokeRepo.save(revokeRequest);
     }

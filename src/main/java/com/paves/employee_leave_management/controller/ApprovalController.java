@@ -9,6 +9,7 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -51,7 +52,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/{requestId}/approve")
-//    @PreAuthorize("hasRole('HR')") // Or a more specific checker role
+    @PreAuthorize("hasAnyRole('HR','HR-MANAGER')") // Or a more specific checker role
     public ResponseEntity<ApiResponse<Object>> approveRequest(@PathVariable Long requestId, @RequestBody ApproveRequestDto dto) {
         Employee checker = getAuthenticatedUser();
 
@@ -60,7 +61,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/{requestId}/reject")
-//    @PreAuthorize("hasRole('HR')") // Or a more specific checker role
+    @PreAuthorize("hasAnyRole('HR','HR-MANAGER')") // Or a more specific checker role
     public ResponseEntity<ApiResponse<Object>> rejectRequest(@PathVariable Long requestId, @RequestBody RejectRequestDto dto) {
         Employee checker = getAuthenticatedUser();
 
@@ -80,7 +81,7 @@ public class ApprovalController {
 //        return ResponseEntity.ok(pendingRequests);
 //    }
     @GetMapping("/pending")
-//    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'GENERAL', 'HR_ADMINISTRATOR')") // Roles that can be approvers
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER','HR-MANAGER')") // Roles that can be approvers
     public ResponseEntity<ApiResponse<List<ApprovalRequestResponseDto>>> getPendingRequests() {
         Employee checker = getAuthenticatedUser();
         System.out.println(checker);

@@ -46,6 +46,14 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     List<LeaveRequest> findByEmployee_EmployeeId(String employeeId);
 
     @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.status != 'CANCELLED' " +
+            "AND ((lr.startDate BETWEEN :startDate AND :endDate) " +
+            "OR (lr.endDate BETWEEN :startDate AND :endDate) " +
+            "OR (lr.startDate <= :startDate AND lr.endDate >= :endDate))")
+    List<LeaveRequest> findAllActiveNonCancelledLeavesForMonth(@Param("startDate") LocalDate startDate,
+                                                             @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
             "WHERE lr.employee.employeeId = :employeeId " +
             "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
             "AND lr.status = 'APPROVED' " +
@@ -128,4 +136,27 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     void deleteByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
 
     List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus leaveStatus);
+
+    @Query("""
+     SELECT lr
+     FROM LeaveRequest lr
+     WHERE lr.employee.employeeId = :employeeId
+       AND lr.status IN ('PENDING', 'APPROVED')
+       AND lr.startDate <= :monthEnd
+       AND lr.endDate >= :monthStart
+     """)
+    List<LeaveRequest> findActiveNonCancelledLeavesForMonth(
+            @Param("employeeId") String employeeId,
+            @Param("monthStart") LocalDate monthStart,
+            @Param("monthEnd") LocalDate monthEnd
+    );
+
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.status = 'APPROVED' " +
+            "AND lr.startDate <= CURRENT_DATE " +
+            "AND lr.endDate >= CURRENT_DATE")
+    List<LeaveRequest> findTodayApproved();
+
+    List<LeaveRequest> findByStatus(LeaveStatus status);
 }

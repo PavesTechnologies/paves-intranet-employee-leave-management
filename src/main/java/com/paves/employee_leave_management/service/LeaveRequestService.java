@@ -18,9 +18,12 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -42,13 +45,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Autowired
     private LeaveBalanceServiceInterface leaveBalanceService;
     @Autowired
-    private EmailServiceInterface emailService;
+    private AsyncNotificationServiceInterface asyncNotificationService;
 
     // ==================== VALIDATION METHODS ====================
 
-    /**
-     * Main validation method that orchestrates all validation checks
-     */
     @Override
     public ValidationResultDTO validateLeaveRequest(LeaveRequestValidationDTO request) {
         ValidationResultDTO result = ValidationResultDTO.builder()
@@ -57,11 +57,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .requestedDays((float) request.getDaysRequested())
                 .build();
 
-        // Get employee and leave type info
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
         LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
 
-        // Validate basic requirements
         if (!validateBasicRequirements(request, result, employee, leaveType)) {
             return result;
         }
@@ -70,7 +68,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             result.setEmployeeName(employee.getFullName());
         }
 
-        // Perform all validation checks
         validateBasicDateConstraints(request, result);
         validateLeaveBalance(request, result, employee, leaveType);
         validateLeaveConflicts(request, result);
@@ -79,9 +76,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return result;
     }
 
-    /**
-     * Validation method for LeaveRequest entity
-     */
     @Override
     public ValidationResultDTO validateLeaveRequestEntity(LeaveRequest request) {
         LeaveRequestValidationDTO dto = LeaveRequestValidationDTO.builder()
@@ -97,9 +91,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return validateLeaveRequest(dto);
     }
 
-    /**
-     * Validates basic requirements: employee exists, leave type exists, reason provided
-     */
     private boolean validateBasicRequirements(LeaveRequestValidationDTO request, ValidationResultDTO result,
                                               Employee employee, LeaveType leaveType) {
         if (employee == null) {
@@ -112,117 +103,62 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             return false;
         }
 
-        // Validate reason is provided (all leave types require comments as per business rules)
         if (request.getReason() == null || request.getReason().trim().isEmpty()) {
             result.addError("Leave reason/comments are mandatory");
         }
 
-        // Validate drive link for documentation requirements
         validateDriveLinkRequirements(request, result, leaveType);
 
         return true;
     }
 
-    /**
-     * Validates drive link requirements based on leave type documentation needs
-     */
     private void validateDriveLinkRequirements(LeaveRequestValidationDTO request, ValidationResultDTO result, LeaveType leaveType) {
-        // Check if leave type requires documentation
-        System.out.println("From ValidateDriveLinkRequirements");
         if (leaveType.getRequiresDocumentation() && !leaveType.getLeaveTypeId().equals("L-SL")) {
-            // For leave types that require documentation, drive link should be provided
-            System.out.println("From ValidateDriveLinkRequirements inside");
             if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
                 result.addError("Drive link with supporting documents is required for " + leaveType.getLeaveName());
             } else {
-                // Validate drive link format (basic URL validation)
                 validateDriveLinkFormat(request.getDriveLink(), result);
             }
         }
 
-        // For sick leave specifically, check if drive link is required for longer durations
         if (leaveType.getLeaveTypeId().equals("L-SL") && request.getDaysRequested() > 3) {
-            System.out.println("sgfhd;j");
             if (request.getDriveLink() == null || request.getDriveLink().trim().isEmpty()) {
                 result.addError("Drive link with medical certificate is mandatory for sick leave exceeding 3 days");
             } else {
-                System.out.println("From ValidateDriveLinkRequirements -SL");
                 validateDriveLinkFormat(request.getDriveLink(), result);
             }
         }
     }
-
-    /**
-     * Validates the format of the drive link URL
-     */
-
-
-    /**
-     * Validates that a link is a correctly formatted Google Drive URL.
-     * A null or empty link will now be considered an error.
-     *
-     * @param driveLink The string URL to validate.
-     * @param result    The DTO to add errors to.
-     */
+    
     private void validateDriveLinkFormat(String driveLink, ValidationResultDTO result) {
-        // Step 1: Check if the link is null or empty. If so, add an error and stop.
-        System.out.println("From ValidateDriveLinkFormat");
         if (driveLink == null || driveLink.trim().isEmpty()) {
             result.addError("Drive link is required and cannot be empty.");
-            return; // Stop further validation.
+            return; 
         }
 
         String trimmedLink = driveLink.trim();
 
-        // Step 2: Match the link against the strict Google Drive pattern.
         if (!GOOGLE_DRIVE_URL_PATTERN.matcher(trimmedLink).matches()) {
             result.addError("Link must be a valid Google Drive URL format (e.g., drive.google.com/file/d/...).");
         }
     }
-//    private void validateDriveLinkFormat(String driveLink, ValidationResultDTO result) {
-//        if (driveLink != null && !driveLink.trim().isEmpty()) {
-//            String trimmedLink = driveLink.trim();
-//
-//            // Basic URL format validation
-//            if (!trimmedLink.startsWith("http://") && !trimmedLink.startsWith("https://")) {
-//                result.addError("Drive link must be a valid URL starting with http:// or https://");
-//                return;
-//            }
-//
-//            // Check if it's a Google Drive link (optional - can be any cloud storage)
-//            if (trimmedLink.contains("drive.google.com") || trimmedLink.contains("docs.google.com")) {
-//                // Additional validation for Google Drive links if needed
-//                if (!trimmedLink.contains("/") || trimmedLink.length() < 20) {
-//                    result.addError("Invalid Google Drive link format");
-//                }
-//            }
-//        }
-//    }
 
-    /**
-     * Validates basic date constraints that apply to ALL leave types
-     */
     private void validateBasicDateConstraints(LeaveRequestValidationDTO request, ValidationResultDTO result) {
         LocalDate startDate = request.getStartDate();
         LocalDate endDate = request.getEndDate();
         int currentYear = LocalDate.now().getYear();
 
-        // End date must be after or equal to start date
         if (endDate.isBefore(startDate)) {
             result.addError("End date must be after or equal to start date");
         }
         if (request.getStartDate().getYear() != LocalDate.now().getYear() && request.getLeaveTypeId().equals("L-SL")) {
             result.addError("Sick Leave request can only be made for the current year");
         }
-        // 3. Earned leave cannot be applied for next year (if accrual is monthly)
         if (request.getLeaveTypeId().equals("L-EL") && startDate.getYear() > currentYear) {
             result.addError("Earned Leave cannot be applied in advance for the next year");
         }
     }
 
-    /**
-     * Validates leave balance and employee eligibility
-     */
     private void validateLeaveBalance(LeaveRequestValidationDTO request, ValidationResultDTO result,
                                       Employee employee, LeaveType leaveType) {
         Integer currentYear = LocalDate.now().getYear();
@@ -234,7 +170,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             return;
         }
 
-        // Check if employee has sufficient leave balance
         if (!leaveType.getLeaveTypeId().equals("L-UP") && !leaveType.getAllowNegativeBalance() &&
                 balance.getRemainingLeaves() < request.getDaysRequested()) {
             result.addError(String.format(
@@ -242,7 +177,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     leaveType.getLeaveName(), balance.getRemainingLeaves(), request.getDaysRequested()));
         }
 
-        // Check waiting period for new employees (exclude Unpaid Leave)
         if (!"L-UP".equalsIgnoreCase(leaveType.getLeaveTypeId()) &&
                 leaveType.getWaitingPeriodDays() != null && leaveType.getWaitingPeriodDays() > 0) {
             LocalDate eligibleDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
@@ -254,9 +188,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
     }
 
-    /**
-     * Validates overlapping leave requests
-     */
     private void validateLeaveConflicts(LeaveRequestValidationDTO request, ValidationResultDTO result) {
         List<LeaveRequest> overlappingRequests = getOverlappingRequests(
                 request.getEmployeeId(), request.getStartDate(), request.getEndDate());
@@ -273,14 +204,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
     }
 
-    /**
-     * Validates leave type specific rules and constraints
-     */
     private void validateLeaveTypeSpecificRules(LeaveRequestValidationDTO request, ValidationResultDTO result,
                                                 Employee employee, LeaveType leaveType) {
         String leaveTypeId = request.getLeaveTypeId();
 
-        // Route to specific leave type validation methods
         switch (leaveTypeId.toUpperCase()) {
             case "L-ML":
                 validateMaternityLeaveRules(request, result, employee, leaveType);
@@ -301,59 +228,41 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 validateUnpaidLeaveRules(request, result, employee, leaveType);
                 break;
             default:
-                // For any other leave types, apply default date and notice validations
                 validateDefaultLeaveRules(request, result, employee, leaveType);
                 break;
         }
 
-        // Validate half-day restrictions (applies to all leave types)
         if (!leaveType.getAllowHalfDay() && request.getDaysRequested() < 1) {
             result.addError(String.format("%s does not allow half-day leave", leaveType.getLeaveName()));
         }
     }
 
-    /**
-     * Validates maternity leave specific rules
-     */
     private void validateMaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        // Check for pending maternity leave requests
         int pendingCount = leaveRequestRepo.countPendingLeavesByType(employee.getEmployeeId(), "L-ML");
         if (pendingCount > 0) {
             result.addError("You already have a pending maternity leave request.");
             return;
         }
 
-        // Fetch all approved maternity leaves
         List<LeaveRequest> approvedML = leaveRequestRepo.findApprovedLeavesByType(employee.getEmployeeId(), "L-ML");
-
-        // Count how many approved maternity leaves were >= 48 days
         long longLeaves = approvedML.stream()
                 .filter(lr -> lr.getDaysRequested() >= 48)
                 .count();
 
-        // If already taken 2 such long maternity leaves, block the new one
         if (request.getDaysRequested() >= 48 && longLeaves >= 2) {
             result.addError("Maternity leave for 6 months (48+ days) can only be availed twice.");
             return;
         }
 
-        // If current request is for a long maternity leave but not exactly 180, warn
         if (request.getDaysRequested() >= 48 && request.getDaysRequested() != 180) {
             result.addError("Standard maternity leave should be exactly 180 days.");
         }
 
-        // Validate past date restrictions
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
-
-        // Validate advance notice requirement
         validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
     }
 
-    /**
-     * Validates paternity leave specific rules
-     */
     private void validatePaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        // Check for pending paternity leave requests
         int pendingCount = leaveRequestRepo.countPendingLeavesByType(employee.getEmployeeId(), "L-PL");
         if (pendingCount > 0 && request.getLeaveId() == null) {
             result.addError("You already have a pending paternity leave request. Please wait for it to be approved or rejected.");
@@ -371,7 +280,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             result.addError("Paternity leave must be exactly 5 continuous days.");
         }
 
-        // Check for 1-year gap if there's a prior leave
         if (approvedPL.size() == 1) {
             LeaveRequest previousLeave = approvedPL.get(0);
             long gap = ChronoUnit.DAYS.between(previousLeave.getStartDate(), request.getStartDate());
@@ -380,38 +288,27 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             }
         }
 
-        // Validate past date restrictions
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
-
-        // Validate advance notice requirement
         validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
     }
 
     private void validateCompensatoryLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        // Check if documentation is required
         if (leaveType.getRequiresDocumentation() && (request.getReason() == null || request.getReason().trim().isEmpty())) {
             result.addError("Compensatory leave requires documentation/proof of overtime work");
         }
-
-        // Apply standard date and notice validations
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
         validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
     }
 
     private void validateSickLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        // Check if documentation is required for sick leave
         if (leaveType.getRequiresDocumentation() && request.getDaysRequested() > 3 && request.getDriveLink() == null) {
             result.addError("Sick leave for more than 3 days requires medical certificate");
         }
-
-        // Sick leave may have different date restrictions (allow past dates for emergencies)
-        // For now, apply standard validations - can be customized later
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
         validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
     }
 
     private void validateEarnedLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        // Check waiting period for earned leave eligibility
         if (leaveType.getWaitingPeriodDays() > 0) {
             LocalDate eligibilityDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
             if (LocalDate.now().isBefore(eligibilityDate)) {
@@ -419,32 +316,23 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         leaveType.getWaitingPeriodDays()));
             }
         }
-
-        // Apply standard date and notice validations
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
         validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
     }
 
     private void validateUnpaidLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        // Unpaid leave typically requires documentation
         if (leaveType.getRequiresDocumentation() && (request.getReason() == null || request.getReason().trim().isEmpty())) {
             result.addError("Unpaid leave requires detailed justification");
         }
-
-        // Apply standard date and notice validations
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
         validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
     }
 
     private void validateDefaultLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        // Apply standard date and notice validations for any leave type not explicitly handled
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
         validateAdvanceNoticeRequirement(request.getStartDate(), LocalDate.now(), leaveType, result);
     }
 
-    /**
-     * Validates past date restrictions based on leave type policy
-     */
     private void validatePastDateRestrictions(LocalDate startDate, LocalDate today, LeaveType leaveType, ValidationResultDTO result) {
         if (leaveType.getPastDateLimitDays() != null && leaveType.getPastDateLimitDays() > 0) {
             LocalDate pastLimit = today.minusDays(leaveType.getPastDateLimitDays());
@@ -453,14 +341,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         leaveType.getPastDateLimitDays()));
             }
         } else if (startDate.isBefore(today.minusDays(1))) {
-            // Default: no past dates allowed except today
             result.addError("Cannot request leave for past dates");
         }
     }
 
-    /**
-     * Validates advance notice requirement
-     */
     private void validateAdvanceNoticeRequirement(LocalDate startDate, LocalDate today, LeaveType leaveType, ValidationResultDTO result) {
         if (leaveType.getAdvanceNoticeDays() != null && leaveType.getAdvanceNoticeDays() > 0) {
             long daysBetween = ChronoUnit.DAYS.between(today, startDate);
@@ -473,25 +357,18 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     // ==================== APPLICATION METHODS ====================
 
-    /**
-     * Save a new leave request after validation
-     */
     @Override
+    @Transactional
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
-        // Validate the request first
         ValidationResultDTO validationResult = validateLeaveRequest(request);
 
         if (!validationResult.isValid()) {
-            throw new RuntimeException("Leave request validation failed: " +
-                    String.join(", ", validationResult.getErrors()));
+            throw new RuntimeException("Leave request validation failed: " + String.join(", ", validationResult.getErrors()));
         }
 
-        // Get employee and leave type
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
         LeaveType leaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
 
-
-        // Create and save the leave request
         LeaveRequest leaveRequest = LeaveRequest.builder()
                 .employee(employee)
                 .leaveType(leaveType)
@@ -509,60 +386,50 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         LeaveRequest savedRequest = leaveRequestRepo.save(leaveRequest);
 
         if (savedRequest != null) {
-            // Update leave balance
             leaveBalanceService.updateLeaveBalanceAfterApproval(
-                    savedRequest.getEmployee().getEmployeeId(),
-                    savedRequest.getLeaveType().getLeaveTypeId(),
-                    savedRequest.getDaysRequested(),
-                    savedRequest.getRequestDate().getYear());
+                    request.getEmployeeId(),
+                    request.getLeaveTypeId(),
+                    request.getDaysRequested(),
+                    leaveRequest.getRequestDate().getYear()
+            );
 
-            // Send email notification to manager
-            try {
-                if (employee.getManager() != null && employee.getManager().getEmail() != null) {
-                    emailService.sendLeaveApplicationNotification(
-                            employee.getManager().getEmail(),
-                            employee.getFullName(),
-                            leaveType.getLeaveName(),
-                            request.getStartDate().toString(),
-                            request.getEndDate().toString(),
-                            request.getReason()
-                    );
-                }
-            } catch (Exception e) {
-                // Log the error but don't fail the request
-                System.err.println("Failed to send email notification: " + e.getMessage());
+            if (employee.getManager() != null && employee.getManager().getEmail() != null) {
+                Map<String, Object> templateModel = new LinkedHashMap<>();
+                templateModel.put("title", "New Leave Application");
+                templateModel.put("recipientName", employee.getManager().getFirstName());
+                templateModel.put("messageBody", "A new leave application has been submitted by <strong>" + employee.getFullName() + "</strong>.");
+                templateModel.put("detailsTitle", "Application Details");
+
+                Map<String, String> details = new LinkedHashMap<>();
+                details.put("Employee", employee.getFullName());
+                details.put("Leave Type", leaveType.getLeaveName());
+                details.put("Start Date", request.getStartDate().toString());
+                details.put("End Date", request.getEndDate().toString());
+                details.put("Reason", request.getReason());
+                templateModel.put("details", details);
+
+                templateModel.put("closingMessage", "Please review the application in the Leave Management System.");
+
+                EmailDTO emailDTO = new EmailDTO(employee.getManager().getEmail(), "New Leave Application - " + employee.getFullName(), "generic-notification.html", true);
+                emailDTO.setTemplateModel(templateModel);
+                asyncNotificationService.queueEmail(emailDTO);
             }
-
-            return savedRequest;
-        } else {
-            return null;
         }
+
+        return savedRequest;
     }
 
-// ...
-    /**
-     * Calculate working days between two dates (excluding weekends and holidays)
-     */
-    /**
-     * Get all leave requests for an employee
-     */
     @Override
     public List<LeaveRequest> getLeaveRequestsByEmployee(String employeeId) {
         return leaveRequestRepo.findByEmployee_EmployeeId(employeeId);
     }
 
-    /**
-     * Get a specific leave request by ID
-     */
     @Override
     public LeaveRequest getLeaveRequestById(String leaveId) {
         return leaveRequestRepo.findById(leaveId)
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + leaveId));
     }
 
-    /**
-     * Cancel a leave request by employee (only if pending)
-     */
     @Override
     public LeaveRequest cancelLeaveRequest(String leaveId, String employeeId) {
         LeaveRequest request = leaveRequestRepo.findById(leaveId)
@@ -578,8 +445,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
         request.setStatus(LeaveStatus.CANCELLED);
         request.setResponseDate(LocalDate.now());
-//        request.set
-        request.setManagerComment("Cancelled by employee");
 
         leaveBalanceService.updateLeaveBalanceAfterRejected(
                 request.getEmployee().getEmployeeId(),
@@ -587,13 +452,33 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 request.getDaysRequested(),
                 request.getRequestDate().getYear());
 
+        LeaveRequest cancelledRequest = leaveRequestRepo.save(request);
 
-        return leaveRequestRepo.save(request);
+        // Notify manager
+        Employee employee = cancelledRequest.getEmployee();
+        Employee manager = employee.getManager();
+        if (manager != null && manager.getEmail() != null && cancelledRequest != null) {
+            Map<String, Object> templateModel = new LinkedHashMap<>();
+            templateModel.put("title", "Leave Request Cancelled");
+            templateModel.put("recipientName", manager.getFirstName());
+            templateModel.put("messageBody", "A leave request from <strong>" + employee.getFullName() + "</strong> has been cancelled by the employee.");
+            templateModel.put("detailsTitle", "Cancelled Request Details");
+
+            Map<String, String> details = new LinkedHashMap<>();
+            details.put("Employee", employee.getFullName());
+            details.put("Leave Type", cancelledRequest.getLeaveType().getLeaveName());
+            details.put("Start Date", cancelledRequest.getStartDate().toString());
+            details.put("End Date", cancelledRequest.getEndDate().toString());
+            templateModel.put("details", details);
+
+            EmailDTO emailDTO = new EmailDTO(manager.getEmail(), "Leave Request Cancelled - " + employee.getFullName(), "generic-notification.html", true);
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
+        }
+
+        return cancelledRequest;
     }
 
-    /**
-     * Validate manager permissions for an employee
-     */
     private boolean validateManagerPermissions(String managerId, String employeeId) {
         Employee employee = employeeRepo.findById(employeeId).orElse(null);
         return employee != null &&
@@ -601,9 +486,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 employee.getManager().getEmployeeId().equals(managerId);
     }
 
-    /**
-     * Get overlapping leave requests
-     */
     @Override
     public List<LeaveRequest> getOverlappingRequests(String employeeId, LocalDate startDate, LocalDate endDate) {
         return leaveRequestRepo.findOverlappingLeaves(employeeId, startDate, endDate);
@@ -614,31 +496,19 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return leaveRequestRepo.findLeaveHistory(employeeId, startDate, endDate);
     }
 
-    // ==================== NEW DTO-BASED MANAGER OPERATIONS ====================
-
-    /**
-     * Get leave requests for a manager based on query DTO
-     */
     @Override
     public List<LeaveRequest> getRequestsForManager(ManagerQueryDTO queryDTO) {
         return leaveRequestRepo.findManagerRequestsByCriteria(queryDTO);
     }
 
-    /**
-     * Get leave history for a manager based on query DTO
-     */
     @Override
     public List<LeaveRequest> getLeaveHistoryForManager(ManagerQueryDTO queryDTO) {
         return leaveRequestRepo.findManagerHistoryByCriteria(queryDTO);
     }
 
-    /**
-     * Approve a leave request using DTO
-     */
     @Override
     @Transactional
     public LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest) {
-        // Find the leave request and validate manager permissions
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(approvalRequest.getLeaveId(), approvalRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + approvalRequest.getLeaveId() + " for this manager"));
@@ -646,52 +516,47 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         Employee manager = employeeRepo.findById(approvalRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + approvalRequest.getManagerId()));
 
-        // Update leave request status
         request.setStatus(LeaveStatus.APPROVED);
         request.setApprovedBy(manager);
         request.setResponseDate(LocalDate.now());
 
-        // Add manager comment if provided
         if (approvalRequest.getComment() != null && !approvalRequest.getComment().trim().isEmpty()) {
             request.setManagerComment(approvalRequest.getComment());
         }
 
-        // Save the updated request
         LeaveRequest approvedRequest = leaveRequestRepo.save(request);
 
-        // Send email notification to employee
-        try {
-            if (request.getEmployee().getEmail() != null) {
-                emailService.sendLeaveApprovalNotification(
-                        request.getEmployee().getEmail(),
-                        request.getEmployee().getFullName(),
-                        request.getLeaveType().getLeaveName(),
-                        request.getStartDate().toString(),
-                        request.getEndDate().toString(),
-                        approvalRequest.getComment()
-                );
+        if (request.getEmployee().getEmail() != null && approvedRequest != null) {
+            Map<String, Object> templateModel = new LinkedHashMap<>();
+            templateModel.put("title", "Leave Application Approved");
+            templateModel.put("recipientName", request.getEmployee().getFullName());
+            templateModel.put("messageBody", "Your leave application for <strong>" + request.getLeaveType().getLeaveName() + "</strong> has been approved.");
+            templateModel.put("detailsTitle", "Approval Details");
+
+            Map<String, String> details = new LinkedHashMap<>();
+            details.put("Leave Type", request.getLeaveType().getLeaveName());
+            details.put("Start Date", request.getStartDate().toString());
+            details.put("End Date", request.getEndDate().toString());
+            if (approvalRequest.getComment() != null) {
+                details.put("Manager's Comment", approvalRequest.getComment());
             }
-        } catch (Exception e) {
-            // Log the error but don't fail the request
-            System.err.println("Failed to send approval email: " + e.getMessage());
+            templateModel.put("details", details);
+
+            EmailDTO emailDTO = new EmailDTO(request.getEmployee().getEmail(), "Leave Application Approved", "generic-notification.html", true);
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
         }
 
         return approvedRequest;
     }
 
-    /**
-     * Approve multiple leave requests using DTO
-     */
-
     @Transactional
     public List<LeaveRequest> approveMultipleRequests(BatchApprovalRequestDTO batchApproval) {
         String managerId = batchApproval.getManagerId();
-
         Employee manager = employeeRepo.findById(managerId)
                 .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + managerId));
 
         List<LeaveRequest> approvedRequests = new ArrayList<>();
-
         for (String leaveId : batchApproval.getLeaveIds()) {
             LeaveRequest request = leaveRequestRepo
                     .findByLeaveIdAndEmployee_Manager_EmployeeId(leaveId, managerId)
@@ -700,23 +565,18 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             request.setStatus(LeaveStatus.APPROVED);
             request.setApprovedBy(manager);
             request.setResponseDate(LocalDate.now());
-
             approvedRequests.add(request);
         }
-
         return leaveRequestRepo.saveAll(approvedRequests);
     }
-
 
     @Transactional
     public List<LeaveRequest> rejectMultipleRequests(BatchApprovalRequestDTO batchApproval) {
         String managerId = batchApproval.getManagerId();
-
         Employee manager = employeeRepo.findById(managerId)
                 .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + managerId));
 
-        List<LeaveRequest> approvedRequests = new ArrayList<>();
-
+        List<LeaveRequest> rejectedRequests = new ArrayList<>();
         for (String leaveId : batchApproval.getLeaveIds()) {
             LeaveRequest request = leaveRequestRepo
                     .findByLeaveIdAndEmployee_Manager_EmployeeId(leaveId, managerId)
@@ -725,8 +585,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             request.setStatus(LeaveStatus.REJECTED);
             request.setApprovedBy(manager);
             request.setResponseDate(LocalDate.now());
-
-            approvedRequests.add(request);
+            rejectedRequests.add(request);
 
             leaveBalanceService.updateLeaveBalanceAfterRejected(
                     request.getEmployee().getEmployeeId(),
@@ -734,8 +593,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     request.getDaysRequested(),
                     request.getRequestDate().getYear());
         }
-
-        return leaveRequestRepo.saveAll(approvedRequests);
+        return leaveRequestRepo.saveAll(rejectedRequests);
     }
 
     @Override
@@ -756,14 +614,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 )).toList();
     }
 
-
-    /**
-     * Reject a leave request using DTO
-     */
     @Override
     @Transactional
     public LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest) {
-        // Find the leave request and validate manager permissions
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(rejectionRequest.getLeaveId(), rejectionRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + rejectionRequest.getLeaveId() + " for this manager"));
@@ -780,43 +633,39 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         request.setResponseDate(LocalDate.now());
         request.setManagerComment(rejectionRequest.getComment());
 
-        // Save the updated request
         LeaveRequest rejectedRequest = leaveRequestRepo.save(request);
 
-        // Update leave balance to return the days
         leaveBalanceService.updateLeaveBalanceAfterRejected(
                 request.getEmployee().getEmployeeId(),
                 request.getLeaveType().getLeaveTypeId(),
                 request.getDaysRequested(),
                 request.getRequestDate().getYear());
 
-        // Send email notification to employee
-        try {
-            if (request.getEmployee().getEmail() != null) {
-                emailService.sendLeaveRejectionNotification(
-                        request.getEmployee().getEmail(),
-                        request.getEmployee().getFullName(),
-                        request.getLeaveType().getLeaveName(),
-                        request.getStartDate().toString(),
-                        request.getEndDate().toString(),
-                        rejectionRequest.getComment()
-                );
-            }
-        } catch (Exception e) {
-            // Log the error but don't fail the request
-            System.err.println("Failed to send rejection email: " + e.getMessage());
+        if (request.getEmployee().getEmail() != null) {
+            Map<String, Object> templateModel = new LinkedHashMap<>();
+            templateModel.put("title", "Leave Application Rejected");
+            templateModel.put("recipientName", request.getEmployee().getFullName());
+            templateModel.put("messageBody", "Your leave application for <strong>" + request.getLeaveType().getLeaveName() + "</strong> has been rejected.");
+            templateModel.put("detailsTitle", "Rejection Details");
+
+            Map<String, String> details = new LinkedHashMap<>();
+            details.put("Leave Type", request.getLeaveType().getLeaveName());
+            details.put("Start Date", request.getStartDate().toString());
+            details.put("End Date", request.getEndDate().toString());
+            details.put("Rejection Reason", rejectionRequest.getComment());
+            templateModel.put("details", details);
+
+            EmailDTO emailDTO = new EmailDTO(request.getEmployee().getEmail(), "Leave Application Rejected", "generic-notification.html", true);
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
         }
 
         return rejectedRequest;
     }
 
-    /**
-     * Update a leave request by manager using DTO
-     */
     @Override
     @Transactional
     public LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest) {
-        // Fetch the leave request assigned to the manager
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(updateRequest.getLeaveId(), updateRequest.getManagerId())
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + updateRequest.getLeaveId() + " for this manager"));
@@ -828,93 +677,48 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 request.getRequestDate().getYear()
         );
 
-        // Prepare new values (use updated if provided, else fallback to existing)
         LeaveType updatedLeaveType = request.getLeaveType();
         if (updateRequest.getLeaveTypeId() != null) {
             updatedLeaveType = leaveTypeRepo.findById(updateRequest.getLeaveTypeId())
                     .orElseThrow(() -> new RuntimeException("Leave type not found with ID: " + updateRequest.getLeaveTypeId()));
         }
 
-        // Build validation DTO before applying changes
-//        LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
-//                .leaveId(request.getLeaveId())
-//                .employeeId(request.getEmployee().getEmployeeId())
-//                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
-//                .startDate(updateRequest.getStartDate())
-//                .endDate(updateRequest.getEndDate())
-//                .daysRequested(updateRequest.getDaysRequested())
-//                .reason(updateRequest.getReason())
-//                .driveLink(updateRequest.getDriveLink())
-//                .build();
-        // Build a complete validation DTO by merging new and old data
         LeaveRequestValidationDTO validationDTO = LeaveRequestValidationDTO.builder()
                 .leaveId(request.getLeaveId())
                 .employeeId(request.getEmployee().getEmployeeId())
-//                .leaveTypeId(updatedLeaveType.getLeaveTypeId())
                 .leaveTypeId(updateRequest.getLeaveTypeId() != null ? updateRequest.getLeaveTypeId() : updatedLeaveType.getLeaveTypeId())
-
-                // Use the new start date if provided, otherwise keep the old one
                 .startDate(updateRequest.getStartDate() != null ? updateRequest.getStartDate() : request.getStartDate())
-
-                // Use the new end date if provided, otherwise keep the old one
                 .endDate(updateRequest.getEndDate() != null ? updateRequest.getEndDate() : request.getEndDate())
-
-                // Use new days if provided, otherwise keep the old ones
                 .daysRequested(updateRequest.getDaysRequested() != null ? updateRequest.getDaysRequested() : request.getDaysRequested())
-
-                // Use the new reason if provided, otherwise keep the old one
                 .reason(updateRequest.getReason() != null ? updateRequest.getReason() : request.getReason())
-
                 .driveLink(updateRequest.getDriveLink() != null ? updateRequest.getDriveLink() : request.getDriveLink())
                 .requestDate(request.getRequestDate())
                 .build();
 
-        // Validate proposed update
         ValidationResultDTO validationResult = validateLeaveRequest(validationDTO);
         if (!validationResult.isValid()) {
             throw new RuntimeException("Validation failed: " + String.join(", ", validationResult.getErrors()));
         }
 
-        // Track changes for notification
-//        StringBuilder changes = new StringBuilder();
-//        if (!updatedLeaveType.getLeaveTypeId().equals(request.getLeaveType().getLeaveTypeId())) {
-//            changes.append("Leave Type: ").append(request.getLeaveType().getLeaveName())
-//                    .append(" → ").append(updatedLeaveType.getLeaveName()).append("\n");
-//            request.setLeaveType(updatedLeaveType);
-//        }
-        StringBuilder changes = new StringBuilder();
-
-        // 1. Track and apply LeaveType update
+        Map<String, String> changes = new LinkedHashMap<>();
         if (updateRequest.getLeaveTypeId() != null && !updatedLeaveType.getLeaveTypeId().equals(request.getLeaveType().getLeaveTypeId())) {
-            changes.append("Leave Type: ").append(request.getLeaveType().getLeaveName())
-                    .append(" → ").append(updatedLeaveType.getLeaveName()).append("\n");
+            changes.put("Leave Type", request.getLeaveType().getLeaveName() + " → " + updatedLeaveType.getLeaveName());
             request.setLeaveType(updatedLeaveType);
         }
-
-        // 2. Track and apply StartDate update
         if (updateRequest.getStartDate() != null && !updateRequest.getStartDate().equals(request.getStartDate())) {
-            changes.append("Start Date: ").append(request.getStartDate())
-                    .append(" → ").append(updateRequest.getStartDate()).append("\n");
+            changes.put("Start Date", request.getStartDate() + " → " + updateRequest.getStartDate());
             request.setStartDate(updateRequest.getStartDate());
         }
-
-        // 3. Track and apply EndDate update
         if (updateRequest.getEndDate() != null && !updateRequest.getEndDate().equals(request.getEndDate())) {
-            changes.append("End Date: ").append(request.getEndDate())
-                    .append(" → ").append(updateRequest.getEndDate()).append("\n");
+            changes.put("End Date", request.getEndDate() + " → " + updateRequest.getEndDate());
             request.setEndDate(updateRequest.getEndDate());
         }
-
-        // 4. Track and apply DaysRequested update
         if (updateRequest.getDaysRequested() != null && !updateRequest.getDaysRequested().equals(request.getDaysRequested())) {
-            changes.append("Days Requested: ").append(request.getDaysRequested())
-                    .append(" → ").append(updateRequest.getDaysRequested()).append("\n");
+            changes.put("Days Requested", request.getDaysRequested() + " → " + updateRequest.getDaysRequested());
             request.setDaysRequested(updateRequest.getDaysRequested());
         }
-
-        // 5. Track and apply Reason update
         if (updateRequest.getReason() != null && !updateRequest.getReason().equals(request.getReason())) {
-            changes.append("Reason has been updated.\n");
+            changes.put("Reason", "Updated");
             request.setReason(updateRequest.getReason());
         }
 
@@ -926,57 +730,43 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         );
         request.setStartSession(updateRequest.getStartSession());
         request.setEndSession(updateRequest.getEndSession());
-        // Save only if there are changes
+        
         LeaveRequest updatedRequest = leaveRequestRepo.save(request);
 
-        // Send email if there were updates
-        if (changes.length() > 0) {
-            try {
-                String email = request.getEmployee().getEmail();
-                if (email != null) {
-                    emailService.sendLeaveUpdateNotification(
-                            email,
-                            request.getEmployee().getFullName(),
-                            request.getLeaveType().getLeaveName(),
-                            request.getStartDate().toString(),
-                            request.getEndDate().toString(),
-                            changes.toString()
-                    );
-                }
-            } catch (Exception e) {
-                System.err.println("Failed to send update notification email: " + e.getMessage());
+        if (!changes.isEmpty()) {
+            String email = request.getEmployee().getEmail();
+            if (email != null) {
+                Map<String, Object> templateModel = new LinkedHashMap<>();
+                templateModel.put("title", "Leave Request Updated");
+                templateModel.put("recipientName", request.getEmployee().getFirstName());
+                templateModel.put("messageBody", "Your leave request has been updated by your manager, <strong>" + request.getEmployee().getManager().getFirstName() + "</strong>.");
+                templateModel.put("detailsTitle", "Updated Details");
+                templateModel.put("details", changes);
+                EmailDTO emailDTO = new EmailDTO(email, "Leave Request Updated", "generic-notification.html", true);
+                emailDTO.setTemplateModel(templateModel);
+                asyncNotificationService.queueEmail(emailDTO);
             }
         }
 
         return updatedRequest;
     }
 
-
-    // ==================== UTILITY METHODS ====================
-
-    /**
-     * Get employee leave balance
-     */
     @Override
     public LeaveBalanceDTO getEmployeeLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
         return leaveBalanceService.getLeaveBalance(employeeId, leaveTypeId, year);
     }
 
-    /**
-     * Update leave request by employee
-     */
     @Override
+    @Transactional
     public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest, LeaveRequestValidationDTO request) {
         return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
                         leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
                 .map(existingRequest -> {
-                    // Disallow update if already approved/rejected
                     if (existingRequest.getStatus() == LeaveStatus.APPROVED ||
                             existingRequest.getStatus() == LeaveStatus.REJECTED) {
                         throw new LeaveBalanceExceptionHandler("Cannot update a leave request that has already been approved or rejected.");
                     }
 
-                    // Reverse the old leave balance before applying changes
                     leaveBalanceService.updateLeaveBalanceAfterRejected(
                             existingRequest.getEmployee().getEmployeeId(),
                             existingRequest.getLeaveType().getLeaveTypeId(),
@@ -984,41 +774,33 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                             existingRequest.getRequestDate().getYear()
                     );
 
-                    // Build new leave type
                     LeaveType updatedLeaveType = leaveTypeService.getLeaveTypeById(request.getLeaveTypeId()).getBody();
                     if (updatedLeaveType == null) {
                         throw new LeaveBalanceExceptionHandler("Leave type not found: " + request.getLeaveTypeId());
                     }
 
-                    // Validate updated request
                     ValidationResultDTO validationResult = validateLeaveRequest(request);
                     if (!validationResult.isValid()) {
                         return validationResult;
                     }
 
-                    // Track changes for email
-                    StringBuilder changes = new StringBuilder();
+                    Map<String, String> changes = new LinkedHashMap<>();
                     if (!existingRequest.getLeaveType().getLeaveTypeId().equals(updatedLeaveType.getLeaveTypeId())) {
-                        changes.append("Leave Type: ").append(existingRequest.getLeaveType().getLeaveName())
-                                .append(" → ").append(updatedLeaveType.getLeaveName()).append("\n");
+                        changes.put("Leave Type", existingRequest.getLeaveType().getLeaveName() + " → " + updatedLeaveType.getLeaveName());
                     }
                     if (!existingRequest.getStartDate().equals(request.getStartDate())) {
-                        changes.append("Start Date: ").append(existingRequest.getStartDate())
-                                .append(" → ").append(request.getStartDate()).append("\n");
+                        changes.put("Start Date", existingRequest.getStartDate() + " → " + request.getStartDate());
                     }
                     if (!existingRequest.getEndDate().equals(request.getEndDate())) {
-                        changes.append("End Date: ").append(existingRequest.getEndDate())
-                                .append(" → ").append(request.getEndDate()).append("\n");
+                        changes.put("End Date", existingRequest.getEndDate() + " → " + request.getEndDate());
                     }
                     if (existingRequest.getDaysRequested() != request.getDaysRequested()) {
-                        changes.append("Days Requested: ").append(existingRequest.getDaysRequested())
-                                .append(" → ").append(request.getDaysRequested()).append("\n");
+                        changes.put("Days Requested", existingRequest.getDaysRequested() + " → " + request.getDaysRequested());
                     }
                     if (!Objects.equals(existingRequest.getReason(), request.getReason())) {
-                        changes.append("Reason updated.\n");
+                        changes.put("Reason", "Updated");
                     }
 
-                    // Update fields
                     existingRequest.setLeaveType(updatedLeaveType);
                     existingRequest.setStartDate(request.getStartDate());
                     existingRequest.setEndDate(request.getEndDate());
@@ -1027,45 +809,36 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     existingRequest.setDriveLink(request.getDriveLink());
                     existingRequest.setStartSession(request.getStartSession());
                     existingRequest.setEndSession(request.getEndSession());
-
-                    // Reset approval fields
                     existingRequest.setApprovedBy(null);
                     existingRequest.setResponseDate(null);
                     existingRequest.setManagerComment(null);
                     existingRequest.setStatus(LeaveStatus.PENDING);
 
-                    // Re-apply updated leave balance
                     leaveBalanceService.updateLeaveBalanceAfterApproval(
                             request.getEmployeeId(),
                             request.getLeaveTypeId(),
                             request.getDaysRequested(),
-                            request.getRequestDate().getYear()
+                            existingRequest.getRequestDate().getYear()
                     );
 
-                    // Save updated request
                     LeaveRequest updatedRequest = leaveRequestRepo.save(existingRequest);
 
-                    // Notify manager if changes were made
-                    if (changes.length() > 0) {
-                        try {
-                            String managerEmail = updatedRequest.getEmployee().getManager() != null ?
-                                    updatedRequest.getEmployee().getManager().getEmail() : null;
-                            if (managerEmail != null && !managerEmail.isEmpty()) {
-                                emailService.sendLeaveUpdateNotification(
-                                        managerEmail,
-                                        updatedRequest.getEmployee().getFullName(),
-                                        updatedLeaveType.getLeaveName(),
-                                        updatedRequest.getStartDate().toString(),
-                                        updatedRequest.getEndDate().toString(),
-                                        changes.toString()
-                                );
-                            }
-                        } catch (Exception e) {
-                            System.err.println("Failed to send update notification email: " + e.getMessage());
+                    if (!changes.isEmpty()) {
+                        String managerEmail = updatedRequest.getEmployee().getManager() != null ?
+                                updatedRequest.getEmployee().getManager().getEmail() : null;
+                        if (managerEmail != null && !managerEmail.isEmpty()) {
+                            Map<String, Object> templateModel = new LinkedHashMap<>();
+                            templateModel.put("title", "Leave Request Updated");
+                            templateModel.put("recipientName", updatedRequest.getEmployee().getManager().getFirstName());
+                            templateModel.put("messageBody", "A leave request from <strong>" + updatedRequest.getEmployee().getFullName() + "</strong> has been updated.");
+                            templateModel.put("detailsTitle", "Updated Details");
+                            templateModel.put("details", changes);
+                            EmailDTO emailDTO = new EmailDTO(managerEmail, "Leave Request Updated", "generic-notification.html", true);
+                            emailDTO.setTemplateModel(templateModel);
+                            asyncNotificationService.queueEmail(emailDTO);
                         }
                     }
 
-                    // Finalize result
                     validationResult.addMessage("Leave request updated successfully.");
                     validationResult.setLeaveId(updatedRequest.getLeaveId());
 
@@ -1077,6 +850,47 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     public List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId) {
         return leaveRequestRepo.findByEmployee_EmployeeIdAndStatus(employeeId, LeaveStatus.PENDING);
     }
+    
+    @Override
+    public List<LeaveRequestDTO> getAllLeaveRequestsExceptCancelled(String empId, Integer month, Integer year) {
+        LocalDate today = LocalDate.now();
+        int targetMonth = (month != null) ? month : today.getMonthValue();
+        int targetYear = (year != null) ? year : today.getYear();
+        
+        LocalDate monthStart = LocalDate.of(targetYear, targetMonth, 1);
+        LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+
+        List<LeaveRequest> leaves = leaveRequestRepo.findActiveNonCancelledLeavesForMonth(empId, monthStart, monthEnd);
+        
+        if (leaves.isEmpty()) {
+            throw new LeaveBalanceExceptionHandler("No leave requests found for the specified period");
+        }
+
+        return leaves.stream()
+                .map(LeaveRequestDTO::new)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<LeaveRequestDTO> getAllEmployeesLeaveRequestsByMonthYear(Integer month, Integer year) {
+        LocalDate today = LocalDate.now();
+        int targetMonth = (month != null) ? month : today.getMonthValue();
+        int targetYear = (year != null) ? year : today.getYear();
+        
+        LocalDate monthStart = LocalDate.of(targetYear, targetMonth, 1);
+        LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+
+        List<LeaveRequest> leaves = leaveRequestRepo.findAllActiveNonCancelledLeavesForMonth(monthStart, monthEnd);
+        
+        if (leaves.isEmpty()) {
+            throw new LeaveBalanceExceptionHandler("No leave requests found for the specified period");
+        }
+
+        return leaves.stream()
+                .map(LeaveRequestDTO::new)
+                .collect(Collectors.toList());
+    }
+
 
     @Override
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year) {

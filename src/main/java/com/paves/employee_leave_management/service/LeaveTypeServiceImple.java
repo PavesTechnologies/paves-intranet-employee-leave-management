@@ -2,12 +2,16 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
+import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.LeaveStatus;
+import com.paves.employee_leave_management.enums.LeaveTypesEnum;
+import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.transaction.Transactional;
@@ -22,6 +26,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -41,6 +46,12 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Autowired
     LeaveRequestRepo leaveRequestRepo;
+
+    @Autowired
+    private EmailServiceInterface emailService;
+
+    @Autowired
+    private EmployeeRepo employeeRepo;
 
 
     @Override
@@ -121,6 +132,16 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         if (shouldActivateNow) {
             leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
         }
+
+        // Notify all employees
+        List<Employee> employees = employeeRepo.findAll();
+        for (Employee employee : employees) {
+            emailService.sendEmailFromTemplate(employee.getEmail(),
+                    "New Leave Policy: " + savedLeaveType.getLeaveName(),
+                    "leave-policy-creation-notification.html",
+                    Map.of("leavePolicyName", savedLeaveType.getLeaveName()));
+        }
+
         return new ApiResponse<>(true,
                 savedLeaveType.getActive()
                         ? "Leave type created and effective immediately."
@@ -159,7 +180,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 //        LeaveType existingLeaveType = existingOpt.get();
         double newAccrualRate = 0;
-        if (updatedLeaveType.getLeaveTypeId() == "L-EL" || updatedLeaveType.getLeaveTypeId() == "L-SL") {
+        if (updatedLeaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString()) || updatedLeaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
             newAccrualRate = (double) updatedLeaveType.getMaxDaysPerYear() / 12;
             newAccrualRate = new BigDecimal(newAccrualRate)
                     .setScale(2, RoundingMode.HALF_UP)
@@ -194,6 +215,15 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
         leaveBalanceRepo.saveAll(affectedBalances);
 
+        // Notify all employees
+        List<Employee> employees = employeeRepo.findAll();
+        for (Employee employee : employees) {
+            emailService.sendEmailFromTemplate(employee.getEmail(),
+                    "Leave Policy Updated: " + savedLeaveType.getLeaveName(),
+                    "leave-policy-update-notification.html",
+                    Map.of("leavePolicyName", savedLeaveType.getLeaveName()));
+        }
+
         return new ApiResponse<>(true,
                 "Leave type updated successfully.",
                 savedLeaveType);
@@ -213,6 +243,16 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 .orElseThrow(() -> new RuntimeException("Leave type not found."));
         List<LeaveBalance> leaveBalanceList = leaveBalanceRepo.findByLeaveType(leaveType);
         leaveTypeRepo.delete(leaveType);
+
+        // Notify all employees
+        List<Employee> employees = employeeRepo.findAll();
+        for (Employee employee : employees) {
+            emailService.sendEmailFromTemplate(employee.getEmail(),
+                    "Leave Policy Deleted: " + leaveType.getLeaveName(),
+                    "leave-policy-deletion-notification.html",
+                    Map.of("leavePolicyName", leaveType.getLeaveName()));
+        }
+
         return new ResponseEntity<>("Leave type deleted successfully", HttpStatus.OK);
     }
 

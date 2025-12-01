@@ -1,10 +1,14 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.EmailDTO;
 import com.paves.employee_leave_management.dto.HolidayNameDateDto;
+import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.Holidays;
 import com.paves.employee_leave_management.enums.HolidayType;
 import com.paves.employee_leave_management.globalExceptionHandler.HolidayExceptionHandler;
+import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.HolidayRepo;
+import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import jakarta.persistence.Id;
 import org.apache.poi.ss.usermodel.*;
@@ -34,6 +38,12 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private AsyncNotificationServiceInterface asyncNotificationService;
+
+    @Autowired
+    private EmployeeRepo employeeRepo;
 
     @Override
     public ResponseEntity<List<Holidays>> getAllHolidays() {
@@ -70,6 +80,32 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
         }
 
         holidayRepo.saveAll(holidays);
+
+        List<Employee> employees = employeeRepo.findAll();
+        String[] recipientEmails = employees.stream()
+                                           .map(Employee::getEmail)
+                                           .toArray(String[]::new);
+
+        for (Holidays holiday : holidays) {
+            Map<String, Object> templateModel = new LinkedHashMap<>();
+            templateModel.put("title", "New Holiday Announcement");
+            templateModel.put("recipientName", "Team");
+            templateModel.put("messageBody", "Please be informed of a new upcoming holiday.");
+            templateModel.put("detailsTitle", "Holiday Details");
+
+            Map<String, String> details = new LinkedHashMap<>();
+            details.put("Holiday", holiday.getHolidayName());
+            details.put("Date", holiday.getHolidayDate().toString());
+            templateModel.put("details", details);
+
+            EmailDTO emailDTO = new EmailDTO();
+            emailDTO.setBcc(recipientEmails);
+            emailDTO.setSubject("New Holiday: " + holiday.getHolidayName());
+            emailDTO.setBody("generic-notification.html");
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
+        }
+
         return ResponseEntity.ok("Holidays added successfully");
     }
 
@@ -78,14 +114,65 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     public ResponseEntity<String> updateHoliday(Holidays holidays) {
         Holidays existingHoliday = holidayRepo.findById(holidays.getHolidayId())
                 .orElseThrow(() -> new HolidayExceptionHandler("No holiday found for this id"));
-        holidayRepo.save(holidays);
+        
+        Holidays updatedHoliday = holidayRepo.save(holidays);
+
+        // Notify all employees
+        List<Employee> employees = employeeRepo.findAll();
+        String[] recipientEmails = employees.stream()
+                                           .map(Employee::getEmail)
+                                           .toArray(String[]::new);
+
+        Map<String, Object> templateModel = new LinkedHashMap<>();
+        templateModel.put("title", "Holiday Updated");
+        templateModel.put("recipientName", "Team");
+        templateModel.put("messageBody", "A holiday has been updated. Please see the details below.");
+        templateModel.put("detailsTitle", "Updated Holiday Details");
+
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("Holiday", updatedHoliday.getHolidayName());
+        details.put("New Date", updatedHoliday.getHolidayDate().toString());
+        templateModel.put("details", details);
+
+        EmailDTO emailDTO = new EmailDTO();
+        emailDTO.setBcc(recipientEmails);
+        emailDTO.setSubject("Holiday Updated: " + updatedHoliday.getHolidayName());
+        emailDTO.setBody("generic-notification.html");
+        emailDTO.setTemplateModel(templateModel);
+        asyncNotificationService.queueEmail(emailDTO);
+
         return ResponseEntity.ok("Holiday updated successfully");
     }
 
     @Override
     public ResponseEntity<String> deleteHoliday(Long id) {
-        holidayRepo.findById(id).orElseThrow(() -> new HolidayExceptionHandler("No holiday found for this id"));
+        Holidays holiday = holidayRepo.findById(id).orElseThrow(() -> new HolidayExceptionHandler("No holiday found for this id"));
         holidayRepo.deleteById(id);
+
+        // Notify all employees
+        List<Employee> employees = employeeRepo.findAll();
+        String[] recipientEmails = employees.stream()
+                                           .map(Employee::getEmail)
+                                           .toArray(String[]::new);
+
+        Map<String, Object> templateModel = new LinkedHashMap<>();
+        templateModel.put("title", "Holiday Cancelled");
+        templateModel.put("recipientName", "Team");
+        templateModel.put("messageBody", "A holiday has been cancelled. Please see the details below.");
+        templateModel.put("detailsTitle", "Cancelled Holiday Details");
+
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("Holiday", holiday.getHolidayName());
+        details.put("Date", holiday.getHolidayDate().toString());
+        templateModel.put("details", details);
+
+        EmailDTO emailDTO = new EmailDTO();
+        emailDTO.setBcc(recipientEmails);
+        emailDTO.setSubject("Holiday Cancelled: " + holiday.getHolidayName());
+        emailDTO.setBody("generic-notification.html");
+        emailDTO.setTemplateModel(templateModel);
+        asyncNotificationService.queueEmail(emailDTO);
+
         return ResponseEntity.ok("Holiday deleted successfully");
     }
 
@@ -197,6 +284,15 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
     @Override
     public void importHolidaysFromExcel(MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            throw new HolidayExceptionHandler("File is empty");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+            throw new HolidayExceptionHandler("Invalid file type. Only Excel files (.xlsx) are allowed.");
+        }
+
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
 

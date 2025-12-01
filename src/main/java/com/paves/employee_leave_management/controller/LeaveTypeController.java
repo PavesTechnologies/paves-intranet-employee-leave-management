@@ -5,6 +5,7 @@ import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
@@ -22,6 +23,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @CrossOrigin
 @RestController
@@ -74,6 +76,15 @@ public class LeaveTypeController {
                 ))
                 .toList();
     }
+
+    @GetMapping("/accrual-frequencies")
+    @PreAuthorize("hasAnyRole('HR')")
+    public List<String> getAccrualFrequencies() {
+        return Arrays.stream(AccrualFrequency.values())
+                .map(Enum::name)
+                .collect(Collectors.toList());
+    }
+
 
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasRole('HR')")
