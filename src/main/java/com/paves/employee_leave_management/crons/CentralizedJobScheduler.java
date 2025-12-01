@@ -37,7 +37,7 @@ public class CentralizedJobScheduler {
     private final LeaveRequestRepo leaveRequestRepository;
     private final AsyncNotificationServiceInterface asyncNotificationService;
 
-    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Kolkata")
+    @Scheduled(cron = "0 0 0 * * ?", zone = "Asia/Kolkata")
     @SchedulerLock(name = "Centralized_Daily_Master_Batch",
             lockAtLeastFor = "PT10S",
             lockAtMostFor = "PT30M")
