@@ -77,19 +77,20 @@ public class LeaveBalanceController {
     @PostMapping("/generate/{employeeId}")
     @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<String> generateLeaveBalance(@PathVariable String employeeId) {
+        //employeeRepo.findAll().forEach(employee -> leaveBalanceService.createLeaveBalanceForNewEmployee(employee.getEmployeeId()));
         leaveBalanceService.createLeaveBalanceForNewEmployee(employeeId);
+
         return ResponseEntity.ok("Leave balance generated successfully for employee: " + employeeId);
     }
 
     @PostMapping("/carryforward")
     @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<String> carryForward() {
-        leaveBalanceService.processYearEndCarryForward();
+        leaveBalanceService.processAccrualForLeaveType();
         return ResponseEntity.ok("Carry forward process completed.");
     }
 
     @GetMapping("/{balanceID}")
-
     @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL')")
     public ResponseEntity<LeaveBalance> getLeaveBalancesByBalanceId(@PathVariable String balanceID) {
         return leaveBalanceService.findByBalanceId(balanceID);
