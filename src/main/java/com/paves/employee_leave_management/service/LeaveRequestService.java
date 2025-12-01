@@ -862,9 +862,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
         List<LeaveRequest> leaves = leaveRequestRepo.findActiveNonCancelledLeavesForMonth(empId, monthStart, monthEnd);
         
-        if (leaves.isEmpty()) {
-            throw new LeaveBalanceExceptionHandler("No leave requests found for the specified period");
-        }
+//        if (leaves.isEmpty()) {
+//            throw new LeaveBalanceExceptionHandler("No leave requests found for the specified period");
+//        }
 
         return leaves.stream()
                 .map(LeaveRequestDTO::new)
