@@ -241,7 +241,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             AccrualFrequency frequency = AccrualFrequency.valueOf(type.getAccrualFrequency().toString().toUpperCase());
             LocalDate today = LocalDate.now();
 
-            if(!type.getEffectiveStartDate().isBefore(today) || type.getActive() == false)
+            if(type.getActive() == false)
                 continue;
 
             switch (frequency) {
@@ -307,10 +307,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         if (balances.isEmpty()) {
             throw new LeaveBalanceExceptionHandler("No Leave Balances found");
         }
-
         LocalDate now = LocalDate.now();
         for (LeaveBalance balance : balances) {
-            if(!balance.getEmployee().getHireDate().isBefore(now))
+            if(balance.getEmployee().getHireDate().isAfter(now))
             {
                 continue;
             }
@@ -318,13 +317,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             LeaveType lt = balance.getLeaveType(); // dynamic
             LocalDate hireDate = emp.getHireDate();
             LocalDate accrualDate = balance.getLastAccrualDate();
-
-             //Prevent double accrual in same month
-            if (accrualDate != null &&
-                    accrualDate.getMonth() == now.getMonth() &&
-                    accrualDate.getYear() == now.getYear() && lt.getAccrualFrequency().equals(AccrualFrequency.MONTHLY)){
-                continue;
-            }
 
             // ---- DYNAMIC Monthly Rules ----
             double accrualRate = lt.getAccrualRate() != null ? lt.getAccrualRate() : 0;

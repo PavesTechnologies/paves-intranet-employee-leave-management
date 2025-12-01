@@ -38,22 +38,49 @@ public class CentralizedJobScheduler {
     private final AsyncNotificationServiceInterface asyncNotificationService;
 
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Kolkata")
-    @SchedulerLock(name = "Centralized_Daily_Master_Batch", lockAtLeastFor = "PT10S", lockAtMostFor = "PT30M")
+    @SchedulerLock(name = "Centralized_Daily_Master_Batch",
+            lockAtLeastFor = "PT10S",
+            lockAtMostFor = "PT30M")
     public void runDailyMasterBatch() {
-        runJob("DAILY-MASTER-BATCH", () -> {
-            leaveBlockScheduler.processLeaveBlock();
-            leaveBlockScheduler.activatePendingLeaveTypes();
-            leaveBlockScheduler.deactivateDueLeaveTypes();
-            leaveCompoffService.expireUnusedCompoffs();
-            leaveBalanceService.processAccrualForLeaveType();
-            leaveBlockScheduler.sendDailyLeaveDigest();
-            sendPendingApprovalReminders();
-            sendOverdueApprovalEscalations();
 
+        runJob("PROCESS-LEAVE-BLOCK", () -> {
+            leaveBlockScheduler.processLeaveBlock();
+        });
+
+        runJob("ACTIVATE-PENDING-LEAVE-TYPES", () -> {
+            leaveBlockScheduler.activatePendingLeaveTypes();
+        });
+
+        runJob("DEACTIVATE-DUE-LEAVE-TYPES", () -> {
+            leaveBlockScheduler.deactivateDueLeaveTypes();
+        });
+
+        runJob("EXPIRE-UNUSED-COMPOFFS", () -> {
+            leaveCompoffService.expireUnusedCompoffs();
+        });
+
+        runJob("ACCRUAL-JOB", () -> {
+            leaveBalanceService.processAccrualForLeaveType();
+        });
+
+        runJob("DAILY-LEAVE-DIGEST", () -> {
+            leaveBlockScheduler.sendDailyLeaveDigest();
+        });
+
+        runJob("PENDING-APPROVAL-REMINDER", () -> {
+            sendPendingApprovalReminders();
+        });
+
+        runJob("OVERDUE-APPROVAL-ESCALATION", () -> {
+            sendOverdueApprovalEscalations();
+        });
+
+        runJob("DELETE-OLD-LOGS", () -> {
             int deleted = jobLoggingService.deleteOldJobLogs();
             log.info("Old job logs cleanup completed. {} entries deleted.", deleted);
         });
     }
+
 
     @Scheduled(fixedRate = 5 * 60 * 1000)
     @SchedulerLock(name = "Centralized_Frequent_Job", lockAtLeastFor = "PT1M", lockAtMostFor = "PT5M")
