@@ -25,7 +25,6 @@ import java.util.List;
 @CrossOrigin
 @RequiredArgsConstructor
 public class LeaveRequestController {
-
     private final LeaveRequestServiceInterface leaveRequestService;
     private final EmployeeServiceInterface employeeService;
     private final LeaveTypeServiceInterface leaveTypeService;
@@ -400,14 +399,13 @@ public class LeaveRequestController {
         }
     }
 
-    @GetMapping("/getLeaveRequests/{employeeId}/{year}/{month}")
-    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
-    public ResponseEntity<?> getActiveLeavesForEmployee(
-            @PathVariable("employeeId") String employeeId,
+    @GetMapping("/getAllLeaves/{year}/{month}")
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
+    public ResponseEntity<?> getAllLeavesForMonthYear(
             @PathVariable(value = "year", required = false) Integer year,
             @PathVariable(value = "month", required = false) Integer month) {
         try {
-            List<LeaveRequestDTO> leaves = leaveRequestService.getAllLeaveRequestsExceptCancelled(employeeId, month, year);
+            List<LeaveRequestDTO> leaves = leaveRequestService.getAllEmployeesLeaveRequestsByMonthYear(month, year);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaves));
         } catch (LeaveBalanceExceptionHandler ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -417,14 +415,15 @@ public class LeaveRequestController {
                     .body(new ApiResponse<>(false, "An error occurred while fetching leave requests", null));
         }
     }
-    
-    @GetMapping("/getAllLeaves/{year}/{month}")
-    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
-    public ResponseEntity<?> getAllLeavesForMonthYear(
-            @PathVariable(value = "year", required = false) Integer year,
-            @PathVariable(value = "month", required = false) Integer month) {
+
+    @GetMapping("/getLeaveRequests/{employeeId}")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasAnyRole('GENERAL','MANAGER','HR')")
+    public ResponseEntity<?> getActiveLeavesForEmployee(
+            @PathVariable("employeeId") String employeeId,
+            @RequestParam(value = "year", required = false) Integer year,
+            @RequestParam(value = "month", required = false) Integer month) {
         try {
-            List<LeaveRequestDTO> leaves = leaveRequestService.getAllEmployeesLeaveRequestsByMonthYear(month, year);
+            List<LeaveRequestDTO> leaves = leaveRequestService.getAllLeaveRequestsExceptCancelled(employeeId, month, year);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaves));
         } catch (LeaveBalanceExceptionHandler ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
