@@ -94,6 +94,9 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
     @Override
     public List<LeaveRevokeDTO> getPendingRequests(String managerId) {
         List<LeaveRevoke> leaveRevokeList = leaveRevokeRepo.findByManagerIdAndStatus(managerId, LeaveRevokeStatus.PENDING);
+        if(leaveRevokeList.isEmpty()){
+            return null;
+        }
         List<LeaveRevokeDTO> leaveRevokeDTOList = new ArrayList<>();
         leaveRevokeList.forEach(leaveRevoke -> {
             Optional<LeaveRequest> leaveRequest = leaveRequestRepo.findByLeaveId(leaveRevoke.getLeaveRequestId());
