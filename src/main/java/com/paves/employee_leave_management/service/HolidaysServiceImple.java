@@ -368,7 +368,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
         // Columns to skip (audit/system fields)
         Set<String> excludeColumns = Set.of(
-                "id", "created_by", "created_at", "updated_by", "updated_at", "deleted_at", "is_active", "last_updated_at"
+                "id","year", "created_by", "created_at", "updated_by", "updated_at", "deleted_at", "is_active", "last_updated_at"
         );
 
         try (Connection connection = dataSource.getConnection();

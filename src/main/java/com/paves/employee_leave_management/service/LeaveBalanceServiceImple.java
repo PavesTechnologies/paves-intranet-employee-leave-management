@@ -5,15 +5,13 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
-import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
-import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
@@ -54,6 +52,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Autowired
     HolidaysServiceInterface holidayService;
+
+    @Autowired
+    private GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
 
     @Override
     public void createLeaveBalanceForNewEmployee(String empId) {
@@ -591,6 +592,13 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
         for (LeaveBalanceUpdateRequest.BalanceUpdate update : request.getBalances()) {
+            if(update.getLeaveTypeId() == "L-ML" || update.getLeaveTypeId() == "L-PL"){
+                GenderBasedLeaveBalance balance = genderBasedLeaveBalancesRepo.findByEmployeeIdAndLeaveTypeIdAndYear(
+                        request.getEmployeeId(),
+                        update.getLeaveTypeId(),
+                        update.getYear()
+                ).get();
+            }
             LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
                     request.getEmployeeId(),
                     update.getLeaveTypeId(),
