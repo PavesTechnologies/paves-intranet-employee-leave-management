@@ -19,6 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Auditable
+@ToString
 //@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 @EntityListeners(AuditEntityListener.class)
 public class LeaveType {
