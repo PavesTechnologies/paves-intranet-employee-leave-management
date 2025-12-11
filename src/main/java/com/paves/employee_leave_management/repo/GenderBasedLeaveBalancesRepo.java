@@ -11,8 +11,9 @@ import java.util.Optional;
 @Repository
 public interface GenderBasedLeaveBalancesRepo extends JpaRepository<GenderBasedLeaveBalance, String> {
 
-    Optional<GenderBasedLeaveBalance> findByEmployeeIdAndLeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
+    Optional<GenderBasedLeaveBalance> findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
     List<GenderBasedLeaveBalance> findByEmployeeIdAndYear(String employeeId, int year);
-    void deleteByLeaveTypeId(String leaveTypeId);
+    void deleteByLeaveType_LeaveTypeId(String leaveTypeId);
+    List<GenderBasedLeaveBalance> findAllByYear(int year);
 //    GenderBasedLeaveBalance findByEmployeeIdAndLeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
 }

@@ -93,7 +93,7 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
             existing.setIsActive(false);
             existing.setEffectiveEndDate(effectiveDate);
             genderBasedRepo.save(existing);
-            genderBasedLeaveBalancesRepo.deleteByLeaveTypeId(leaveTypeId);
+            genderBasedLeaveBalancesRepo.deleteByLeaveType_LeaveTypeId(leaveTypeId);
             return new ApiResponse<>(true,
                     "Leave type deactivated successfully",
                     existing);

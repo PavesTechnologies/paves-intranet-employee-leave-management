@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface GenderBasedRepo extends JpaRepository<GenderBasedLeave, String> {
     Optional<GenderBasedLeave> findByLeaveNameIgnoreCase(String leaveName);
+    Optional<GenderBasedLeave> findByLeaveTypeId(String leaveTypeId);
 }

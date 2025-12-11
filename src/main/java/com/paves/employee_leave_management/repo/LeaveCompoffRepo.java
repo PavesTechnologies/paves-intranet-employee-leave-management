@@ -16,6 +16,7 @@ public interface LeaveCompoffRepo extends JpaRepository<LeaveCompoff, Long> {
 
     List<LeaveCompoff> findByManagerIdAndStatusOrderByWorkedDateDesc(String managerId, LeaveStatusCompoff status);
 
-    void deleteByLeaveType(LeaveType leaveType, LeaveStatusCompoff status);
+    void deleteByIdleaveCompoffAndStatus(Long idleaveCompoff, LeaveStatusCompoff status);
+
 
 }

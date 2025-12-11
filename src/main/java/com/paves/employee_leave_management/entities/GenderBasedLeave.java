@@ -1,21 +1,21 @@
 package com.paves.employee_leave_management.entities;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.paves.employee_leave_management.audit.AuditEntityListener;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
+@Builder
 @EntityListeners(AuditEntityListener.class)
 public class GenderBasedLeave {
 
@@ -75,7 +75,16 @@ public class GenderBasedLeave {
     @Column(name = "effective_start_date")
     private LocalDate effectiveStartDate;
 
+    @OneToMany(mappedBy = "leaveType", fetch = FetchType.LAZY)
+    @JsonBackReference
+    private List<GenderBasedLeaveBalance> leaveBalances;
+
+
     @Column(name = "effective_end_date")
     private LocalDate effectiveEndDate;
+
+    @Builder.Default
+    @Column(name = "weekends_and_holidays_allowed", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean weekendsAndHolidaysAllowed = false;
     
 }

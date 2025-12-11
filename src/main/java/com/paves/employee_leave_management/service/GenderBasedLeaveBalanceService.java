@@ -5,6 +5,7 @@ import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.GenderBasedLeaveBalance;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
+import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveBalanceServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,12 +20,15 @@ public class GenderBasedLeaveBalanceService implements GenderBasedLeaveBalanceSe
     private GenderBasedLeaveBalancesRepo leaveBalanceRepo;
 
     @Autowired
+    private GenderBasedRepo genderBasedRepo;
+
+    @Autowired
     private EmployeeRepo employeeRepo;
 
     public GenderBasedLeaveBalance buildLeaveBalance(Employee employee, GenderBasedLeave leaveType, LocalDateTime createdDate, boolean isActive) {
         GenderBasedLeaveBalance leaveBalance = new GenderBasedLeaveBalance();
         leaveBalance.setEmployeeId(employee.getEmployeeId());
-        leaveBalance.setLeaveTypeId(leaveType.getLeaveTypeId());
+        leaveBalance.setLeaveType(genderBasedRepo.findByLeaveTypeId(leaveType.getLeaveTypeId()).get());
         leaveBalance.setTotalEntitledDays(leaveType.getMaxLeaveDays());
         leaveBalance.setUsedDays(0);
         leaveBalance.setRemainingDays(leaveType.getMaxLeaveDays());
@@ -56,7 +60,7 @@ public class GenderBasedLeaveBalanceService implements GenderBasedLeaveBalanceSe
                     }
 
                     // Include only if no existing record for this employee + leave type + year
-                    return leaveBalanceRepo.findByEmployeeIdAndLeaveTypeIdAndYear(
+                    return leaveBalanceRepo.findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(
                             emp.getEmployeeId(),
                             leaveType.getLeaveTypeId(),
                             year

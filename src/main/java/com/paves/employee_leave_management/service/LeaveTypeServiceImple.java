@@ -278,7 +278,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             leaveType.setDeactivationEffectiveDate(LocalDate.now());
             leaveTypeRepo.save(leaveType);
             leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
-            leaveCompoffRepo.deleteByLeaveType(leaveType, LeaveStatusCompoff.PENDING);
+            leaveCompoffRepo.deleteByIdleaveCompoffAndStatus(Long.valueOf(leaveTypeId), LeaveStatusCompoff.PENDING);
 
             // Optional: cleanup leave balances
             leaveBalanceRepo.deleteByLeaveType(leaveType);

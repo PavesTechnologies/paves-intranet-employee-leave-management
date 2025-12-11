@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,8 +26,10 @@ public class GenderBasedLeaveBalance {
     @Column(name = "employee_id")
     private String employeeId;
 
-    @Column(name = "leave_type_id")
-    private String leaveTypeId;
+    @ManyToOne
+    @JoinColumn(name = "leave_type_id", nullable = false)
+    @JsonManagedReference
+    private GenderBasedLeave leaveType;
 
     @Column(name = "total_entitled_days", nullable = false)
     private Integer totalEntitledDays;  // e.g., Maternity: 180 days
@@ -48,6 +51,7 @@ public class GenderBasedLeaveBalance {
 
     @Column(name = "times_used")
     private Integer timesUsed;
+
 
     @PrePersist
     public void onCreate() {
