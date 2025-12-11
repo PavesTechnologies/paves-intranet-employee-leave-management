@@ -530,15 +530,15 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
-    public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalanceByYear() {
+    public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalanceByYear(Integer year) {
 
         int currentYear = LocalDate.now().getYear();
 
         List<LeaveBalance> regularLeaveBalance =
-                leaveBalanceRepo.findAllByYear(currentYear);
+                leaveBalanceRepo.findAllByYear(year);
 
         List<GenderBasedLeaveBalance> genderBasedLeaveBalances =
-                genderBasedLeaveBalancesRepo.findAllByYear(currentYear);
+                genderBasedLeaveBalancesRepo.findAllByYear(year);
 
         List<AllPeopleLeaveBalance> allPeopleLeaveBalance = new ArrayList<>();
 

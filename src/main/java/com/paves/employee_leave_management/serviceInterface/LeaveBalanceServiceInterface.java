@@ -33,7 +33,7 @@ public interface LeaveBalanceServiceInterface {
 
     ResponseEntity<List<LeaveBalance>> getAllLeaveBalances();
 
-    ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalanceByYear();
+    ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalanceByYear(Integer year);
 
     public List<LeaveBalance> getCurrentYearBalances(String employeeId);
 

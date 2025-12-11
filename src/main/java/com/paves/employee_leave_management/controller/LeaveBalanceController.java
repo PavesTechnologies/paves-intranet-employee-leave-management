@@ -103,10 +103,10 @@ public class LeaveBalanceController {
 //        return leaveBalanceService.getAllLeaveBalances();
 //    }
 
-    @GetMapping("/all-leave-balances")
+    @GetMapping("/all-leave-balances/{year}")
     @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalance() {
-        return leaveBalanceService.getAllLeaveBalanceByYear();
+    public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalance(@PathVariable Integer year) {
+        return leaveBalanceService.getAllLeaveBalanceByYear(year);
     }
 
 
