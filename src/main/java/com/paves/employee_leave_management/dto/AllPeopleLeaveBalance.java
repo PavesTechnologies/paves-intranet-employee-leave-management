@@ -19,5 +19,6 @@ public class AllPeopleLeaveBalance {
     private String leaveBalance;
     private double remainingLeaves;
     private Integer year;
+    private String gender;
 
 }

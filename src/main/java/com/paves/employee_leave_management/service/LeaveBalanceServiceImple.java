@@ -554,6 +554,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             dto.setLeaveTypeId(leaveBalance.getLeaveType().getLeaveTypeId());
             dto.setLeaveTypeName(leaveBalance.getLeaveType().getLeaveName());
             dto.setYear(leaveBalance.getYear());
+            dto.setGender(leaveBalance.getEmployee().getGender());
 
             allPeopleLeaveBalance.add(dto);
         }
@@ -569,6 +570,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             dto.setLeaveTypeId(leaveBalance.getLeaveType().getLeaveTypeId());
             dto.setLeaveTypeName(leaveBalance.getLeaveType().getLeaveName());
             dto.setYear(leaveBalance.getYear());
+            dto.setGender(leaveBalance.getLeaveType().getGender());
 
             allPeopleLeaveBalance.add(dto);
         }
