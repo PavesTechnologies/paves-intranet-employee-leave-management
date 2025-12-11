@@ -111,6 +111,8 @@ public class LeaveBlockScheduler {
         log.info("Deactivating {} leave types effective today or earlier...", toDeactivate.size());
         for (LeaveType leaveType : toDeactivate) {
             leaveType.setActive(false);
+            leaveType.setDeactivationEffectiveDate(null);
+            System.out.println(leaveType);
             leaveTypeRepo.save(leaveType);
             leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
             // Optional cleanup of leave balances linked to the deactivated leave type
