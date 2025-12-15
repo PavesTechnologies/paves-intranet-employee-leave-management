@@ -33,16 +33,16 @@ public class GenderBasedLeaveBalance {
     private GenderBasedLeave leaveType;
 
     @Column(name = "total_entitled_days", nullable = true)
-    private Integer totalEntitledDays;  // e.g., Maternity: 180 days
+    private int totalEntitledDays;  // e.g., Maternity: 180 days
 
     @Column(name = "used_days", nullable = true)
-    private Integer usedDays = 0;
+    private int usedDays = 0;
 
     @Column(name = "remaining_days", nullable = true)
-    private Integer remainingDays;
+    private int remainingDays;
 
     @Column(name = "year")
-    private Integer year;
+    private int year;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -51,7 +51,7 @@ public class GenderBasedLeaveBalance {
     private LocalDateTime updatedAt;
 
     @Column(name = "times_used")
-    private Integer timesUsed;
+    private int timesUsed;
 
 
     @PrePersist
