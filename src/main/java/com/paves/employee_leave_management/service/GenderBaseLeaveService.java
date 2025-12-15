@@ -100,29 +100,29 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
         }
     }
 
-//    @Override
-//    public ApiResponse<Object> getAllLeaveTypes() {
-//        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll();
-//        for (GenderBasedLeave leave: genderBasedLeaves){
-//            if(Boolean.FALSE.equals(leave.getActive())){
-//                genderBasedLeaves.remove(leave);
-//            }
-//        }
-//        return new ApiResponse<>(true,
-//                "Leave types fetched successfully",
-//                genderBasedLeaves);
-//    }
-
     @Override
     public ApiResponse<Object> getAllLeaveTypes() {
-        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll().stream().filter(GenderBasedLeave::getActive).toList();
-//        for (GenderBasedLeave leave: genderBasedLeaves){
-//            if(!leave.getIsActive()){
-//                genderBasedLeaves.remove(leave);
-//            }
-//        }
+        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll();
+        for (GenderBasedLeave leave: genderBasedLeaves){
+            if(Boolean.FALSE.equals(leave.getActive())){
+                genderBasedLeaves.remove(leave);
+            }
+        }
         return new ApiResponse<>(true,
                 "Leave types fetched successfully",
                 genderBasedLeaves);
     }
+
+//    @Override
+//    public ApiResponse<Object> getAllLeaveTypes() {
+//        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll().stream().filter(GenderBasedLeave::getActive).toList();
+////        for (GenderBasedLeave leave: genderBasedLeaves){
+////            if(!leave.getIsActive()){
+////                genderBasedLeaves.remove(leave);
+////            }
+////        }
+//        return new ApiResponse<>(true,
+//                "Leave types fetched successfully",
+//                genderBasedLeaves);
+//    }
 }

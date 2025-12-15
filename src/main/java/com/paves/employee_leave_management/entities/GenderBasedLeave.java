@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.paves.employee_leave_management.audit.AuditEntityListener;
@@ -80,6 +81,7 @@ public class GenderBasedLeave {
     @OneToMany(mappedBy = "leaveType", fetch = FetchType.LAZY)
     @JsonManagedReference
     @JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
+    @JsonIgnore
     private List<GenderBasedLeaveBalance> leaveBalances;
 
 
