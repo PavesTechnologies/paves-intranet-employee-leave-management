@@ -32,13 +32,13 @@ public class GenderBasedLeaveBalance {
     @JsonBackReference
     private GenderBasedLeave leaveType;
 
-    @Column(name = "total_entitled_days", nullable = false)
+    @Column(name = "total_entitled_days", nullable = true)
     private Integer totalEntitledDays;  // e.g., Maternity: 180 days
 
-    @Column(name = "used_days", nullable = false)
+    @Column(name = "used_days", nullable = true)
     private Integer usedDays = 0;
 
-    @Column(name = "remaining_days", nullable = false)
+    @Column(name = "remaining_days", nullable = true)
     private Integer remainingDays;
 
     @Column(name = "year")
