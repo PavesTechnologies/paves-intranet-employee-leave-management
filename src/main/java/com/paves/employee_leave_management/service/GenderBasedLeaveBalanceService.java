@@ -25,6 +25,7 @@ public class GenderBasedLeaveBalanceService implements GenderBasedLeaveBalanceSe
     @Autowired
     private EmployeeRepo employeeRepo;
 
+
     public GenderBasedLeaveBalance buildLeaveBalance(Employee employee, GenderBasedLeave leaveType, LocalDateTime createdDate, boolean isActive) {
         GenderBasedLeaveBalance leaveBalance = new GenderBasedLeaveBalance();
         leaveBalance.setEmployeeId(employee.getEmployeeId());
