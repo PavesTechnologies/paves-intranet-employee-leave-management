@@ -43,7 +43,7 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
 
         Optional<GenderBasedLeave> existing = genderBasedRepo.findById(genderBaseLeave.getLeaveTypeId());
 
-        if (existing.isPresent() && Boolean.TRUE.equals(existing.get().getIsActive())) {
+        if (existing.isPresent() && Boolean.TRUE.equals(existing.get().getActive())) {
             return new ApiResponse<>(false,
                     "Leave type already exists and is active",
                     null);
@@ -90,7 +90,7 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
                     existing);
 
         }else{
-            existing.setIsActive(false);
+            existing.setActive(false);
             existing.setEffectiveEndDate(effectiveDate);
             genderBasedRepo.save(existing);
             genderBasedLeaveBalancesRepo.deleteByLeaveType_LeaveTypeId(leaveTypeId);
@@ -100,14 +100,27 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
         }
     }
 
+//    @Override
+//    public ApiResponse<Object> getAllLeaveTypes() {
+//        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll();
+//        for (GenderBasedLeave leave: genderBasedLeaves){
+//            if(Boolean.FALSE.equals(leave.getActive())){
+//                genderBasedLeaves.remove(leave);
+//            }
+//        }
+//        return new ApiResponse<>(true,
+//                "Leave types fetched successfully",
+//                genderBasedLeaves);
+//    }
+
     @Override
     public ApiResponse<Object> getAllLeaveTypes() {
-        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll();
-        for (GenderBasedLeave leave: genderBasedLeaves){
-            if(Boolean.FALSE.equals(leave.getIsActive())){
-                genderBasedLeaves.remove(leave);
-            }
-        }
+        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll().stream().filter(GenderBasedLeave::getActive).toList();
+//        for (GenderBasedLeave leave: genderBasedLeaves){
+//            if(!leave.getIsActive()){
+//                genderBasedLeaves.remove(leave);
+//            }
+//        }
         return new ApiResponse<>(true,
                 "Leave types fetched successfully",
                 genderBasedLeaves);

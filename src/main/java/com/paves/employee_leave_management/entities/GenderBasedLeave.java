@@ -1,6 +1,8 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.paves.employee_leave_management.audit.AuditEntityListener;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import jakarta.persistence.*;
@@ -63,8 +65,8 @@ public class GenderBasedLeave {
     @Column(name = "notice_period_restrictions")
     private Boolean noticePeriodRestrictions;
 
-    @Column(name = "is_active")
-    private Boolean isActive;
+    @Column(name = "active")
+    private Boolean active;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -76,7 +78,8 @@ public class GenderBasedLeave {
     private LocalDate effectiveStartDate;
 
     @OneToMany(mappedBy = "leaveType", fetch = FetchType.LAZY)
-    @JsonBackReference
+    @JsonManagedReference
+    @JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
     private List<GenderBasedLeaveBalance> leaveBalances;
 
 

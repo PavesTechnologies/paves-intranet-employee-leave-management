@@ -40,7 +40,7 @@ public class ValidationAndExecutionService implements ValidationAndExecution {
 
         Optional<GenderBasedLeave> existing = genderBasedRepo.findByLeaveNameIgnoreCase(genderBaseLeave.getLeaveName());
 
-        if (existing.isPresent() && Boolean.TRUE.equals(existing.get().getIsActive())) {
+        if (existing.isPresent() && Boolean.TRUE.equals(existing.get().getActive())) {
             return new ApiResponse<>(false,
                     "Leave type already exists and is active",
                     null

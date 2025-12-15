@@ -9,6 +9,7 @@ import com.paves.employee_leave_management.serviceInterface.ValidationAndExecuti
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -53,7 +54,9 @@ public class GenderBaseLeaveController {
         throw new RuntimeException("Invalid authentication principal");
     }
 
-    @PostMapping("/add-leave")
+    @PostMapping(
+            value = "/add-leave",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<ApiResponse<Object>> createGenderBaseLeave(
             @Valid @RequestBody GenderBasedLeave genderBasedLeave) {

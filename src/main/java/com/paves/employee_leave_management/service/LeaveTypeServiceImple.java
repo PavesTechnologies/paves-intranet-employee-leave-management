@@ -356,11 +356,11 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         for (GenderBasedLeave genderBasedLeave : genderBasedLeaveTypes) {
-            if (Boolean.TRUE.equals(genderBasedLeave.getIsActive())) {
+            if (Boolean.TRUE.equals(genderBasedLeave.getActive())) {
                 LeaveTypeIdDTO dto = new LeaveTypeIdDTO();
                 dto.setLeaveTypeId(genderBasedLeave.getLeaveTypeId());
                 dto.setLeaveName(genderBasedLeave.getLeaveName());
-                dto.setActive(genderBasedLeave.getIsActive());
+                dto.setActive(genderBasedLeave.getActive());
                 leaveTypeDTOs.add(dto);
             }
         }
