@@ -9,6 +9,7 @@ import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.service.LeaveBlockScheduler;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
@@ -219,10 +220,13 @@ public class LeaveBalanceController {
         return ResponseEntity.ok(suggestions);
     }
 
+    @Autowired
+    LeaveBlockScheduler lbs;
     @GetMapping("/monthly")
     @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<String> monthly() {
-        leaveBalanceService.processAccrualForLeaveType();
+//        leaveBalanceService.processAccrualForLeaveType();
+        lbs.deactivateDueLeaveTypes();
         return ResponseEntity.ok("Monthly process triggered successfully.");
     }
 
