@@ -1,6 +1,8 @@
 package com.paves.employee_leave_management.serviceInterface;
 
+import com.paves.employee_leave_management.dto.AllPeopleLeaveBalance;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
+import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -30,6 +32,8 @@ public interface LeaveBalanceServiceInterface {
     ResponseEntity<LeaveBalance> findByBalanceId(String balanceId);
 
     ResponseEntity<List<LeaveBalance>> getAllLeaveBalances();
+
+    ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalanceByYear(Integer year);
 
     public List<LeaveBalance> getCurrentYearBalances(String employeeId);
 

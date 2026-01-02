@@ -4,11 +4,13 @@ import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -41,6 +43,9 @@ public class LeaveTypeController {
 
     @Autowired
     private EmployeeRepo employeeRepo;
+
+    @Autowired
+    private GenderBasedRepo genderBasedRepo;
 
     // This is a placeholder for getting the user from the JWT token
     private Employee getAuthenticatedUser() {
@@ -152,10 +157,29 @@ public class LeaveTypeController {
 
     @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> updateLeave(@RequestBody LeaveType updatedLeaveType, @PathVariable String leaveTypeId) {
+    public ResponseEntity<ApiResponse<Object>> updateLeave(@RequestBody LeaveType updatedLeaveType, @PathVariable String leaveTypeId, @RequestBody GenderBasedLeave genderBasedLeave ) {
         Employee maker = getAuthenticatedUser();
 //        String makerRole = maker.getJobTitle();
         String makerRole = "HR";
+
+        if(genderBasedLeave != null){
+            if(genderBasedLeave.getLeaveName() == LeaveTypesEnum.MATERNITY_LEAVE.toString() || genderBasedLeave.getLeaveName() == LeaveTypesEnum.PATERNITY_LEAVE.toString() ){
+                GenderBasedLeave toUpdate = genderBasedRepo.findByLeaveNameIgnoreCase(genderBasedLeave.getLeaveName()).orElseThrow(() -> new RuntimeException("GenderBasedLeave not found"));
+                MCApprovalRequestDto dto = new MCApprovalRequestDto();
+                dto.setActionType(ActionType.UPDATE_GENDER_BASED_LEAVE);
+                dto.setEntityId(leaveTypeId);
+
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("before", toUpdate);
+                payload.put("after", genderBasedLeave);
+                dto.setPayload(payload);
+
+                approvalService.submitForApproval(dto, maker, makerRole);
+
+                return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type has been submitted for approval.", null));
+            }
+        }
+
         LeaveType oldLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(() -> new RuntimeException("LeaveType not found"));
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
@@ -187,6 +211,32 @@ public class LeaveTypeController {
         // Optional: validate input
         if (effectiveDateStr == null || effectiveDateStr.isEmpty()) {
             throw new IllegalArgumentException("Deactivation effective date is required.");
+        }
+
+        Optional<GenderBasedLeave> genderBasedLeave = genderBasedRepo.findById(leaveTypeId);
+        Optional<LeaveType> leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId);
+        if(genderBasedLeave.isEmpty() && leaveType.isEmpty()){
+            return ResponseEntity.ok(new ApiResponse<>(false, "Leave type not found", null));
+        }
+
+        if(genderBasedLeave.get().getLeaveTypeId() == leaveTypeId){
+            MCApprovalRequestDto dto = new MCApprovalRequestDto();
+            dto.setActionType(ActionType.DEACTIVATE_GENDER_BASED_LEAVE_TYPE);
+            dto.setEntityId(leaveTypeId);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("leaveTypeId", leaveTypeId);
+            payload.put("deactivationEffectiveDate", effectiveDateStr);
+
+            dto.setPayload(payload);
+
+            approvalService.submitForApproval(dto, maker, makerRole);
+
+            return ResponseEntity.ok(
+                    new ApiResponse<>(true,
+                            "Request to deactivate leave type effective from " + effectiveDateStr + " has been submitted for approval.",
+                            null)
+            );
         }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();

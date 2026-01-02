@@ -2,15 +2,11 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
-import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.LeaveStatus;
+import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
-import com.paves.employee_leave_management.repo.EmployeeRepo;
-import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
-import com.paves.employee_leave_management.repo.LeaveRequestRepo;
-import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
@@ -39,6 +35,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     LeaveBalanceRepo leaveBalanceRepo;
 
     @Autowired
+    GenderBasedRepo genderBasedRepo;
+
+    @Autowired
     LeaveBalanceServiceInterface leaveBalanceService;
 
     @Autowired
@@ -46,6 +45,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Autowired
     LeaveRequestRepo leaveRequestRepo;
+
+    @Autowired
+    LeaveCompoffRepo leaveCompoffRepo;
 
     @Autowired
     private EmailServiceInterface emailService;
@@ -217,12 +219,12 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
         // Notify all employees
         List<Employee> employees = employeeRepo.findAll();
-        for (Employee employee : employees) {
-            emailService.sendEmailFromTemplate(employee.getEmail(),
-                    "Leave Policy Updated: " + savedLeaveType.getLeaveName(),
-                    "leave-policy-update-notification.html",
-                    Map.of("leavePolicyName", savedLeaveType.getLeaveName()));
-        }
+//        for (Employee employee : employees) {
+//            emailService.sendEmailFromTemplate(employee.getEmail(),
+//                    "Leave Policy Updated: " + savedLeaveType.getLeaveName(),
+//                    "leave-policy-update-notification.html",
+//                    Map.of("leavePolicyName", savedLeaveType.getLeaveName()));
+//        }
 
         return new ApiResponse<>(true,
                 "Leave type updated successfully.",
@@ -276,6 +278,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             leaveType.setDeactivationEffectiveDate(LocalDate.now());
             leaveTypeRepo.save(leaveType);
             leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
+            leaveCompoffRepo.deleteByIdleaveCompoffAndStatus(Long.valueOf(leaveTypeId), LeaveStatusCompoff.PENDING);
 
             // Optional: cleanup leave balances
             leaveBalanceRepo.deleteByLeaveType(leaveType);
@@ -339,6 +342,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     public List<LeaveTypeIdDTO> getAllLeaveTypeIds() {
         List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
+        List<GenderBasedLeave> genderBasedLeaveTypes = genderBasedRepo.findAll();
         List<LeaveTypeIdDTO> leaveTypeDTOs = new ArrayList<>();
 
         for (LeaveType leaveType : leaveTypes) {
@@ -347,6 +351,16 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 dto.setLeaveTypeId(leaveType.getLeaveTypeId());
                 dto.setLeaveName(leaveType.getLeaveName());
                 dto.setActive(leaveType.getActive());
+                leaveTypeDTOs.add(dto);
+            }
+        }
+
+        for (GenderBasedLeave genderBasedLeave : genderBasedLeaveTypes) {
+            if (Boolean.TRUE.equals(genderBasedLeave.getActive())) {
+                LeaveTypeIdDTO dto = new LeaveTypeIdDTO();
+                dto.setLeaveTypeId(genderBasedLeave.getLeaveTypeId());
+                dto.setLeaveName(genderBasedLeave.getLeaveName());
+                dto.setActive(genderBasedLeave.getActive());
                 leaveTypeDTOs.add(dto);
             }
         }

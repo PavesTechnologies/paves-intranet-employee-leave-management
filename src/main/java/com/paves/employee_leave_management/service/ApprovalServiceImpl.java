@@ -15,10 +15,7 @@ import com.paves.employee_leave_management.repo.ApprovalRequestRepository;
 import com.paves.employee_leave_management.repo.ApprovalRuleRepository;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.FunctionalApproverRepository;
-import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -57,6 +54,9 @@ public class ApprovalServiceImpl implements ApprovalServiceInterface {
 
     @Autowired
     private HolidaysServiceInterface holidaysService;
+
+    @Autowired
+    private GenderBasedLeaveServiceInterface genderBaseLeaveService;
 
     @Override
     @Transactional
@@ -215,17 +215,33 @@ public class ApprovalServiceImpl implements ApprovalServiceInterface {
                     LeaveType newLeaveType = objectMapper.convertValue(createPayload.get("newData"), LeaveType.class);
                     leaveTypeService.addLeaveType(newLeaveType);
                     break;
-                case UPDATE_LEAVE_TYPE:
-                    Map<String, Object> updatePayload = objectMapper.readValue(payload, Map.class);
-                    LeaveType updatedLeaveType = objectMapper.convertValue(updatePayload.get("after"), LeaveType.class);
-                    leaveTypeService.updateLeaveType(updatedLeaveType, updatedLeaveType.getLeaveTypeId());
+                case CREATE_GENDER_BASED_LEAVE:
+                    Map<String, Object> genderBaseLeavePayload = objectMapper.readValue(payload, Map.class);
+                    GenderBasedLeave genderBaseLeave = objectMapper.convertValue(genderBaseLeavePayload.get("newData"), GenderBasedLeave.class);
+                    genderBaseLeaveService.createGenderBaseLeave(genderBaseLeave);
                     break;
-                case DEACTIVATE_LEAVE_TYPE:
-                    Map<String, String> deactivatePayload = objectMapper.readValue(payload, Map.class);
-                    String leaveTypeId = deactivatePayload.get("leaveTypeId");
-                    LocalDate effectiveDate = LocalDate.parse(deactivatePayload.get("deactivationEffectiveDate"));
-                    leaveTypeService.deActiveLeaveType(leaveTypeId, effectiveDate);
-                    break;
+                    case UPDATE_GENDER_BASED_LEAVE:
+                        Map<String, Object> genderBaseUpdatePayload = objectMapper.readValue(payload, Map.class);
+                        GenderBasedLeave updatedGenderBaseLeave = objectMapper.convertValue(genderBaseUpdatePayload.get("after"), GenderBasedLeave.class);
+                        genderBaseLeaveService.updateGenderBaseLeave(updatedGenderBaseLeave, updatedGenderBaseLeave.getLeaveTypeId());
+                        break;
+                    case UPDATE_LEAVE_TYPE:
+                        Map<String, Object> updatePayload = objectMapper.readValue(payload, Map.class);
+                        LeaveType updatedLeaveType = objectMapper.convertValue(updatePayload.get("after"), LeaveType.class);
+                        leaveTypeService.updateLeaveType(updatedLeaveType, updatedLeaveType.getLeaveTypeId());
+                        break;
+                    case DEACTIVATE_LEAVE_TYPE:
+                        Map<String, String> deactivatePayload = objectMapper.readValue(payload, Map.class);
+                        String leaveTypeId = deactivatePayload.get("leaveTypeId");
+                        LocalDate effectiveDate = LocalDate.parse(deactivatePayload.get("deactivationEffectiveDate"));
+                        leaveTypeService.deActiveLeaveType(leaveTypeId, effectiveDate);
+                        break;
+                    case DEACTIVATE_GENDER_BASED_LEAVE_TYPE:
+                        Map<String, String> deactivateGenderBaseLeavePayload = objectMapper.readValue(payload, Map.class);
+                        String leaveTypeId1 = deactivateGenderBaseLeavePayload.get("leaveTypeId");
+                        LocalDate effectiveDateForGenderBasedLeaveType = LocalDate.parse(deactivateGenderBaseLeavePayload.get("deactivationEffectiveDate"));
+                        genderBaseLeaveService.deActiveGenderBaseLeaveType(leaveTypeId1, effectiveDateForGenderBasedLeaveType);
+                        break;
                 case UPDATE_EMPLOYEE_LEAVE_BALANCE:
                     Map<String, Object> balanceUpdatePayload = objectMapper.readValue(payload, Map.class);
                     LeaveBalanceUpdateRequest balanceUpdateRequest = objectMapper.convertValue(balanceUpdatePayload.get("newData"), LeaveBalanceUpdateRequest.class);

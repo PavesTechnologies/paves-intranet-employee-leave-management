@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.dto.AllPeopleLeaveBalance;
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.Employee;
@@ -97,11 +98,19 @@ public class LeaveBalanceController {
         return leaveBalanceService.findByBalanceId(balanceID);
     }
 
-    @GetMapping("/all-leave-balances")
+//    @GetMapping("/all-leave-balances")
+//    @PreAuthorize("hasAnyRole('HR')")
+//    public ResponseEntity<List<LeaveBalance>> getAllLeaveBalances() {
+//        return leaveBalanceService.getAllLeaveBalances();
+//    }
+
+    @GetMapping("/all-leave-balances/{year}")
     @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<List<LeaveBalance>> getAllLeaveBalances() {
-        return leaveBalanceService.getAllLeaveBalances();
+    public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalance(@PathVariable Integer year) {
+        return leaveBalanceService.getAllLeaveBalanceByYear(year);
     }
+
+
 
     @GetMapping("/employee/{employeeId}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")

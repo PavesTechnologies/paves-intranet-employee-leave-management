@@ -254,8 +254,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             return;
         }
 
-        if (request.getDaysRequested() >= 48 && request.getDaysRequested() != 180) {
-            result.addError("Standard maternity leave should be exactly 180 days.");
+        if (request.getDaysRequested() >= 48 && request.getDaysRequested() != leaveTypeRepo.findById("L-ML").get().getMaxDaysPerYear()) {
+            result.addError("Standard maternity leave should be exactly " + leaveTypeRepo.findById("L-ML").get().getMaxDaysPerYear() + " days.");
         }
 
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
@@ -276,7 +276,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             return;
         }
 
-        if (request.getDaysRequested() != 5) {
+        if (request.getDaysRequested() != leaveTypeRepo.findById("L-PL").get().getMaxDaysPerYear()) {
             result.addError("Paternity leave must be exactly 5 continuous days.");
         }
 

@@ -4,16 +4,15 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
+import com.paves.employee_leave_management.dto.AllPeopleLeaveBalance;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
-import com.paves.employee_leave_management.entities.Employee;
-import com.paves.employee_leave_management.entities.LeaveBalance;
-import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
-import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
@@ -31,6 +30,7 @@ import java.time.Year;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,11 +49,15 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Autowired
     LeaveBalanceRepo leaveBalanceRepo;
 
+
     @Autowired
     EmployeeRepo employeeRepo;
 
     @Autowired
     HolidaysServiceInterface holidayService;
+
+    @Autowired
+    private GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
 
     @Override
     public void createLeaveBalanceForNewEmployee(String empId) {
@@ -526,6 +530,56 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
+    public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalanceByYear(Integer year) {
+
+        int currentYear = LocalDate.now().getYear();
+
+        List<LeaveBalance> regularLeaveBalance =
+                leaveBalanceRepo.findAllByYear(year);
+
+        List<GenderBasedLeaveBalance> genderBasedLeaveBalances =
+                genderBasedLeaveBalancesRepo.findAllByYear(year);
+
+        List<AllPeopleLeaveBalance> allPeopleLeaveBalance = new ArrayList<>();
+
+        // 🔹 Regular leave balances
+        for (LeaveBalance leaveBalance : regularLeaveBalance) {
+
+            AllPeopleLeaveBalance dto = new AllPeopleLeaveBalance();  // ✅ NEW object each iteration
+
+            dto.setRemainingLeaves(leaveBalance.getRemainingLeaves());
+            dto.setEmployeeName(leaveBalance.getEmployee().getFirstName() + " " +
+                    leaveBalance.getEmployee().getLastName());
+            dto.setEmployeeId(leaveBalance.getEmployee().getEmployeeId());
+            dto.setLeaveTypeId(leaveBalance.getLeaveType().getLeaveTypeId());
+            dto.setLeaveTypeName(leaveBalance.getLeaveType().getLeaveName());
+            dto.setYear(leaveBalance.getYear());
+            dto.setGender(leaveBalance.getEmployee().getGender());
+
+            allPeopleLeaveBalance.add(dto);
+        }
+
+        // 🔹 Gender-based leave balances
+        for (GenderBasedLeaveBalance leaveBalance : genderBasedLeaveBalances) {
+
+            AllPeopleLeaveBalance dto = new AllPeopleLeaveBalance(); // ✅ NEW object each iteration
+
+            dto.setRemainingLeaves(leaveBalance.getRemainingDays());
+            dto.setEmployeeId(leaveBalance.getEmployeeId());
+            dto.setEmployeeName(""); // fill if needed
+            dto.setLeaveTypeId(leaveBalance.getLeaveType().getLeaveTypeId());
+            dto.setLeaveTypeName(leaveBalance.getLeaveType().getLeaveName());
+            dto.setYear(leaveBalance.getYear());
+            dto.setGender(leaveBalance.getLeaveType().getGender());
+
+            allPeopleLeaveBalance.add(dto);
+        }
+
+        return new ResponseEntity<>(allPeopleLeaveBalance, HttpStatus.OK);
+    }
+
+
+    @Override
     public ResponseEntity<List<LeaveBalance>> findByEmployeeId(String employeeId) {
         List<LeaveBalance> balance = leaveBalanceDao.findByEmployeeId(employeeId);
         if (balance.isEmpty()) {
@@ -591,6 +645,13 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
         for (LeaveBalanceUpdateRequest.BalanceUpdate update : request.getBalances()) {
+            if(update.getLeaveTypeId() == "L-ML" || update.getLeaveTypeId() == "L-PL"){
+                GenderBasedLeaveBalance balance = genderBasedLeaveBalancesRepo.findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+                        request.getEmployeeId(),
+                        update.getLeaveTypeId(),
+                        update.getYear()
+                ).get();
+            }
             LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
                     request.getEmployeeId(),
                     update.getLeaveTypeId(),
