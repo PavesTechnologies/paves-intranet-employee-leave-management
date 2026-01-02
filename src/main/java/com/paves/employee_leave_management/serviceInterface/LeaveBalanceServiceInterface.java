@@ -23,7 +23,7 @@ public interface LeaveBalanceServiceInterface {
 
     void runMonthlyAccrual(LeaveType type);
 
-    void runYearlyAccrual();
+    void runYearlyAccrual(LeaveType type);
 
     void processYearEndCarryForward();
 
