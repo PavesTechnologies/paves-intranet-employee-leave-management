@@ -66,8 +66,8 @@ public class GenderBasedLeave {
     @Column(name = "notice_period_restrictions")
     private Boolean noticePeriodRestrictions;
 
-    @Column(name = "active")
-    private Boolean active;
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

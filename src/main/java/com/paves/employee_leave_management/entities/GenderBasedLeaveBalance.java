@@ -61,7 +61,15 @@ public class GenderBasedLeaveBalance {
         if (balanceId == null) {
             balanceId = "GBLB-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         }
-        this.remainingDays = totalEntitledDays - usedDays;
+        if(totalEntitledDays == null || totalEntitledDays == 0){
+            this.totalEntitledDays = 0;
+            this.remainingDays = 0;
+        }else{
+            this.remainingDays = totalEntitledDays - usedDays;
+        }
+        if(usedDays == null){
+            usedDays = 0;
+        }
         this.createdAt = LocalDateTime.now();
     }
 

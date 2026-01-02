@@ -14,10 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface {
@@ -103,11 +100,21 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
     @Override
     public ApiResponse<Object> getAllLeaveTypes() {
         List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll();
-        for (GenderBasedLeave leave: genderBasedLeaves){
-            if(Boolean.FALSE.equals(leave.getActive())){
-                genderBasedLeaves.remove(leave);
+        Iterator<GenderBasedLeave> iterator = genderBasedLeaves.iterator();
+
+        while (iterator.hasNext()) {
+            GenderBasedLeave leave = iterator.next();
+            if (!leave.getActive()) {
+                iterator.remove(); // ✅ safe
             }
         }
+
+        if(genderBasedLeaves.isEmpty()){
+            return new ApiResponse<>(false,
+                    "No active leave types found",
+                    null);
+        }
+
         return new ApiResponse<>(true,
                 "Leave types fetched successfully",
                 genderBasedLeaves);
