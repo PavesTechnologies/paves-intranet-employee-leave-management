@@ -121,11 +121,12 @@ public class LeaveBalanceController {
     
     @GetMapping("/employee/{employeeId}/{year}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasAnyRole('HR','MANAGER','GENERAL')")
-    public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeIdAndYear(
+    public ApiResponse<List<LeaveBalance>> getLeaveBalancesByEmployeeIdAndYear(
             @PathVariable String employeeId, 
             @PathVariable Integer year) {
         template.convertAndSend("/topic/data-updated", "updated");
-        return leaveBalanceService.findByEmployeeIdAndYear(employeeId, year);
+        List<LeaveBalance> balance = leaveBalanceService.findByEmployeeIdAndYear(employeeId, year);
+        return new ApiResponse<>(true, "leave balance for "+employeeId+" "+year+" ", balance);
     }
 
 //    @GetMapping("/employee/{employeeId}/{year}")
