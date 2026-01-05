@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.AllPeopleLeaveBalance;
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.LeaveBalance;
@@ -61,6 +62,6 @@ public interface LeaveBalanceServiceInterface {
 
     List<String> autocompleteEmployee(String query);
     
-    ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId, Integer year);
+    List<LeaveBalance> findByEmployeeIdAndYear(String employeeId, Integer year);
 }
 
