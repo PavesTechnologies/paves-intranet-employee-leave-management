@@ -5,6 +5,7 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.dto.AllPeopleLeaveBalance;
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
@@ -997,12 +998,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
     
     @Override
-    public ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId, Integer year) {
-        List<LeaveBalance> balances = leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
-        if (balances.isEmpty()) {
-            throw new LeaveBalanceExceptionHandler("No leave balances found for employee ID: " + employeeId + " and year: " + year);
-        }
-        return new ResponseEntity<>(balances, HttpStatus.OK);
+    public List<LeaveBalance> findByEmployeeIdAndYear(String employeeId, Integer year) {
+         return leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
     }
 
     @Override
