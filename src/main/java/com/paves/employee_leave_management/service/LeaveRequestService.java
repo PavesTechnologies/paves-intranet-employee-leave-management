@@ -425,6 +425,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
+    public List<LeaveRequest> getLeaveRequestsByEmployeeAndByYear(String employeeId, int year) {
+        return leaveRequestRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
+    }
+
+    @Override
     public LeaveRequest getLeaveRequestById(String leaveId) {
         return leaveRequestRepo.findById(leaveId)
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + leaveId));
@@ -850,6 +855,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     public List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId) {
         return leaveRequestRepo.findByEmployee_EmployeeIdAndStatus(employeeId, LeaveStatus.PENDING);
     }
+
+    @Override
+    public List<LeaveRequest> getPendingLeaveRequestsByEmployeeAndYear(String employeeId, int year) {
+        return leaveRequestRepo.findByEmployee_EmployeeIdAndStatusAndYear(employeeId, LeaveStatus.PENDING, year);
+    }
+
     
     @Override
     public List<LeaveRequestDTO> getAllLeaveRequestsExceptCancelled(String empId, Integer month, Integer year) {

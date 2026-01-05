@@ -24,6 +24,8 @@ public interface LeaveRequestServiceInterface {
 
     List<LeaveRequest> getLeaveRequestsByEmployee(String employeeId);
 
+    List<LeaveRequest> getLeaveRequestsByEmployeeAndByYear(String employeeId, int year);
+
     LeaveRequest getLeaveRequestById(String leaveId);
 
     LeaveRequest cancelLeaveRequest(String leaveId, String employeeId);
@@ -52,6 +54,8 @@ public interface LeaveRequestServiceInterface {
     List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year);
 
     List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId);
+
+    List<LeaveRequest> getPendingLeaveRequestsByEmployeeAndYear(String employeeId, int year);
     
     List<LeaveRequestDTO> getAllLeaveRequestsExceptCancelled(String employeeId, Integer month, Integer year);
     

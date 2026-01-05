@@ -107,6 +107,7 @@ public class LeaveRequestController {
 
     /**
      * Get all leave requests for an employee
+     * without year
      */
     @GetMapping("/employee/{employeeId}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
@@ -120,11 +121,37 @@ public class LeaveRequestController {
         }
     }
 
+    @GetMapping("/employee/{employeeId}/{year}")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
+    public ResponseEntity<ApiResponse<List<LeaveRequest>>> getEmployeeLeaveRequestsOfEmployeeByYear(@PathVariable String employeeId, @PathVariable int year) {
+        try {
+            List<LeaveRequest> leaveRequests = leaveRequestService.getLeaveRequestsByEmployeeAndByYear(employeeId, year);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaveRequests));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
+        }
+    }
+
+    // without year
     @GetMapping("/employee/pending/{employeeId}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<ApiResponse<List<LeaveRequest>>> getEmployeePendingLeaveRequests(@PathVariable String employeeId) {
         try {
             List<LeaveRequest> leaveRequests = leaveRequestService.getPendingLeaveRequestsByEmployee(employeeId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaveRequests));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
+        }
+    }
+
+    // withYear
+    @GetMapping("/employee/pending/{employeeId}/{year}")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
+    public ResponseEntity<ApiResponse<List<LeaveRequest>>> getEmployeePendingLeaveRequestsAndYear(@PathVariable String employeeId, @PathVariable int year) {
+        try {
+            List<LeaveRequest> leaveRequests = leaveRequestService.getPendingLeaveRequestsByEmployeeAndYear(employeeId, year);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaveRequests));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
