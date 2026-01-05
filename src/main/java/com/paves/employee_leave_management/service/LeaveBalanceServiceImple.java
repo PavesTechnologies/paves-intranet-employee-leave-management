@@ -335,6 +335,40 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     }
                     break;
                 case NONE:
+                    List<LeaveBalance> balances =
+                            leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                                    today.getYear()-1,
+                                    type.getLeaveTypeId()
+                            );
+
+                    List<LeaveBalance> nextYearBalances = balances.stream()
+                            .map(b -> {
+                                LeaveBalance nb = new LeaveBalance();
+                                // Existing fields
+                                nb.setEmployee(b.getEmployee());
+                                nb.setEmployeeId(b.getEmployee().getEmployeeId()); // Add this
+                                nb.setYear(b.getYear() + 1);
+                                nb.setAccruedLeaves(b.getAccruedLeaves());
+                                nb.setRemainingLeaves(b.getRemainingLeaves());
+                                nb.setLeaveType(b.getLeaveType());
+                                nb.setEncashedLeaves(b.getEncashedLeaves()); // Fixed: was nb.getEncashedLeaves()
+                                nb.setBlockId(b.getBlockId()); // Fixed: was nb.getBlockId()
+                                nb.setIsBlocked(b.getIsBlocked()); // Fixed: was nb.getIsBlocked()
+                                nb.setCarriedForward(b.getCarriedForward());
+                                nb.setLastAccrualDate(b.getLastAccrualDate());
+                                nb.setLastUpdatedAt(LocalDateTime.now());
+                                nb.setUsedLeaves(b.getUsedLeaves());
+
+                                // Add missing fields
+                                nb.setTotalLeaves(b.getTotalLeaves()); // Add this
+                                nb.setExpiredLeaves(0.0); // Initialize to 0
+                                nb.setCreateAt(LocalDateTime.now()); // Set creation timestamp
+
+                                return nb;
+                            })
+                            .collect(Collectors.toList());
+
+                    leaveBalanceRepo.saveAll(nextYearBalances);
                     break;
             }
         }
@@ -345,8 +379,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
         // Only process leave balances for THIS specific leave type this year
         LocalDate today = LocalDate.now();
-        if (today.getMonthValue() == 1 && today.getDayOfMonth() == 1 && type.getMaxCarryForward() > 0) {
-            runYearlyAccrual();// ← calls your exact yearly logic
+        if (today.getMonthValue() == 1 && today.getDayOfMonth() == 1) {
+            runYearlyAccrual(type);// ← calls your exact yearly logic
         }
         List<LeaveBalance> balances =
                 leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
@@ -383,19 +417,18 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
 
     @Override
-    public void runYearlyAccrual() {
+    @Transactional
+    public void runYearlyAccrual(LeaveType type) {
 
         List<LeaveBalance> balances =
-                leaveBalanceRepo.findAllByYear(
-                        LocalDate.now().getYear()
+                leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                        LocalDate.now().getYear() - 1, type.getLeaveTypeId()
                 );
 
         if (balances.isEmpty()) {
-            throw new LeaveBalanceExceptionHandler("No Leave Balances found");
+            throw new LeaveBalanceExceptionHandler("No Leave Balances found yearly");
         }
 
-        List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
-        for (LeaveType type : leaveTypes) {
             for (LeaveBalance balance : balances) {
 
                 LeaveBalance newbalance = new LeaveBalance();
@@ -432,9 +465,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 newbalance.setUsedLeaves(0);
                 newbalance.setEncashedLeaves(0);
                 newbalance.updateRemainingLeaves();
+                newbalance.setIsBlocked(balance.getIsBlocked());
+                newbalance.setBlockId(balance.getBlockId());
                 leaveBalanceRepo.save(newbalance);
             }
-        }
         holidayService.deleteHolidaysThreeYearsAgo();
     }
 

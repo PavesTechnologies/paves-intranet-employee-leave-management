@@ -11,11 +11,13 @@ import com.paves.employee_leave_management.service.RecordLockServiceImple;
 import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.util.List;
 import java.util.Map;
@@ -39,8 +41,8 @@ public class CentralizedJobScheduler {
 
     @Scheduled(cron = "0 0 0 * * ?", zone = "Asia/Kolkata")
     @SchedulerLock(name = "Centralized_Daily_Master_Batch",
-            lockAtLeastFor = "PT10S",
-            lockAtMostFor = "PT30M")
+            lockAtLeastFor = "PT1H",
+            lockAtMostFor = "PT6H")
     public void runDailyMasterBatch() {
 
         runJob("PROCESS-LEAVE-BLOCK", () -> {
