@@ -336,40 +336,42 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     }
                     break;
                 case NONE:
-                    List<LeaveBalance> balances =
-                            leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
-                                    today.getYear()-1,
-                                    type.getLeaveTypeId()
-                            );
+                    if(today.getMonthValue() == 1 && today.getDayOfMonth() == 1) {
+                        List<LeaveBalance> balances =
+                                leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                                        today.getYear() - 1,
+                                        type.getLeaveTypeId()
+                                );
 
-                    List<LeaveBalance> nextYearBalances = balances.stream()
-                            .map(b -> {
-                                LeaveBalance nb = new LeaveBalance();
-                                // Existing fields
-                                nb.setEmployee(b.getEmployee());
-                                nb.setEmployeeId(b.getEmployee().getEmployeeId()); // Add this
-                                nb.setYear(b.getYear() + 1);
-                                nb.setAccruedLeaves(b.getAccruedLeaves());
-                                nb.setRemainingLeaves(b.getRemainingLeaves());
-                                nb.setLeaveType(b.getLeaveType());
-                                nb.setEncashedLeaves(b.getEncashedLeaves()); // Fixed: was nb.getEncashedLeaves()
-                                nb.setBlockId(b.getBlockId()); // Fixed: was nb.getBlockId()
-                                nb.setIsBlocked(b.getIsBlocked()); // Fixed: was nb.getIsBlocked()
-                                nb.setCarriedForward(b.getCarriedForward());
-                                nb.setLastAccrualDate(b.getLastAccrualDate());
-                                nb.setLastUpdatedAt(LocalDateTime.now());
-                                nb.setUsedLeaves(b.getUsedLeaves());
+                        List<LeaveBalance> nextYearBalances = balances.stream()
+                                .map(b -> {
+                                    LeaveBalance nb = new LeaveBalance();
+                                    // Existing fields
+                                    nb.setEmployee(b.getEmployee());
+                                    nb.setEmployeeId(b.getEmployee().getEmployeeId()); // Add this
+                                    nb.setYear(b.getYear() + 1);
+                                    nb.setAccruedLeaves(b.getAccruedLeaves());
+                                    nb.setRemainingLeaves(b.getRemainingLeaves());
+                                    nb.setLeaveType(b.getLeaveType());
+                                    nb.setEncashedLeaves(b.getEncashedLeaves()); // Fixed: was nb.getEncashedLeaves()
+                                    nb.setBlockId(b.getBlockId()); // Fixed: was nb.getBlockId()
+                                    nb.setIsBlocked(b.getIsBlocked()); // Fixed: was nb.getIsBlocked()
+                                    nb.setCarriedForward(b.getCarriedForward());
+                                    nb.setLastAccrualDate(b.getLastAccrualDate());
+                                    nb.setLastUpdatedAt(LocalDateTime.now());
+                                    nb.setUsedLeaves(b.getUsedLeaves());
 
-                                // Add missing fields
-                                nb.setTotalLeaves(b.getTotalLeaves()); // Add this
-                                nb.setExpiredLeaves(0.0); // Initialize to 0
-                                nb.setCreateAt(LocalDateTime.now()); // Set creation timestamp
+                                    // Add missing fields
+                                    nb.setTotalLeaves(b.getTotalLeaves()); // Add this
+                                    nb.setExpiredLeaves(0.0); // Initialize to 0
+                                    nb.setCreateAt(LocalDateTime.now()); // Set creation timestamp
 
-                                return nb;
-                            })
-                            .collect(Collectors.toList());
+                                    return nb;
+                                })
+                                .collect(Collectors.toList());
 
-                    leaveBalanceRepo.saveAll(nextYearBalances);
+                        leaveBalanceRepo.saveAll(nextYearBalances);
+                    }
                     break;
             }
         }
