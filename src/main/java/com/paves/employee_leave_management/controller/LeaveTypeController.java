@@ -164,7 +164,7 @@ public class LeaveTypeController {
         String makerRole = "HR";
 
         LeaveType leaveType = null;
-        GenderBasedLeave genderBasedLeave = null;
+        GenderBasedLeave genderBasedLeave = null ;
         if ("REGULAR".equalsIgnoreCase(request.getUpdateType())) {
             leaveType = request.getLeaveType();
             // handle regular leave update
@@ -176,7 +176,10 @@ public class LeaveTypeController {
         }
 
         if(genderBasedLeave != null){
-            if(genderBasedLeave.getLeaveName() == LeaveTypesEnum.MATERNITY_LEAVE.toString() || genderBasedLeave.getLeaveName() == LeaveTypesEnum.PATERNITY_LEAVE.toString() ){
+            if (
+                    LeaveTypesEnum.MATERNITY_LEAVE.name().equalsIgnoreCase(genderBasedLeave.getLeaveName()) ||
+                            LeaveTypesEnum.PATERNITY_LEAVE.name().equalsIgnoreCase(genderBasedLeave.getLeaveName())
+            ){
                 GenderBasedLeave toUpdate = genderBasedRepo.findByLeaveNameIgnoreCase(genderBasedLeave.getLeaveName()).orElseThrow(() -> new RuntimeException("GenderBasedLeave not found"));
                 MCApprovalRequestDto dto = new MCApprovalRequestDto();
                 dto.setActionType(ActionType.UPDATE_GENDER_BASED_LEAVE);
