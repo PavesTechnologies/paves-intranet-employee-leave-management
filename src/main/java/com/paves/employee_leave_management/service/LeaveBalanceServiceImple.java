@@ -11,10 +11,7 @@ import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
-import com.paves.employee_leave_management.repo.EmployeeRepo;
-import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
-import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
-import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import jakarta.transaction.Transactional;
@@ -50,6 +47,12 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Autowired
     LeaveBalanceRepo leaveBalanceRepo;
 
+    @Autowired
+    GenderBasedRepo genderBasedRepo;
+
+//    @Autowired
+//    GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
+
 
     @Autowired
     EmployeeRepo employeeRepo;
@@ -66,9 +69,12 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
         int currentYear = LocalDate.now().getYear();
         List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
+//        List<GenderBasedLeave> genderBasedLeaveTypes = genderBasedRepo.findAll();
         LocalDate onboardingDate = LocalDate.now();
         LocalDate hireDate = emp.getHireDate();
         List<LeaveBalance> balances = new ArrayList<>();
+
+
 
         for (LeaveType lt : leaveTypes) {
             if(lt.getActive().equals(true)) {
@@ -76,10 +82,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     continue;
                 }
                 if (emp.getGender() != null) {
-                    if (emp.getGender().equalsIgnoreCase("male") && lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString()))
-                        continue;
-                    if (emp.getGender().equalsIgnoreCase("female") && lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString()))
-                        continue;
+                    createGenderBasedLeaveBalance(emp,currentYear);
+                }
+                if(lt.getLeaveName().equals(LeaveTypesEnum.PATERNITY_LEAVE.toString()) || lt.getLeaveName().equals(LeaveTypesEnum.MATERNITY_LEAVE.toString())){
+                    continue;
                 }
 
                 double accruedLeaves = 0;
@@ -157,13 +163,15 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 // Finally, calculate total leaves
                     totalLeaves = monthsLeft * lt.getAccrualRate();
 
-                } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
-                    accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
-                    totalLeaves = accruedLeaves;
-                } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
-                    accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
-                    totalLeaves = accruedLeaves;
-                } else {
+                }
+//                else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
+//                    accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+//                    totalLeaves = accruedLeaves;
+//                } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
+//                    accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+//                    totalLeaves = accruedLeaves;
+//                }
+            else {
                     totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
                     accruedLeaves = 0;
                 }
@@ -236,6 +244,43 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             }
         }
         return totalCarried;
+    }
+
+    public void createGenderBasedLeaveBalance(Employee emp, int year){
+        List<GenderBasedLeave> leaveTypes = genderBasedRepo.findAll();
+        List<GenderBasedLeaveBalance> balance = new ArrayList<>();
+        int totalLeaves = 0;
+
+
+        for(GenderBasedLeave lt : leaveTypes){
+            if(lt.getActive().equals(true)) {
+                if (genderBasedLeaveBalancesRepo.findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(emp.getEmployeeId(), lt.getLeaveTypeId(), year).isPresent()) {
+                    continue;
+                }
+                if (emp.getGender() != null) {
+                    if (emp.getGender().equalsIgnoreCase("male") && lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString()))
+                        continue;
+                    if (emp.getGender().equalsIgnoreCase("female") && lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString()))
+                        continue;
+                }
+
+                if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
+                      totalLeaves = lt.getMaxLeaveDays() != null ? lt.getMaxLeaveDays() : 0;
+                } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
+                    totalLeaves = lt.getMaxLeaveDays() != null ? lt.getMaxLeaveDays() : 0;
+                }
+            GenderBasedLeaveBalance bal = new GenderBasedLeaveBalance();
+                bal.setTotalEntitledDays(totalLeaves);
+                bal.setCreatedAt(LocalDateTime.now());
+                bal.setEmployeeId(emp.getEmployeeId());
+                bal.setYear(year);
+                bal.setTimesUsed(0);
+                bal.setUpdatedAt(null);
+                bal.setLeaveType(lt);
+                genderBasedLeaveBalancesRepo.save(bal);
+            }
+        }
+
     }
 
 

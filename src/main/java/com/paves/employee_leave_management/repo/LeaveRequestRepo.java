@@ -45,6 +45,8 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
 
     List<LeaveRequest> findByEmployee_EmployeeId(String employeeId);
 
+    List<LeaveRequest> findByEmployee_EmployeeIdAndYear(String employeeId, int year);
+
     @Query("SELECT lr FROM LeaveRequest lr " +
             "WHERE lr.status != 'CANCELLED' " +
             "AND ((lr.startDate BETWEEN :startDate AND :endDate) " +
@@ -136,6 +138,7 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     void deleteByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
 
     List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus leaveStatus);
+    List<LeaveRequest> findByEmployee_EmployeeIdAndStatusAndYear(String employeeId, LeaveStatus leaveStatus, int year);
 
     @Query("""
      SELECT lr
