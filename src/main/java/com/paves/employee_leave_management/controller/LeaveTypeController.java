@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.controller;
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
+import com.paves.employee_leave_management.dto.UpdateLeaveRequest;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -157,10 +158,22 @@ public class LeaveTypeController {
 
     @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> updateLeave(@RequestBody LeaveType updatedLeaveType, @PathVariable String leaveTypeId, @RequestBody GenderBasedLeave genderBasedLeave ) {
+    public ResponseEntity<ApiResponse<Object>> updateLeave(@PathVariable String leaveTypeId, @RequestBody UpdateLeaveRequest request) {
         Employee maker = getAuthenticatedUser();
 //        String makerRole = maker.getJobTitle();
         String makerRole = "HR";
+
+        LeaveType leaveType = null;
+        GenderBasedLeave genderBasedLeave = null;
+        if ("REGULAR".equalsIgnoreCase(request.getUpdateType())) {
+            leaveType = request.getLeaveType();
+            // handle regular leave update
+        }
+
+        if ("GENDER_BASED".equalsIgnoreCase(request.getUpdateType())) {
+            genderBasedLeave = request.getGenderBasedLeave();
+            // handle gender based leave update
+        }
 
         if(genderBasedLeave != null){
             if(genderBasedLeave.getLeaveName() == LeaveTypesEnum.MATERNITY_LEAVE.toString() || genderBasedLeave.getLeaveName() == LeaveTypesEnum.PATERNITY_LEAVE.toString() ){
@@ -188,7 +201,7 @@ public class LeaveTypeController {
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("before", oldLeaveType);
-        payload.put("after", updatedLeaveType);
+        payload.put("after", leaveType);
         dto.setPayload(payload);
 
         approvalService.submitForApproval(dto, maker, makerRole);
