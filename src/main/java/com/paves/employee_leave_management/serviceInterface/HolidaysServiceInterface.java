@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.serviceInterface;
 
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.HolidayNameDateDto;
 import com.paves.employee_leave_management.entities.Holidays;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,7 @@ public interface HolidaysServiceInterface {
 
     void importHolidaysFromExcel(MultipartFile file) throws IOException, IOException;
 
-    ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(String state, String country);
+    ApiResponse<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(String state, String country, int year);
 
     List<Holidays> getHolidaysByMonth(int month);
 }
