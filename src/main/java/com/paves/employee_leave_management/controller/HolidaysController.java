@@ -293,12 +293,13 @@ public class HolidaysController {
         }
     }
 
-    @GetMapping("/by-location")
+    @GetMapping("/by-location/{year}")
     @PreAuthorize("hasAnyRole('GENERAL','HR','MANAGER')")
-    public ResponseEntity<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(
+    public ApiResponse<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(
+            @PathVariable int year,
             @RequestParam("state") String state,
             @RequestParam("country") String country) {
-        return holidaysService.getHolidaysByStateAndCountry(state, country);
+        return holidaysService.getHolidaysByStateAndCountry(state, country, year);
     }
 
     @GetMapping("/month/{month}")
