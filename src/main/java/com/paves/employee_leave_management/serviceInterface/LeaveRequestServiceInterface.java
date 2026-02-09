@@ -60,4 +60,6 @@ public interface LeaveRequestServiceInterface {
     List<LeaveRequestDTO> getAllLeaveRequestsExceptCancelled(String employeeId, Integer month, Integer year);
     
     List<LeaveRequestDTO> getAllEmployeesLeaveRequestsByMonthYear(Integer month, Integer year);
+    
+    List<EmployeeApprovedLeavesDTO> getAllApprovedLeavesByYearGroupedByEmployee(Integer year);
 }

@@ -162,4 +162,17 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     List<LeaveRequest> findTodayApproved();
 
     List<LeaveRequest> findByStatus(LeaveStatus status);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.status = 'APPROVED' " +
+            "AND lr.year = :year " +
+            "ORDER BY lr.employee.employeeId ASC, lr.startDate ASC")
+    List<LeaveRequest> findAllApprovedLeavesByYear(@Param("year") Integer year);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.status = 'APPROVED' " +
+            "AND lr.year = :year " +
+            "ORDER BY lr.startDate ASC")
+    List<LeaveRequest> findApprovedLeavesByEmployeeAndYear(@Param("employeeId") String employeeId, @Param("year") Integer year);
 }
