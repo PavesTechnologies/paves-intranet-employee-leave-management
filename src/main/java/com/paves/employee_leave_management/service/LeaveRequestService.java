@@ -902,6 +902,47 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<EmployeeApprovedLeavesDTO> getAllApprovedLeavesByYearGroupedByEmployee(Integer year) {
+        List<LeaveRequest> approvedLeaves = leaveRequestRepo.findAllApprovedLeavesByYear(year);
+        
+        return approvedLeaves.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                    leave -> leave.getEmployee().getEmployeeId(),
+                    java.util.stream.Collectors.mapping(
+                        leave -> leave.getEmployee().getFullName(),
+                        java.util.stream.Collectors.collectingAndThen(
+                            java.util.stream.Collectors.toList(),
+                            names -> names.get(0)
+                        )
+                    )
+                ))
+                .entrySet().stream()
+                .map(entry -> {
+                    String employeeId = entry.getKey();
+                    String employeeName = entry.getValue();
+                    
+                    List<LocalDate> approvedLeaveDates = approvedLeaves.stream()
+                            .filter(leave -> leave.getEmployee().getEmployeeId().equals(employeeId))
+                            .flatMap(leave -> {
+                                List<LocalDate> dates = new ArrayList<>();
+                                LocalDate current = leave.getStartDate();
+                                while (!current.isAfter(leave.getEndDate())) {
+                                    dates.add(current);
+                                    current = current.plusDays(1);
+                                }
+                                return dates.stream();
+                            })
+                            .distinct()
+                            .sorted()
+                            .collect(java.util.stream.Collectors.toList());
+                    
+                    return new EmployeeApprovedLeavesDTO(employeeId, employeeName, approvedLeaveDates);
+                })
+                .sorted(java.util.Comparator.comparing(EmployeeApprovedLeavesDTO::getEmployeeId))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
 
     @Override
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year) {

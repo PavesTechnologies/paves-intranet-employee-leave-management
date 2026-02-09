@@ -460,4 +460,17 @@ public class LeaveRequestController {
                     .body(new ApiResponse<>(false, "An error occurred while fetching leave requests", null));
         }
     }
+
+    @GetMapping("/approved/{year}")
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER','RESOURCE-MANAGER','PROJECT-MANAGER')")
+    public ResponseEntity<ApiResponse<List<EmployeeApprovedLeavesDTO>>> getAllApprovedLeavesByYear(
+            @PathVariable Integer year) {
+        try {
+            List<EmployeeApprovedLeavesDTO> approvedLeaves = leaveRequestService.getAllApprovedLeavesByYearGroupedByEmployee(year);
+            return ResponseEntity.ok(new ApiResponse<>(true, "All approved leaves retrieved successfully", approvedLeaves));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error retrieving approved leaves: " + e.getMessage(), null));
+        }
+    }
 }
