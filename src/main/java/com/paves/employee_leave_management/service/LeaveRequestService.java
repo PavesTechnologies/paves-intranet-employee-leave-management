@@ -943,6 +943,32 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @Override
+    public EmployeeApprovedLeavesDTO getApprovedLeavesByYearForEmployee(String employeeId, Integer year) {
+        List<LeaveRequest> approvedLeaves = leaveRequestRepo.findApprovedLeavesByEmployeeAndYear(employeeId, year);
+        
+        if (approvedLeaves.isEmpty()) {
+            return null;
+        }
+        
+        String employeeName = approvedLeaves.get(0).getEmployee().getFullName();
+        
+        List<LocalDate> approvedLeaveDates = approvedLeaves.stream()
+                .flatMap(leave -> {
+                    List<LocalDate> dates = new ArrayList<>();
+                    LocalDate current = leave.getStartDate();
+                    while (!current.isAfter(leave.getEndDate())) {
+                        dates.add(current);
+                        current = current.plusDays(1);
+                    }
+                    return dates.stream();
+                })
+                .distinct()
+                .sorted()
+                .collect(java.util.stream.Collectors.toList());
+        
+        return new EmployeeApprovedLeavesDTO(employeeId, employeeName, approvedLeaveDates);
+    }
 
     @Override
     public List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year) {

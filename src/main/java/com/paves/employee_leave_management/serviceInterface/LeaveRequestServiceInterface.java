@@ -62,4 +62,6 @@ public interface LeaveRequestServiceInterface {
     List<LeaveRequestDTO> getAllEmployeesLeaveRequestsByMonthYear(Integer month, Integer year);
     
     List<EmployeeApprovedLeavesDTO> getAllApprovedLeavesByYearGroupedByEmployee(Integer year);
+    
+    EmployeeApprovedLeavesDTO getApprovedLeavesByYearForEmployee(String employeeId, Integer year);
 }
