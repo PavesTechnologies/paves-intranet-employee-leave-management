@@ -462,12 +462,31 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/approved/{year}")
-    @PreAuthorize("hasAnyRole('HR', 'MANAGER','RESOURCE-MANAGER','PROJECT-MANAGER')")
+    @PreAuthorize("hasAnyRole('RESOURCE-MANAGER','PROJECT-MANAGER')")
     public ResponseEntity<ApiResponse<List<EmployeeApprovedLeavesDTO>>> getAllApprovedLeavesByYear(
             @PathVariable Integer year) {
         try {
             List<EmployeeApprovedLeavesDTO> approvedLeaves = leaveRequestService.getAllApprovedLeavesByYearGroupedByEmployee(year);
             return ResponseEntity.ok(new ApiResponse<>(true, "All approved leaves retrieved successfully", approvedLeaves));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error retrieving approved leaves: " + e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/approved/{employeeId}/{year}")
+    @PreAuthorize("hasAnyRole('RESOURCE-MANAGER','PROJECT-MANAGER')")
+    public ResponseEntity<ApiResponse<EmployeeApprovedLeavesDTO>> getHolidaysByYear(
+            @PathVariable String employeeId, 
+            @PathVariable Integer year) {
+        try {
+            EmployeeApprovedLeavesDTO approvedLeaves = leaveRequestService.getApprovedLeavesByYearForEmployee(employeeId, year);
+            if (approvedLeaves != null) {
+                return ResponseEntity.ok(new ApiResponse<>(true, "Approved leaves retrieved successfully", approvedLeaves));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponse<>(false, "No approved leaves found for employee in " + year, null));
+            }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "Error retrieving approved leaves: " + e.getMessage(), null));

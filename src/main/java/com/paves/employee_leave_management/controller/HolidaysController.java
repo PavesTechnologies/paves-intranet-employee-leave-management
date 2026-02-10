@@ -230,7 +230,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/year/{year}")
-    @PreAuthorize("hasAnyRole('HR', 'GENERAL') ")
+    @PreAuthorize("hasAnyRole('HR', 'GENERAL','PROJECT-MANAGER','RESOURCE-MANAGER') ")
     public ResponseEntity<List<Holidays>> getHolidaysByYear(@PathVariable int year) {
         return holidaysService.getHolidaysByYear(year);
     }
