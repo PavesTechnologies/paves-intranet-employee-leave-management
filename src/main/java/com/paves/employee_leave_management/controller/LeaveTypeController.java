@@ -1,9 +1,6 @@
 package com.paves.employee_leave_management.controller;
 
-import com.paves.employee_leave_management.dto.ApiResponse;
-import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
-import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
-import com.paves.employee_leave_management.dto.UpdateLeaveRequest;
+import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -152,7 +149,7 @@ public class LeaveTypeController {
 
     @GetMapping("/get-all-leave-types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
-    public ResponseEntity<List<LeaveType>> getAllLeaveTypes() {
+    public ResponseEntity<AllLeaveTypesListResponseDTO> getAllLeaveTypes() {
         return service.getAllLeaveTypes();
     }
 
@@ -235,7 +232,7 @@ public class LeaveTypeController {
             return ResponseEntity.ok(new ApiResponse<>(false, "Leave type not found", null));
         }
 
-        if(genderBasedLeave.get().getLeaveTypeId() == leaveTypeId){
+        if(genderBasedLeave.isPresent() && genderBasedLeave.get().getLeaveTypeId().equals(leaveTypeId)){
             MCApprovalRequestDto dto = new MCApprovalRequestDto();
             dto.setActionType(ActionType.DEACTIVATE_GENDER_BASED_LEAVE_TYPE);
             dto.setEntityId(leaveTypeId);

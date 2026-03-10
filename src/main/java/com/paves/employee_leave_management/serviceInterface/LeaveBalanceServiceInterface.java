@@ -1,15 +1,16 @@
 package com.paves.employee_leave_management.serviceInterface;
 
-import com.paves.employee_leave_management.dto.AllPeopleLeaveBalance;
-import com.paves.employee_leave_management.dto.ApiResponse;
-import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
+import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -25,6 +26,8 @@ public interface LeaveBalanceServiceInterface {
     void runMonthlyAccrual(LeaveType type);
 
     void runYearlyAccrual(LeaveType type);
+
+    UploadResponse handleAccruedUpload(MultipartFile file, String username) throws IOException;
 
     void processYearEndCarryForward();
 
@@ -54,6 +57,8 @@ public interface LeaveBalanceServiceInterface {
 
     ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request);
 
+    EmployeeLeaveBalance findByEmployeeIdAndYearPerEmployee(String employeeId, Integer year);
+
     void createLeaveBalanceForAllEmployees(LeaveType leaveType);
 
     List<String> autocomplete(String query);
@@ -63,5 +68,9 @@ public interface LeaveBalanceServiceInterface {
     List<String> autocompleteEmployee(String query);
     
     List<LeaveBalance> findByEmployeeIdAndYear(String employeeId, Integer year);
+
+    byte[] generateTemplate() throws IOException;
+
+    List<LeaveBalanceDTO> parseExcel(MultipartFile file) throws IOException;
 }
 

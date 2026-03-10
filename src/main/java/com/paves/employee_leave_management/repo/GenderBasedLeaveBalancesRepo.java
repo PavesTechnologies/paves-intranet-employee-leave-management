@@ -13,6 +13,8 @@ public interface GenderBasedLeaveBalancesRepo extends JpaRepository<GenderBasedL
 
     Optional<GenderBasedLeaveBalance> findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);
     List<GenderBasedLeaveBalance> findByEmployeeIdAndYear(String employeeId, int year);
+    GenderBasedLeaveBalance findByYearAndEmployeeId(int year, String employeeId);
+
     void deleteByLeaveType_LeaveTypeId(String leaveTypeId);
     List<GenderBasedLeaveBalance> findAllByYear(int year);
 //    GenderBasedLeaveBalance findByEmployeeIdAndLeaveTypeIdAndYear(String employeeId, String leaveTypeId, Integer year);

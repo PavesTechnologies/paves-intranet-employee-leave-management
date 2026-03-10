@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.entities;
 
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -28,9 +29,10 @@ public class GenderBasedLeaveBalance {
     @Column(name = "employee_id")
     private String employeeId;
 
+    // In GenderBasedLeaveBalance ✅
     @ManyToOne
     @JoinColumn(name = "leave_type_id", nullable = false)
-    @JsonBackReference
+    @JsonIgnoreProperties({"leaveBalances", "hibernateLazyInitializer", "handler"}) // ignores the back-list to prevent recursion
     private GenderBasedLeave leaveType;
 
     @Column(name = "total_entitled_days")

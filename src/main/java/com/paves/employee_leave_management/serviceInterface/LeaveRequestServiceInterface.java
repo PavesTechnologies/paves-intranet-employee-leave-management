@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface LeaveRequestServiceInterface {
     // Manager operations - New DTO-based methods
-    List<LeaveRequest> getRequestsForManager(ManagerQueryDTO queryDTO);
+    List<LeaveRequestManagerViewDTO> getRequestsForManager(ManagerQueryDTO queryDTO);
 
     List<LeaveRequest> getLeaveHistoryForManager(ManagerQueryDTO queryDTO);
 
@@ -22,9 +22,9 @@ public interface LeaveRequestServiceInterface {
     // Employee operations
     ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest, LeaveRequestValidationDTO request);
 
-    List<LeaveRequest> getLeaveRequestsByEmployee(String employeeId);
+    List<LeaveRequestResponseDTO> getLeaveRequestsByEmployee(String employeeId);
 
-    List<LeaveRequest> getLeaveRequestsByEmployeeAndByYear(String employeeId, int year);
+    List<LeaveRequestResponseDTO> getLeaveRequestsByEmployeeAndByYear(String employeeId, int year);
 
     LeaveRequest getLeaveRequestById(String leaveId);
 
@@ -53,9 +53,9 @@ public interface LeaveRequestServiceInterface {
 
     List<LeaveRequest> leaveBalanceViewDetails(String employeeId, String leaveName, Integer year);
 
-    List<LeaveRequest> getPendingLeaveRequestsByEmployee(String employeeId);
+    List<LeaveRequestResponseDTO> getPendingLeaveRequestsByEmployee(String employeeId);
 
-    List<LeaveRequest> getPendingLeaveRequestsByEmployeeAndYear(String employeeId, int year);
+    List<LeaveRequestResponseDTO> getPendingLeaveRequestsByEmployeeAndYear(String employeeId, int year);
     
     List<LeaveRequestDTO> getAllLeaveRequestsExceptCancelled(String employeeId, Integer month, Integer year);
     

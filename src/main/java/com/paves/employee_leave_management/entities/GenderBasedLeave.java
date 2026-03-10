@@ -78,10 +78,10 @@ public class GenderBasedLeave {
     @Column(name = "effective_start_date")
     private LocalDate effectiveStartDate;
 
+    // In GenderBasedLeave ✅
     @OneToMany(mappedBy = "leaveType", fetch = FetchType.LAZY)
-    @JsonManagedReference
-    @JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
-    @JsonIgnore
+    @JsonIgnoreProperties({"leaveType", "hibernateLazyInitializer", "handler"})
+    @JsonIgnore // keep this if you never need the list of balances from the leave type side
     private List<GenderBasedLeaveBalance> leaveBalances;
 
 
@@ -91,5 +91,8 @@ public class GenderBasedLeave {
     @Builder.Default
     @Column(name = "weekends_and_holidays_allowed", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean weekendsAndHolidaysAllowed = false;
+
+//    @JsonIgnore
+//    private String updateType;
     
 }

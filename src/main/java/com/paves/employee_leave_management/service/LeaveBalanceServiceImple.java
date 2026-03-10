@@ -4,9 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
-import com.paves.employee_leave_management.dto.AllPeopleLeaveBalance;
-import com.paves.employee_leave_management.dto.ApiResponse;
-import com.paves.employee_leave_management.dto.LeaveBalanceDTO;
+import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
@@ -15,14 +13,21 @@ import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceEx
 import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import com.paves.employee_leave_management.utils.ExcelUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
@@ -31,6 +36,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+
+
 
 @Service
 @RequiredArgsConstructor
@@ -475,6 +483,195 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         holidayService.deleteHolidaysThreeYearsAgo();
     }
 
+    private String getCellValueAsString(Cell cell) {
+        if (cell == null) return "";
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue();
+            case NUMERIC -> String.valueOf((int) cell.getNumericCellValue());
+            default -> "";
+        };
+    }
+
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    @Override
+    public UploadResponse handleAccruedUpload(MultipartFile file, String username) throws IOException {
+        List<RowError> errors = new ArrayList<>();
+        int processedCount = 0;
+
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+//            int year = LocalDate.now().getYear(); // Or get from a cell/param
+
+            for (Row row : sheet) {
+                // Skip Header
+                if (row.getRowNum() == 0) continue;
+
+                try {
+                    // 1. Extract Data (Assuming: Col 0: EmpID, Col 1: LeaveTypeID, Col 2: Accrued, Col 3: Remaining)
+                    String empId = getCellValueAsString(row.getCell(0));
+                    String typeId = getCellValueAsString(row.getCell(1));
+                    double accrued = row.getCell(2).getNumericCellValue();
+                    double remaining = row.getCell(3).getNumericCellValue();
+                    double usedLeaves = row.getCell(4).getNumericCellValue();
+                    double totalLeaves = row.getCell(5).getNumericCellValue();
+                    double carryForward = row.getCell(6).getNumericCellValue();
+                    int year = (int) row.getCell(7).getNumericCellValue();
+
+                    // 2. Validate Employee & LeaveType
+                    Employee employee = employeeRepo.findById(empId)
+                            .orElseThrow(() -> new RuntimeException("Employee not found: " + empId));
+
+                    LeaveType leaveType = leaveTypeRepo.findById(typeId)
+                            .orElseThrow(() -> new RuntimeException("Leave Type not found: " + typeId));
+
+                    // 3. Find existing or create new
+                    // 1. Try to find existing record
+                    Optional<LeaveBalance> existingBalance = leaveBalanceRepo
+                            .findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(empId, typeId, year); // ✅ fixed
+
+                    LeaveBalance balance;
+                    if (existingBalance.isPresent()) {
+                        balance = existingBalance.get(); // has balanceId → JPA will UPDATE
+                    } else {
+                        balance = new LeaveBalance();
+                        balance.setCreateAt(LocalDateTime.now()); // only on new records
+                    }
+
+                    balance.setEmployee(employee);
+// balance.setEmployeeId(empId); ← REMOVED
+                    balance.setLeaveType(leaveType);
+                    balance.setAccruedLeaves(accrued);
+                    balance.setRemainingLeaves(remaining);
+                    balance.setUsedLeaves(usedLeaves);
+                    balance.setTotalLeaves(totalLeaves);
+                    balance.setCarriedForward(carryForward);
+                    balance.setYear(year);
+                    balance.setLastAccrualDate(LocalDate.now());
+                    balance.setLastUpdatedAt(LocalDateTime.now());
+
+                    leaveBalanceRepo.save(balance);
+                    processedCount++;
+
+                } catch (Exception e) {
+                    errors.add(new RowError(row.getRowNum() + 1, e.getMessage()));
+                }
+            }
+
+            // If there are ANY errors, we throw an exception to trigger @Transactional rollback
+            if (!errors.isEmpty()) {
+                throw new RuntimeException("Validation failed in one or more rows. Transaction rolled back.");
+            }
+        }
+
+        return UploadResponse.builder()
+                .message("Upload successful")
+                .processedCount(processedCount)
+                .errors(new ArrayList<>())
+                .build();
+    }
+
+    public byte[] generateTemplate() throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Sheet sheet = workbook.createSheet("Leave Balances");
+
+            // 1. Create a Header Style (Bold)
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font font = workbook.createFont();
+            font.setBold(true);
+            headerStyle.setFont(font);
+
+            // 2. Define Headers
+            String[] headers = {
+                    "Employee ID",   // Index 0
+                    "Leave Type ID", // Index 1
+                    "Accrued Leaves",// Index 2
+                    "Remaining Leaves", // Index 3
+                    "Used Leaves",   // Index 4
+                    "Total Leaves",  // Index 5
+                    "Carry Forward", // Index 6
+                    "Year"           // Index 7
+            };
+
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // 3. Add a sample row with CORRECT indices
+            Row sampleRow = sheet.createRow(1);
+            sampleRow.createCell(0).setCellValue("PAVEMPB0A28"); // Employee ID
+            sampleRow.createCell(1).setCellValue("L-SL");        // Leave Type ID
+            sampleRow.createCell(2).setCellValue(2.0);           // Accrued
+            sampleRow.createCell(3).setCellValue(2.0);           // Remaining
+            sampleRow.createCell(4).setCellValue(0.0);           // Used
+            sampleRow.createCell(5).setCellValue(10.0);          // Total
+            sampleRow.createCell(6).setCellValue(0.0);           // Carry Forward
+            sampleRow.createCell(7).setCellValue(2026);          // Year (Numeric)
+
+            // 4. Auto-size columns after adding data
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    /**
+     * READS EXCEL -> RETURNS JSON
+     */
+    public List<LeaveBalanceDTO> parseExcel(MultipartFile file) throws IOException {
+        List<LeaveBalanceDTO> results = new ArrayList<>();
+
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+            for (Row row : sheet) {
+                if (row.getRowNum() == 0) continue; // Skip Header
+
+                results.add(LeaveBalanceDTO.builder()
+                        .employeeId(getCellValueAsString(row.getCell(0)))
+                        .leaveTypeId(getCellValueAsString(row.getCell(1)))
+                        .accruedLeaves(getNumericValue(row.getCell(2)))
+                        .remainingLeaves(getNumericValue(row.getCell(3)))
+                        .usedLeaves(getNumericValue(row.getCell(4)))
+                        .year(LocalDate.now().getYear())
+                        .build());
+            }
+        }
+        return results;
+    }
+
+    private double getNumericValue(Cell cell) {
+        // Check if cell is null to avoid NullPointerException
+        if (cell == null) {
+            return 0.0;
+        }
+
+        // Check if the cell actually contains a number
+        if (cell.getCellType() == CellType.NUMERIC) {
+            return cell.getNumericCellValue();
+        }
+
+        // If it's a string that looks like a number, try to parse it
+        if (cell.getCellType() == CellType.STRING) {
+            try {
+                return Double.parseDouble(cell.getStringCellValue().trim());
+            } catch (NumberFormatException e) {
+                return 0.0;
+            }
+        }
+
+        return 0.0;
+    }
 
 
 
@@ -952,23 +1149,46 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         double usedLeaves = 0;
 
         if (lt.getAccrualRate() != null && lt.getAccrualRate() > 0) {
-            int monthsLeft = isNewLeaveType
-                    ? calculateRemainingMonths(referenceDate)
-                    : calculateRemainingMonths(hireDate.isAfter(referenceDate) ? hireDate : referenceDate);
 
-            totalLeaves = lt.getAccrualRate() * monthsLeft;
-            accruedLeaves = isNewLeaveType ? 0 : getAccruedLeaves(hireDate, referenceDate, lt.getAccrualRate(), lt.getEffectiveStartDate());
+            if (isNewLeaveType) {
+                // Requirement 1: For new leave types, ALWAYS start from today (referenceDate),
+                // even if the effective date is in the past.
+                // Exception: if the employee's hire date is in the future, use that instead.
+                LocalDate startDate = hireDate.isAfter(referenceDate) ? hireDate : referenceDate;
 
-            if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString()) && !isNewLeaveType) {
-                carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear, lt);
+                totalLeaves = lt.getAccrualRate() * calculateRemainingMonths(startDate);
+
+                // Requirement 2: If today is before the 15th, credit the current month's accrual immediately.
+                // Otherwise, accrued stays 0 and the first accrual happens on 1st of next month.
+                accruedLeaves = (referenceDate.getDayOfMonth() < 15) ? lt.getAccrualRate() : 0;
+
+            } else {
+                // Existing employee with an already-active leave type
+                LocalDate effectiveDate = lt.getEffectiveStartDate();
+                LocalDate startDate = hireDate.isAfter(effectiveDate) ? hireDate : effectiveDate;
+                startDate = startDate.isAfter(referenceDate) ? startDate : referenceDate;
+
+                totalLeaves = lt.getAccrualRate() * calculateRemainingMonths(startDate);
+                accruedLeaves = getAccruedLeaves(hireDate, referenceDate, lt.getAccrualRate(), lt.getEffectiveStartDate());
+
+                if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
+                    carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear, lt);
+                }
             }
+
         } else {
+            // Fixed leave (e.g. Sick, Casual) — full quota available immediately
             totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
             accruedLeaves = totalLeaves;
         }
 
+        // If current month was already accrued (day < 15), lastAccrualDate = 1st of this month.
+        // Otherwise, first accrual hasn't happened yet → set it to 1st of next month.
+        LocalDate lastAccrualDate = (isNewLeaveType && referenceDate.getDayOfMonth() < 15)
+                ? referenceDate.withDayOfMonth(1)
+                : referenceDate.plusMonths(1).withDayOfMonth(1);
+
         double remainingLeaves = Math.max(0, accruedLeaves + carriedForward - usedLeaves);
-        LocalDate firstAccrualDate = referenceDate.plusMonths(1).withDayOfMonth(1);
 
         return LeaveBalance.builder()
                 .employee(emp)
@@ -978,7 +1198,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 .carriedForward(carriedForward)
                 .encashedLeaves(0)
                 .expiredLeaves(0.0)
-                .lastAccrualDate(firstAccrualDate)
+                .lastAccrualDate(lastAccrualDate)
                 .usedLeaves(usedLeaves)
                 .remainingLeaves(remainingLeaves)
                 .totalLeaves(totalLeaves)
@@ -1002,6 +1222,17 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public List<LeaveBalance> findByEmployeeIdAndYear(String employeeId, Integer year) {
          return leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
+    }
+
+    @Override
+    public EmployeeLeaveBalance findByEmployeeIdAndYearPerEmployee(String employeeId, Integer year){
+                List<LeaveBalance> regular = leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
+                List<GenderBasedLeaveBalance> genderBasedLeaveBalances = genderBasedLeaveBalancesRepo.findByEmployeeIdAndYear(employeeId, year);
+
+                EmployeeLeaveBalance employeeLeaveBalance = new EmployeeLeaveBalance();
+                employeeLeaveBalance.setGenderBasedLeaveBalances(genderBasedLeaveBalances);
+                employeeLeaveBalance.setRegular(regular);
+                return employeeLeaveBalance;
     }
 
     @Override

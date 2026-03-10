@@ -132,4 +132,11 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
 //                "Leave types fetched successfully",
 //                genderBasedLeaves);
 //    }
+
+
+    @Override
+    public Optional<GenderBasedLeave> getLeaveType(String leaveType) {
+        return genderBasedRepo.findByLeaveTypeId(leaveType);
+    }
+
 }

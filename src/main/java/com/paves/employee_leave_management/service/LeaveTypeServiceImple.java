@@ -1,6 +1,8 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.AllLeaveTypesListResponseDTO;
 import com.paves.employee_leave_management.dto.ApiResponse;
+import com.paves.employee_leave_management.dto.LeaveTypeDTO;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.LeaveStatus;
@@ -136,13 +138,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         // Notify all employees
-        List<Employee> employees = employeeRepo.findAll();
-        for (Employee employee : employees) {
-            emailService.sendEmailFromTemplate(employee.getEmail(),
-                    "New Leave Policy: " + savedLeaveType.getLeaveName(),
-                    "leave-policy-creation-notification.html",
-                    Map.of("leavePolicyName", savedLeaveType.getLeaveName()));
-        }
+//        List<Employee> employees = employeeRepo.findAll();
+//        for (Employee employee : employees) {
+//            emailService.sendEmailFromTemplate(employee.getEmail(),
+//                    "New Leave Policy: " + savedLeaveType.getLeaveName(),
+//                    "leave-policy-creation-notification.html",
+//                    Map.of("leavePolicyName", savedLeaveType.getLeaveName()));
+//        }
 
         return new ApiResponse<>(true,
                 savedLeaveType.getActive()
@@ -154,15 +156,21 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
 
     @Override
-    public ResponseEntity<List<LeaveType>> getAllLeaveTypes() {
+    public ResponseEntity<AllLeaveTypesListResponseDTO> getAllLeaveTypes() {
         List<LeaveType> allLeaveTypes = leaveTypeRepo.findAll();
         if (allLeaveTypes.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
 
+        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findByActiveTrue();
         List<LeaveType> activeLeaveTypes = leaveTypeRepo.findByActiveTrue();
 
-        return new ResponseEntity<>(activeLeaveTypes, HttpStatus.OK);
+        AllLeaveTypesListResponseDTO leaveTypeDTO = new AllLeaveTypesListResponseDTO();
+        leaveTypeDTO.setRegular(activeLeaveTypes);
+        leaveTypeDTO.setGenderBasedLeaves(genderBasedLeaves);
+
+
+        return new ResponseEntity<>(leaveTypeDTO, HttpStatus.OK);
     }
 
 //    @Override
@@ -277,9 +285,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             leaveType.setActive(false);
             leaveType.setDeactivationEffectiveDate(LocalDate.now());
             leaveTypeRepo.save(leaveType);
+            if(leaveType.getLeaveTypeId().equals("L-COMPOFF")){
+                leaveCompoffRepo.deleteByIdleaveCompoffAndStatus(Long.valueOf(leaveTypeId), LeaveStatusCompoff.PENDING);
+                return new ResponseEntity<>(
+                        "Leave type deactivated immediately (effective date already passed)",
+                        HttpStatus.OK);
+            }
             leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
-            leaveCompoffRepo.deleteByIdleaveCompoffAndStatus(Long.valueOf(leaveTypeId), LeaveStatusCompoff.PENDING);
-
             // Optional: cleanup leave balances
             leaveBalanceRepo.deleteByLeaveType(leaveType);
 
