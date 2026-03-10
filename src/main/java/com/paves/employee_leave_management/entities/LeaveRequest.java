@@ -36,7 +36,7 @@ public class LeaveRequest {
     @Column(name = "emp_id")
     private String employeeId;
     @ManyToOne
-    @JoinColumn(name = "leave_type_id", nullable = false)
+    @JoinColumn(name = "leave_type_id", nullable = true)
     private LeaveType leaveType;
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -68,7 +68,7 @@ public class LeaveRequest {
     @Column(name = "response_date")
     private LocalDate responseDate;
     @Column(name = "leave_name")
-    private LocalDate leaveName;
+    private String leaveName;
     @Column(name = "year")
     private Integer year;
     @CreatedDate
@@ -77,6 +77,28 @@ public class LeaveRequest {
     @LastModifiedDate
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
+
+    // ✅ NEW field
+    @ManyToOne
+    @JoinColumn(name = "gender_leave_type_id", nullable = true)
+    @JsonIgnoreProperties({"leaveBalances", "hibernateLazyInitializer", "handler"})
+    private GenderBasedLeave genderBasedLeaveType;
+
+    // ✅ Helper to get leave name regardless of type
+    @Transient
+    public String getResolvedLeaveName() {
+        if (genderBasedLeaveType != null) return genderBasedLeaveType.getLeaveName();
+        if (leaveType != null) return leaveType.getLeaveName();
+        return "Unknown";
+    }
+
+    // ✅ Helper to get leave type ID regardless of type
+    @Transient
+    public String getResolvedLeaveTypeId() {
+        if (genderBasedLeaveType != null) return genderBasedLeaveType.getLeaveTypeId();
+        if (leaveType != null) return leaveType.getLeaveTypeId();
+        return null;
+    }
 
     // Custom constructor for essential fields
     public LeaveRequest(Employee employee, LeaveType leaveType, LocalDate startDate,

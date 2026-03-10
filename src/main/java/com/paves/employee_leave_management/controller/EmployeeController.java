@@ -1,11 +1,13 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 @CrossOrigin
 @RestController
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 public class EmployeeController {
     @Autowired
     EmployeeServiceInterface serviceInterface;
+
 
     @PostMapping("/register")
     @PreAuthorize("hasAnyRole('HR')")
@@ -24,5 +27,11 @@ public class EmployeeController {
     @PreAuthorize("hasRole('HR') or @permissionService.isOwner(authentication, #employeeId)")
     public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId, @RequestBody Employee employee) {
         return serviceInterface.updateEmployee(employeeId, employee);
+    }
+
+    @PostMapping("/add-employees")
+    @PreAuthorize("hasRole('HR')")
+    public ResponseEntity<ApiResponse<Object>> addEmployees(@RequestHeader("Authorization") String token ){
+        return serviceInterface.addEmployees(token);
     }
 }

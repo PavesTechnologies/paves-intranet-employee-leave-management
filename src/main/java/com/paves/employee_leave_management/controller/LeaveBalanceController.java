@@ -1,8 +1,6 @@
 package com.paves.employee_leave_management.controller;
 
-import com.paves.employee_leave_management.dto.AllPeopleLeaveBalance;
-import com.paves.employee_leave_management.dto.ApiResponse;
-import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
+import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
@@ -14,6 +12,10 @@ import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInter
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,7 +23,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.Year;
 import java.util.HashMap;
 import java.util.List;
@@ -110,6 +114,48 @@ public class LeaveBalanceController {
         return leaveBalanceService.getAllLeaveBalanceByYear(year);
     }
 
+    @PostMapping("/upload-accruals")
+    public ResponseEntity<UploadResponse> uploadAccruals(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("username") String username) {
+        try {
+            UploadResponse response = leaveBalanceService.handleAccruedUpload(file, username);
+            return ResponseEntity.ok(response);
+        }catch (Exception e) {
+        // We need to handle the specific case where the exception
+        // might be a wrapper around our actual error list.
+        return ResponseEntity.badRequest().body(UploadResponse.builder()
+                .message("Upload failed: " + e.getMessage())
+                .processedCount(0)
+                // .errors(???) <--- The error list is currently lost here
+                .build());
+    }
+    }
+
+    @GetMapping("/download-template")
+    public ResponseEntity<Resource> downloadTemplate() throws IOException {
+        String filename = "Leave_Balance_Upload_Template.xlsx";
+
+        // Get the excel file as a byte array from the service
+        byte[] excelContent = leaveBalanceService.generateTemplate();
+        ByteArrayResource resource = new ByteArrayResource(excelContent);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(resource);
+    }
+
+    // STEP 1: Just read the excel and send data to UI for preview
+    @PostMapping("/parse-excel")
+    public ResponseEntity<List<LeaveBalanceDTO>> parseExcel(@RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(leaveBalanceService.parseExcel(file));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
 
 
     @GetMapping("/employee/{employeeId}")
@@ -121,11 +167,11 @@ public class LeaveBalanceController {
     
     @GetMapping("/employee/{employeeId}/{year}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasAnyRole('HR','MANAGER','GENERAL')")
-    public ApiResponse<List<LeaveBalance>> getLeaveBalancesByEmployeeIdAndYear(
+    public ApiResponse<EmployeeLeaveBalance> getLeaveBalancesByEmployeeIdAndYear(
             @PathVariable String employeeId, 
             @PathVariable Integer year) {
         template.convertAndSend("/topic/data-updated", "updated");
-        List<LeaveBalance> balance = leaveBalanceService.findByEmployeeIdAndYear(employeeId, year);
+        EmployeeLeaveBalance balance = leaveBalanceService.findByEmployeeIdAndYearPerEmployee(employeeId, year);
         return new ApiResponse<>(true, "leave balance for "+employeeId+" "+year+" ", balance);
     }
 

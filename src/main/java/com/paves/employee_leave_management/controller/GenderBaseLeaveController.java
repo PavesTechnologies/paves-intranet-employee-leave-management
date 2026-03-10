@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.controller;
 
+import com.paves.employee_leave_management.dto.AddGenderBasedLeave;
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;

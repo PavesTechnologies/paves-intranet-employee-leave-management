@@ -8,9 +8,11 @@ import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveRevokeRepo;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRevokeRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,11 +33,24 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
     @Autowired
     private final EmailServiceInterface emailService;
 
-    public LeaveRevokeRequestService(LeaveRevokeRepo leaveRevokeRepo, LeaveRequestRepo leaveRequestRepo, LeaveBalanceServiceImple leaveBalanceService, EmailServiceInterface emailService) {
+    @Autowired
+    private final LeaveRequestService leaveRequestService;
+
+    @Autowired
+    private final GenderBasedLeaveBalanceServiceInterface genderBasedLeaveBalanceServiceInterface;
+
+    public LeaveRevokeRequestService(LeaveRevokeRepo leaveRevokeRepo,
+                                     LeaveRequestRepo leaveRequestRepo,
+                                     LeaveBalanceServiceImple leaveBalanceService,
+                                     EmailServiceInterface emailService,
+                                     LeaveRequestService leaveRequestService,
+                                     GenderBasedLeaveBalanceServiceInterface genderBasedLeaveBalanceServiceInterface) {
         this.leaveRevokeRepo = leaveRevokeRepo;
         this.leaveRequestRepo = leaveRequestRepo;
         this.leaveBalanceService = leaveBalanceService;
         this.emailService = emailService;
+        this.leaveRequestService = leaveRequestService;
+        this.genderBasedLeaveBalanceServiceInterface = genderBasedLeaveBalanceServiceInterface;
     }
 
 
@@ -62,6 +77,7 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
     }
 
     @Override
+    @Transactional
     public void approveRequest(String id) {
         System.out.println("id: " + id);
         LeaveRevoke revokeRequest = leaveRevokeRepo.findById(id.trim()).orElseThrow(() -> {
@@ -77,7 +93,23 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
         request.setStatus(LeaveStatus.CANCELLED);
         leaveRequestRepo.save(request);
 
-        leaveBalanceService.updateLeaveBalanceAfterRejected(request.getEmployee().getEmployeeId(), request.getLeaveType().getLeaveTypeId(), request.getDaysRequested(), request.getRequestDate().getYear());
+
+
+        if(request.getLeaveType()!=null){
+            leaveBalanceService.updateLeaveBalanceAfterRejected(
+                    request.getEmployee().getEmployeeId(),
+                    request.getLeaveType().getLeaveTypeId(),
+                    request.getDaysRequested(),
+                    request.getRequestDate().getYear());
+        }else{
+            genderBasedLeaveBalanceServiceInterface.updateLeaveBalanceAfterRejected(
+                    request.getEmployee().getEmployeeId(),
+                    request.getGenderBasedLeaveType().getLeaveTypeId(),
+                    request.getDaysRequested(),
+                    request.getRequestDate().getYear());
+        }
+
+
 
         revokeRequest.setStatus(LeaveRevokeStatus.APPROVED);
         leaveRevokeRepo.save(revokeRequest);
@@ -110,7 +142,7 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
             leaveRevokeDTO.setDays(leaveRequest.get().getDaysRequested());
             leaveRevokeDTO.setStatus(leaveRevoke.getStatus());
             leaveRevokeDTO.setReason(leaveRevoke.getReason());
-            leaveRevokeDTO.setLeaveName(leaveRequest.get().getLeaveType().getLeaveName());
+            leaveRevokeDTO.setLeaveName(leaveRequestService.resolveLeaveLabel(leaveRequest.get().getResolvedLeaveName()));
             leaveRevokeDTOList.add(leaveRevokeDTO);
         });
         return leaveRevokeDTOList;

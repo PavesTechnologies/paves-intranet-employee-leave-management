@@ -35,6 +35,30 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
 
+    // ✅ For regular leave types
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'PENDING'")
+    int countPendingLeavesByType(@Param("employeeId") String employeeId,
+                                 @Param("leaveTypeId") String leaveTypeId);
+
+    // ✅ For gender-based leave types
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.genderBasedLeaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'PENDING'")
+    int countPendingGenderBasedLeavesByType(@Param("employeeId") String employeeId,
+                                            @Param("leaveTypeId") String leaveTypeId);
+
+    // ✅ For approved gender-based leaves
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.genderBasedLeaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'APPROVED'")
+    List<LeaveRequest> findApprovedGenderBasedLeavesByType(@Param("employeeId") String employeeId,
+                                                           @Param("leaveTypeId") String leaveTypeId);
+
     List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
 
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
@@ -63,12 +87,12 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     List<LeaveRequest> findApprovedLeavesByType(@Param("employeeId") String employeeId,
                                                 @Param("leaveTypeId") String leaveTypeId);
 
-    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
-            "WHERE lr.employee.employeeId = :employeeId " +
-            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
-            "AND lr.status = 'PENDING'")
-    int countPendingLeavesByType(@Param("employeeId") String employeeId,
-                                 @Param("leaveTypeId") String leaveTypeId);
+//    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+//            "WHERE lr.employee.employeeId = :employeeId " +
+//            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
+//            "AND lr.status = 'PENDING'")
+//    int countPendingLeavesByType(@Param("employeeId") String employeeId,
+//                                 @Param("leaveTypeId") String leaveTypeId);
 
     //Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
 
@@ -175,4 +199,16 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
             "AND lr.year = :year " +
             "ORDER BY lr.startDate ASC")
     List<LeaveRequest> findApprovedLeavesByEmployeeAndYear(@Param("employeeId") String employeeId, @Param("year") Integer year);
+
+    // ✅ Handles BOTH regular and gender-based leave types in one query
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.year = :year " +
+            "AND (lr.status = 'APPROVED' OR lr.status = 'PENDING') " +
+            "AND lr.leaveName = :leaveName")
+    List<LeaveRequest> findApprovedOrPendingByEmployeeAndLeaveNameAndYear(
+            @Param("employeeId") String employeeId,
+            @Param("leaveName") String leaveName,
+            @Param("year") Integer year
+    );
 }
