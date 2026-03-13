@@ -20,7 +20,9 @@ public class LeaveBalanceUpdateRequest {
     @Setter
     public static class BalanceUpdate {
         private String leaveTypeId;
+        private Integer year;
         private Double remainingLeaves;
-        private Integer Year;
+        private Double usedLeaves;     // ✅ add if not present
+        private Double accruedLeaves;  // ✅ add if not present
     }
 }

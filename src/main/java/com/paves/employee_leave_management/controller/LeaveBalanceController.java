@@ -122,14 +122,14 @@ public class LeaveBalanceController {
             UploadResponse response = leaveBalanceService.handleAccruedUpload(file, username);
             return ResponseEntity.ok(response);
         }catch (Exception e) {
-        // We need to handle the specific case where the exception
-        // might be a wrapper around our actual error list.
-        return ResponseEntity.badRequest().body(UploadResponse.builder()
-                .message("Upload failed: " + e.getMessage())
-                .processedCount(0)
-                // .errors(???) <--- The error list is currently lost here
-                .build());
-    }
+            // We need to handle the specific case where the exception
+            // might be a wrapper around our actual error list.
+            return ResponseEntity.badRequest().body(UploadResponse.builder()
+                    .message("Upload failed: " + e.getMessage())
+                    .processedCount(0)
+                    // .errors(???) <--- The error list is currently lost here
+                    .build());
+        }
     }
 
     @GetMapping("/download-template")

@@ -83,7 +83,7 @@ public class HolidaysController {
     }
 
     // 🔹 Get holiday by ID
-    @GetMapping("/{id}")
+    @GetMapping("/id/{id}")
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<Holidays> getHolidayById(@PathVariable Long id) {
         return holidaysService.getHolidayById(id);

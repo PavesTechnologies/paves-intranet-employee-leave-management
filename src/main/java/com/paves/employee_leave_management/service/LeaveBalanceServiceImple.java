@@ -924,32 +924,60 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Transactional
     @Override
     public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
+        System.out.println("=== Updating balances for employee: " + request.getEmployeeId());
+
         for (LeaveBalanceUpdateRequest.BalanceUpdate update : request.getBalances()) {
-            if(update.getLeaveTypeId() == "L-ML" || update.getLeaveTypeId() == "L-PL"){
-                GenderBasedLeaveBalance balance = genderBasedLeaveBalancesRepo.findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(
-                        request.getEmployeeId(),
-                        update.getLeaveTypeId(),
-                        update.getYear()
-                ).get();
-            }
-            LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
-                    request.getEmployeeId(),
-                    update.getLeaveTypeId(),
-                    update.getYear()
-            );
+            System.out.println("=== Processing leaveTypeId: " + update.getLeaveTypeId() + ", year: " + update.getYear());
 
-            if (balance == null) {
-                throw new RuntimeException(
-                        "Leave Balance not found for employeeId: " + request.getEmployeeId() +
-                                ", leaveTypeId: " + update.getLeaveTypeId() +
-                                ", year: " + update.getYear()
-                );
-            }
+            if (update.getLeaveTypeId().equals("L-ML") || update.getLeaveTypeId().equals("L-PL")) {
+                GenderBasedLeaveBalance balance = genderBasedLeaveBalancesRepo
+                        .findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+                                request.getEmployeeId(),
+                                update.getLeaveTypeId(),
+                                update.getYear()
+                        )
+                        .orElseThrow(() -> new RuntimeException(
+                                "Gender leave balance not found for employeeId: " + request.getEmployeeId()
+                        ));
 
-            balance.setRemainingLeaves(update.getRemainingLeaves());
-            leaveBalanceRepo.save(balance);
+                System.out.println("=== Found gender balance ID: " + balance.getBalanceId());
+                System.out.println("=== Before — remainingDays: " + balance.getRemainingDays());
+                balance.setRemainingDays(update.getRemainingLeaves().intValue());
+                if (update.getUsedLeaves() != null) balance.setUsedDays(update.getUsedLeaves().intValue());
+
+                GenderBasedLeaveBalance saved = genderBasedLeaveBalancesRepo.save(balance);
+                System.out.println("=== After save — ID: " + saved.getBalanceId() + ", remainingDays: " + saved.getRemainingDays());
+
+            } else {
+                LeaveBalance balance = leaveBalanceRepo
+                        .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+                                request.getEmployeeId(),
+                                update.getLeaveTypeId(),
+                                update.getYear()
+                        );
+
+                System.out.println("=== Found regular balance: " + balance);
+
+                if (balance == null) {
+                    System.out.println("=== ERROR: Balance is NULL — record not found in DB");
+                    throw new RuntimeException(
+                            "Leave balance not found for employeeId: " + request.getEmployeeId() +
+                                    ", leaveTypeId: " + update.getLeaveTypeId() +
+                                    ", year: " + update.getYear()
+                    );
+                }
+
+                System.out.println("=== Before — remainingLeaves: " + balance.getRemainingLeaves());
+                balance.setRemainingLeaves(update.getRemainingLeaves());
+                if (update.getUsedLeaves() != null) balance.setUsedLeaves(update.getUsedLeaves());
+                if (update.getAccruedLeaves() != null) balance.setAccruedLeaves(update.getAccruedLeaves());
+
+                LeaveBalance saved = leaveBalanceRepo.save(balance);
+                System.out.println("=== After save — ID: " + saved.getBalanceId() + ", remainingLeaves: " + saved.getRemainingLeaves());
+            }
         }
 
+        System.out.println("=== All balances updated successfully");
         return ResponseEntity.ok("Leave balances updated successfully.");
     }
 

@@ -75,10 +75,10 @@ public class GenderBasedLeaveBalance {
         this.createdAt = LocalDateTime.now();
     }
 
-    @PreUpdate
-    public void onUpdate() {
-        this.remainingDays = totalEntitledDays - usedDays;
-        this.updatedAt = LocalDateTime.now();
-    }
+//    @PreUpdate
+//    public void onUpdate() {
+//        this.remainingDays = totalEntitledDays - usedDays;
+//        this.updatedAt = LocalDateTime.now();
+//    }
 }
 
