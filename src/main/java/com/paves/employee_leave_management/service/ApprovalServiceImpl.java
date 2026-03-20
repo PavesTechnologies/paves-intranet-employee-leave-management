@@ -253,6 +253,10 @@ public class ApprovalServiceImpl implements ApprovalServiceInterface {
                     });
                     holidaysService.addHoliday(holidays);
                     break;
+                case YEAR_LEAVE_PROCESSING:
+                    Map<String, Object> yearLeaveProcessingPayload = objectMapper.readValue(payload, Map.class);
+                    leaveBalanceService.processCarryForward((int)yearLeaveProcessingPayload.get("year"));
+                    break;
                 case UPDATE_HOLIDAY:
                     Map<String, Object> updateHolidayPayloadMap = objectMapper.readValue(payload, new TypeReference<Map<String, Object>>() {
                     });

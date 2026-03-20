@@ -4,6 +4,7 @@ package com.paves.employee_leave_management.entities;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.paves.employee_leave_management.audit.AuditEntityListener;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EntityListeners(AuditEntityListener.class)
 public class GenderBasedLeaveBalance {
 
     @Id
@@ -75,10 +77,10 @@ public class GenderBasedLeaveBalance {
         this.createdAt = LocalDateTime.now();
     }
 
-    @PreUpdate
-    public void onUpdate() {
-        this.remainingDays = totalEntitledDays - usedDays;
-        this.updatedAt = LocalDateTime.now();
-    }
+//    @PreUpdate
+//    public void onUpdate() {
+//        this.remainingDays = totalEntitledDays - usedDays;
+//        this.updatedAt = LocalDateTime.now();
+//    }
 }
 

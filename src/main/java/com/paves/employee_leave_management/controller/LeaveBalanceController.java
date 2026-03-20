@@ -122,14 +122,14 @@ public class LeaveBalanceController {
             UploadResponse response = leaveBalanceService.handleAccruedUpload(file, username);
             return ResponseEntity.ok(response);
         }catch (Exception e) {
-        // We need to handle the specific case where the exception
-        // might be a wrapper around our actual error list.
-        return ResponseEntity.badRequest().body(UploadResponse.builder()
-                .message("Upload failed: " + e.getMessage())
-                .processedCount(0)
-                // .errors(???) <--- The error list is currently lost here
-                .build());
-    }
+            // We need to handle the specific case where the exception
+            // might be a wrapper around our actual error list.
+            return ResponseEntity.badRequest().body(UploadResponse.builder()
+                    .message("Upload failed: " + e.getMessage())
+                    .processedCount(0)
+                    // .errors(???) <--- The error list is currently lost here
+                    .build());
+        }
     }
 
     @GetMapping("/download-template")
@@ -276,5 +276,26 @@ public class LeaveBalanceController {
         lbs.deactivateDueLeaveTypes();
         return ResponseEntity.ok("Monthly process triggered successfully.");
     }
+
+
+    @PostMapping("/process-carry-forwards/{year}")
+    @PreAuthorize("hasAnyRole('HR')")
+    public ResponseEntity<String> processCurryForwards(@PathVariable int year){
+
+        Employee maker = getAuthenticatedUser();
+        String role = "HR";
+
+        Map<String, Object>  payload = new HashMap<>();
+        payload.put("year", year);
+
+        MCApprovalRequestDto dto = new MCApprovalRequestDto();
+        dto.setActionType(ActionType.YEAR_LEAVE_PROCESSING);
+        dto.setPayload(payload);
+
+        approvalService.submitForApproval(dto, maker, role);
+
+        return ResponseEntity.ok("Carry forwards processed successfully.");
+    }
+
 
 }

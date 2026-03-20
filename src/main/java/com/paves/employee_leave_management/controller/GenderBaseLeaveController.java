@@ -18,6 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/gender-base-leave")
 public class GenderBaseLeaveController {
@@ -46,7 +48,7 @@ public class GenderBaseLeaveController {
         if (principal instanceof Jwt jwt) {
             // You can fetch using email or user_id depending on your DB
             //String email = jwt.getClaim("email");  // "employee1@example.com"
-            Long userId = jwt.getClaim("user_id"); // If needed
+            Long userId = jwt.getClaim("user_id");// If needed
 
             return employeeRepo.findByEmployeeId(String.valueOf(userId))
                     .orElseThrow(() -> new RuntimeException("Employee not found for id: " + userId));
@@ -75,8 +77,17 @@ public class GenderBaseLeaveController {
 
     @GetMapping("/all-leave-types")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> getAllLeaveTypes(){
-        return ResponseEntity.ok(genderBaseLeaveService.getAllLeaveTypes());
+    public ApiResponse<Object> getAllLeaveTypes(){
+        List<GenderBasedLeave> genderBasedLeaves = genderBaseLeaveService.getAllLeaveTypes();
+        if(genderBasedLeaves.isEmpty()){
+            return new ApiResponse<>(false,
+                    "No active leave types found",
+                    null);
+        }
+
+        return new ApiResponse<>(true,
+                "Leave types fetched successfully",
+                genderBasedLeaves);
     }
 
 
