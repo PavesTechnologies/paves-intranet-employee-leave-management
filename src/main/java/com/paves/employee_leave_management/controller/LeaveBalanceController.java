@@ -281,7 +281,19 @@ public class LeaveBalanceController {
     @PostMapping("/process-carry-forwards/{year}")
     @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<String> processCurryForwards(@PathVariable int year){
-        leaveBalanceService.processCarryForward(year);
+
+        Employee maker = getAuthenticatedUser();
+        String role = "HR";
+
+        Map<String, Object>  payload = new HashMap<>();
+        payload.put("year", year);
+
+        MCApprovalRequestDto dto = new MCApprovalRequestDto();
+        dto.setActionType(ActionType.YEAR_LEAVE_PROCESSING);
+        dto.setPayload(payload);
+
+        approvalService.submitForApproval(dto, maker, role);
+
         return ResponseEntity.ok("Carry forwards processed successfully.");
     }
 
