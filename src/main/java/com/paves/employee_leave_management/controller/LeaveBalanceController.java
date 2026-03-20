@@ -277,4 +277,13 @@ public class LeaveBalanceController {
         return ResponseEntity.ok("Monthly process triggered successfully.");
     }
 
+
+    @PostMapping("/process-carry-forwards/{year}")
+    @PreAuthorize("hasAnyRole('HR')")
+    public ResponseEntity<String> processCurryForwards(@PathVariable int year){
+        leaveBalanceService.processCarryForward(year);
+        return ResponseEntity.ok("Carry forwards processed successfully.");
+    }
+
+
 }

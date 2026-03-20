@@ -18,6 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/gender-base-leave")
 public class GenderBaseLeaveController {
@@ -75,8 +77,17 @@ public class GenderBaseLeaveController {
 
     @GetMapping("/all-leave-types")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> getAllLeaveTypes(){
-        return ResponseEntity.ok(genderBaseLeaveService.getAllLeaveTypes());
+    public ApiResponse<Object> getAllLeaveTypes(){
+        List<GenderBasedLeave> genderBasedLeaves = genderBaseLeaveService.getAllLeaveTypes();
+        if(genderBasedLeaves.isEmpty()){
+            return new ApiResponse<>(false,
+                    "No active leave types found",
+                    null);
+        }
+
+        return new ApiResponse<>(true,
+                "Leave types fetched successfully",
+                genderBasedLeaves);
     }
 
 

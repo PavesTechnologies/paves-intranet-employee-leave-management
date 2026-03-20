@@ -31,10 +31,7 @@ import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -296,12 +293,53 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public void processAccrualForLeaveType() {
         List<LeaveType> types = leaveTypeRepo.findAll();
-        for (LeaveType type : types) {
-            AccrualFrequency frequency = AccrualFrequency.valueOf(type.getAccrualFrequency().toString().toUpperCase());
-            LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now();
 
-            if(type.getActive() == false)
-                continue;
+        // Skip all accruals on Jan 1st — carry-forward must be triggered manually first
+        boolean isNewYearDay = (today.getMonthValue() == 1 && today.getDayOfMonth() == 1);
+        if (isNewYearDay) {
+            for(LeaveType type: types){
+                if (!type.getActive()) continue;
+                List<LeaveBalance> balances = leaveBalanceRepo
+                        .findAllByYearAndLeaveTypeLeaveTypeId(today.getYear()-1, type.getLeaveTypeId());
+
+                List<LeaveBalance> nextYearBalances = balances.stream()
+                                .map(b -> {
+                                    LeaveBalance nb = new LeaveBalance();
+                                    // Existing fields
+                                    nb.setEmployee(b.getEmployee());
+                                    nb.setEmployeeId(b.getEmployee().getEmployeeId()); // Add this
+                                    nb.setYear(b.getYear() + 1);
+                                    nb.setAccruedLeaves(type.getAccrualRate());
+                                    nb.setRemainingLeaves(type.getAccrualRate());
+                                    nb.setLeaveType(type);
+                                    nb.setEncashedLeaves(b.getEncashedLeaves()); // Fixed: was nb.getEncashedLeaves()
+                                    nb.setBlockId(b.getBlockId()); // Fixed: was nb.getBlockId()
+                                    nb.setIsBlocked(b.getIsBlocked()); // Fixed: was nb.getIsBlocked()
+                                    nb.setCarriedForward(0);
+                                    nb.setLastAccrualDate(LocalDate.now());
+                                    nb.setLastUpdatedAt(null);
+                                    nb.setUsedLeaves(b.getUsedLeaves());
+
+                                    // Add missing fields
+                                    nb.setTotalLeaves(type.getMaxDaysPerYear()); // Add this
+                                    nb.setExpiredLeaves(0.0); // Initialize to 0
+                                    nb.setCreateAt(LocalDateTime.now()); // Set creation timestamp
+
+                                    return nb;
+                                })
+                                .collect(Collectors.toList());
+
+                        leaveBalanceRepo.saveAll(nextYearBalances);
+            }
+            return;
+        }
+
+        for (LeaveType type : types) {
+            if (!type.getActive()) continue;
+
+            AccrualFrequency frequency = AccrualFrequency
+                    .valueOf(type.getAccrualFrequency().toString().toUpperCase());
 
             switch (frequency) {
 
@@ -310,7 +348,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     break;
 
                 case WEEKLY:
-                    if (today.getDayOfWeek().getValue() == 1) { // Monday
+                    if (today.getDayOfWeek().getValue() == 1) {
                         runMonthlyAccrual(type);
                     }
                     break;
@@ -323,63 +361,23 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
                 case MONTHLY:
                     if (today.getDayOfMonth() == 1) {
-                        runMonthlyAccrual(type);   // ← calls your exact monthly logic
+                        runMonthlyAccrual(type);
                     }
                     break;
 
                 case QUARTERLY:
                     if (today.getDayOfMonth() == 1 &&
-                            (today.getMonthValue() == 1 ||
-                                    today.getMonthValue() == 4 ||
+                            (today.getMonthValue() == 4 ||
                                     today.getMonthValue() == 7 ||
                                     today.getMonthValue() == 10)) {
-
                         runMonthlyAccrual(type);
                     }
                     break;
-
                 case YEARLY:
-                    if (today.getMonthValue() == 1 && today.getDayOfMonth() == 1) {
-                        runMonthlyAccrual(type);   // ← calls your exact yearly logic
-                    }
+                    // No cron-based yearly accrual — handled via manual carry-forward
                     break;
                 case NONE:
-                    if(today.getMonthValue() == 1 && today.getDayOfMonth() == 1) {
-                        List<LeaveBalance> balances =
-                                leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
-                                        today.getYear() - 1,
-                                        type.getLeaveTypeId()
-                                );
-
-                        List<LeaveBalance> nextYearBalances = balances.stream()
-                                .map(b -> {
-                                    LeaveBalance nb = new LeaveBalance();
-                                    // Existing fields
-                                    nb.setEmployee(b.getEmployee());
-                                    nb.setEmployeeId(b.getEmployee().getEmployeeId()); // Add this
-                                    nb.setYear(b.getYear() + 1);
-                                    nb.setAccruedLeaves(b.getAccruedLeaves());
-                                    nb.setRemainingLeaves(b.getRemainingLeaves());
-                                    nb.setLeaveType(b.getLeaveType());
-                                    nb.setEncashedLeaves(b.getEncashedLeaves()); // Fixed: was nb.getEncashedLeaves()
-                                    nb.setBlockId(b.getBlockId()); // Fixed: was nb.getBlockId()
-                                    nb.setIsBlocked(b.getIsBlocked()); // Fixed: was nb.getIsBlocked()
-                                    nb.setCarriedForward(b.getCarriedForward());
-                                    nb.setLastAccrualDate(b.getLastAccrualDate());
-                                    nb.setLastUpdatedAt(LocalDateTime.now());
-                                    nb.setUsedLeaves(b.getUsedLeaves());
-
-                                    // Add missing fields
-                                    nb.setTotalLeaves(b.getTotalLeaves()); // Add this
-                                    nb.setExpiredLeaves(0.0); // Initialize to 0
-                                    nb.setCreateAt(LocalDateTime.now()); // Set creation timestamp
-
-                                    return nb;
-                                })
-                                .collect(Collectors.toList());
-
-                        leaveBalanceRepo.saveAll(nextYearBalances);
-                    }
+                    // No accrual — handled via manual carry-forward
                     break;
             }
         }
@@ -1274,6 +1272,92 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     public List<LeaveBalance> getCurrentYearBalances(String employeeId) {
         int currentYear = java.time.Year.now().getValue();
         return leaveBalanceDao.findByEmployeeIdAndYear(employeeId, currentYear);
+    }
+
+    @Transactional
+    public void processCarryForward(int year) {
+
+        List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
+
+        for (LeaveType leaveType : leaveTypes) {
+
+            List<LeaveBalance> currentYearBalances =
+                    leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                            year, leaveType.getLeaveTypeId()
+                    );
+
+            List<LeaveBalance> prevYearBalances =
+                    leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                            year - 1, leaveType.getLeaveTypeId()
+                    );
+
+            List<LeaveBalance> nextYearBalances =
+                    leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                            year + 1, leaveType.getLeaveTypeId()
+                    );
+
+            Map<String, LeaveBalance> prevYearMap = prevYearBalances.stream()
+                    .collect(Collectors.toMap(lb -> lb.getEmployee().getEmployeeId(), lb -> lb));
+
+            Map<String, LeaveBalance> nextYearMap = nextYearBalances.stream()
+                    .collect(Collectors.toMap(lb -> lb.getEmployee().getEmployeeId(), lb -> lb));
+
+            List<LeaveBalance> toSave = Collections.synchronizedList(new ArrayList<>());
+
+            currentYearBalances.parallelStream().forEach(current -> {
+
+                String empId = current.getEmployee().getEmployeeId();
+
+                LeaveBalance prevYear = prevYearMap.get(empId);
+                LeaveBalance nextYear = nextYearMap.get(empId);
+
+                double prevCarry = (prevYear != null) ? prevYear.getCarriedForward() : 0.0;
+
+                double newCarryForward = 0.0;
+
+                if (leaveType.getMaxCarryForwardPerYear() > 0) {
+
+                    double eligibleLeaves = Math.min(
+                            current.getRemainingLeaves(),
+                            leaveType.getMaxCarryForwardPerYear()
+                    );
+
+                    double availableCapacity =
+                            leaveType.getMaxCarryForward() - prevCarry;
+
+                    double leavesToAdd = Math.max(0,
+                            Math.min(eligibleLeaves, availableCapacity)
+                    );
+
+                    newCarryForward = prevCarry + leavesToAdd;
+                }
+
+                LeaveBalance target;
+
+                if (nextYear != null) {
+                    target = nextYear;
+                } else {
+                    target = new LeaveBalance();
+                    target.setEmployee(current.getEmployee());
+                    target.setLeaveType(leaveType);
+                    target.setYear(year + 1);
+                    target.setTotalLeaves(leaveType.getMaxDaysPerYear());
+                    target.setUsedLeaves(0.0);
+                    target.setCreateAt(LocalDateTime.now());
+                    target.setLastAccrualDate(LocalDate.now());
+                    target.setAccruedLeaves(leaveType.getAccrualRate());
+                }
+
+                target.setCarriedForward(newCarryForward);
+                target.setRemainingLeaves(
+                        leaveType.getAccrualRate() + newCarryForward
+                );
+
+                toSave.add(target);
+            });
+
+            leaveBalanceRepo.saveAll(toSave);
+        }
     }
 }
 

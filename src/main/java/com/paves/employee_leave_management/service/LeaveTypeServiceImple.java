@@ -10,6 +10,7 @@ import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.transaction.Transactional;
@@ -41,6 +42,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Autowired
     LeaveBalanceServiceInterface leaveBalanceService;
+
+    @Autowired
+    GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface;
 
     @Autowired
     LeaveBalanceServiceInterface leaveBalanceServiceInterface;
@@ -162,7 +166,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
 
-        List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findByActiveTrue();
+        List<GenderBasedLeave> genderBasedLeaves = genderBasedLeaveServiceInterface.getAllLeaveTypes();
         List<LeaveType> activeLeaveTypes = leaveTypeRepo.findByActiveTrue();
 
         AllLeaveTypesListResponseDTO leaveTypeDTO = new AllLeaveTypesListResponseDTO();

@@ -98,26 +98,18 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
     }
 
     @Override
-    public ApiResponse<Object> getAllLeaveTypes() {
+    public List<GenderBasedLeave> getAllLeaveTypes() {
         List<GenderBasedLeave> genderBasedLeaves = genderBasedRepo.findAll();
         Iterator<GenderBasedLeave> iterator = genderBasedLeaves.iterator();
 
         while (iterator.hasNext()) {
             GenderBasedLeave leave = iterator.next();
-            if (!leave.getActive()) {
+            if (!leave.getActive() || leave.getEffectiveStartDate().isAfter(LocalDate.now()) ) {
                 iterator.remove(); // ✅ safe
             }
         }
 
-        if(genderBasedLeaves.isEmpty()){
-            return new ApiResponse<>(false,
-                    "No active leave types found",
-                    null);
-        }
-
-        return new ApiResponse<>(true,
-                "Leave types fetched successfully",
-                genderBasedLeaves);
+       return genderBasedLeaves;
     }
 
 //    @Override

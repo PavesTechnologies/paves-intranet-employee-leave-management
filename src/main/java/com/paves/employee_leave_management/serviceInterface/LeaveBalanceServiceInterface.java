@@ -72,5 +72,7 @@ public interface LeaveBalanceServiceInterface {
     byte[] generateTemplate() throws IOException;
 
     List<LeaveBalanceDTO> parseExcel(MultipartFile file) throws IOException;
+
+    void processCarryForward(int year);
 }
 
