@@ -7,6 +7,7 @@ import com.paves.employee_leave_management.daoInterface.LeaveBalanceDAO;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
@@ -55,6 +56,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Autowired
     GenderBasedRepo genderBasedRepo;
+
+    @Autowired
+    LeaveRequestRepo leaveRequestRepo;
 
 //    @Autowired
 //    GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
@@ -1275,6 +1279,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Transactional
+    @Override
     public void processCarryForward(int year) {
 
         List<LeaveType> leaveTypes = leaveTypeRepo.findAll();

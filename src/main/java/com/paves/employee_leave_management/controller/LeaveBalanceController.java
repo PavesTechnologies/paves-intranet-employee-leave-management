@@ -4,9 +4,12 @@ import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceUpdateRequest;
+import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.enums.ActionType;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.service.LeaveBlockScheduler;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
@@ -51,6 +54,9 @@ public class LeaveBalanceController {
 
     @Autowired
     private SimpMessagingTemplate template;
+
+    @Autowired
+    private LeaveRequestRepo leaveRequestRepo;
 
 //    @Autowired
 //    LeaveBalanceDAO leaveBalanceDao;
@@ -280,8 +286,12 @@ public class LeaveBalanceController {
 
     @PostMapping("/process-carry-forwards/{year}")
     @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<String> processCurryForwards(@PathVariable int year){
+    public ApiResponse<Object> processCurryForwards(@PathVariable int year){
 
+        List<LeaveRequest> pendingLeaveRequests = leaveRequestRepo.findByStatus(LeaveStatus.PENDING);
+        if (!pendingLeaveRequests.isEmpty()){
+            return new ApiResponse<>(false, "There are pending requests to process", pendingLeaveRequests);
+        }
         Employee maker = getAuthenticatedUser();
         String role = "HR";
 
@@ -294,7 +304,7 @@ public class LeaveBalanceController {
 
         approvalService.submitForApproval(dto, maker, role);
 
-        return ResponseEntity.ok("Carry forwards processed successfully.");
+        return new ApiResponse<>(true, "send request to HR Manager", null );
     }
 
 
