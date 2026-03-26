@@ -15,6 +15,7 @@ import jakarta.persistence.Id;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -178,7 +179,8 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     }
 
     @Override
-    public ResponseEntity<List<Holidays>> getHolidaysByYear(int year) {
+    @Cacheable(value = "holidaysByYear", key = "#year")
+    public List<Holidays> getHolidaysByYear(int year) {
         LocalDate today = LocalDate.now();
 
         List<Holidays> holidays = holidayRepo.findByYear(year)
@@ -191,8 +193,12 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
                 )
                 .collect(Collectors.toList());
 
+        if(holidays.isEmpty()){
+            throw new HolidayExceptionHandler("No holidays found for this year");
+        }
+
         holidayRepo.saveAll(holidays);
-        return ResponseEntity.ok(holidays);
+        return holidays;
     }
 
 
@@ -208,7 +214,7 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
         int currentYear = LocalDate.now().getYear();
         int lastYear = currentYear - 1;
 
-        List<Holidays> lastYearHolidays = getHolidaysByYear(lastYear).getBody();
+        List<Holidays> lastYearHolidays = getHolidaysByYear(lastYear);
 
         List<Holidays> newYearHolidays = lastYearHolidays.stream()
                 .map(h -> {

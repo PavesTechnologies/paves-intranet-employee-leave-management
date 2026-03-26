@@ -15,6 +15,7 @@ import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInter
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -105,7 +106,8 @@ public class LeaveBalanceController {
     @GetMapping("/{balanceID}")
     @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL')")
     public ResponseEntity<LeaveBalance> getLeaveBalancesByBalanceId(@PathVariable String balanceID) {
-        return leaveBalanceService.findByBalanceId(balanceID);
+        LeaveBalance leaveBalance =  leaveBalanceService.findByBalanceId(balanceID);
+        return ResponseEntity.ok(leaveBalance);
     }
 
 //    @GetMapping("/all-leave-balances")
@@ -117,8 +119,26 @@ public class LeaveBalanceController {
     @GetMapping("/all-leave-balances/{year}")
     @PreAuthorize("hasAnyRole('HR')")
     public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalance(@PathVariable Integer year) {
-        return leaveBalanceService.getAllLeaveBalanceByYear(year);
+        List<AllPeopleLeaveBalance> leaveBalances =  leaveBalanceService.getAllLeaveBalanceByYear(year);
+        return ResponseEntity.ok(leaveBalances);
     }
+
+    @Cacheable("test")
+    public String testCache() {
+        System.out.println("🔥 DB HIT");
+        return "Hello Redis";
+    }
+
+    @GetMapping("/leave-balance")
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(
+            @RequestParam Integer year,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+//        testCache();
+        return leaveBalanceService.getAllLeaveBalanceByYear(year, page, size);
+    }
+
 
     @PostMapping("/upload-accruals")
     public ResponseEntity<UploadResponse> uploadAccruals(
@@ -178,6 +198,16 @@ public class LeaveBalanceController {
             @PathVariable Integer year) {
         template.convertAndSend("/topic/data-updated", "updated");
         EmployeeLeaveBalance balance = leaveBalanceService.findByEmployeeIdAndYearPerEmployee(employeeId, year);
+        return new ApiResponse<>(true, "leave balance for "+employeeId+" "+year+" ", balance);
+    }
+
+    @GetMapping("/employee/drop/{employeeId}/{year}")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasAnyRole('HR','MANAGER','GENERAL')")
+    public ApiResponse<EmployeeLeaveBalanceForDropdown> getLeaveBalancesByEmployeeIdAndYearForDropDown(
+            @PathVariable String employeeId,
+            @PathVariable Integer year) {
+        template.convertAndSend("/topic/data-updated", "updated");
+        EmployeeLeaveBalanceForDropdown balance = leaveBalanceService.getLeaveBalanceForDropdown(employeeId, year);
         return new ApiResponse<>(true, "leave balance for "+employeeId+" "+year+" ", balance);
     }
 
@@ -258,10 +288,10 @@ public class LeaveBalanceController {
         ));
     }
 
-    @GetMapping("/search")
+    @GetMapping("/search/{year}")
     @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<List<LeaveBalance>> search(@RequestParam(value = "query", required = false) String query) {
-        List<LeaveBalance> results = leaveBalanceService.searchLeaveBalances(query);
+    public ResponseEntity<List<LeaveBalance>> search(@RequestParam(value = "query", required = false) String query, @PathVariable int year) {
+        List<LeaveBalance> results = leaveBalanceService.searchLeaveBalances(query, year);
         return ResponseEntity.ok(results);
     }
 

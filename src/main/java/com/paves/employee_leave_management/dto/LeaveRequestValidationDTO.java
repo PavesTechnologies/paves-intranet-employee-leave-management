@@ -23,4 +23,5 @@ public class LeaveRequestValidationDTO {
     private String reason;
     private String driveLink;
     private LocalDate requestDate;
+    private int year;
 }

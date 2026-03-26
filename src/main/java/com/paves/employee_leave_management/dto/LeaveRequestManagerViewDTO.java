@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.dto;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import lombok.*;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
 @Setter
@@ -11,7 +12,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @Data
 @Builder
-public class LeaveRequestManagerViewDTO {
+public class LeaveRequestManagerViewDTO implements Serializable {
 
     private String leaveId;
 

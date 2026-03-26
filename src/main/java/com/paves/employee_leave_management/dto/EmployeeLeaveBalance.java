@@ -7,13 +7,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class EmployeeLeaveBalance {
+public class EmployeeLeaveBalance implements Serializable {
+    private String employeeId;
+    private Integer year;
     List<LeaveBalance> regular;
     List<GenderBasedLeaveBalance> genderBasedLeaveBalances;
 }

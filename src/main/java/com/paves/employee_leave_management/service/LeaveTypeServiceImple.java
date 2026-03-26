@@ -15,6 +15,8 @@ import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceI
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -23,10 +25,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
@@ -64,6 +63,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Override
     @Transactional
+//    @CacheEvict(value="all-leave-type", allEntries = true)
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
         leaveType.generateId(); // ensure leaveTypeId is set
 
@@ -158,14 +158,25 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 savedLeaveType);
     }
 
+    @Override
+//    @Cacheable("leave-types")
+    public List<Map<String, String>> getLeaveTypes() {
+        return Arrays.stream(LeaveTypesEnum.values())
+                .map(type -> Map.of(
+                        "name", type.name(),
+                        "label", type.getLabel()
+                ))
+                .toList();
+    }
+
 
     @Override
-    public ResponseEntity<AllLeaveTypesListResponseDTO> getAllLeaveTypes() {
-        List<LeaveType> allLeaveTypes = leaveTypeRepo.findAll();
-        if (allLeaveTypes.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        }
-
+    @Cacheable("all-leave-types")
+    public AllLeaveTypesListResponseDTO getAllLeaveTypes() {
+//        List<LeaveType> allLeaveTypes = leaveTypeRepo.findAll();
+//        if (allLeaveTypes.isEmpty()) {
+//            return null;
+//        }
         List<GenderBasedLeave> genderBasedLeaves = genderBasedLeaveServiceInterface.getAllLeaveTypes();
         List<LeaveType> activeLeaveTypes = leaveTypeRepo.findByActiveTrue();
 
@@ -173,8 +184,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         leaveTypeDTO.setRegular(activeLeaveTypes);
         leaveTypeDTO.setGenderBasedLeaves(genderBasedLeaves);
 
-
-        return new ResponseEntity<>(leaveTypeDTO, HttpStatus.OK);
+        return leaveTypeDTO;
     }
 
 //    @Override

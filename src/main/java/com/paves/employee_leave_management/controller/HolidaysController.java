@@ -12,6 +12,7 @@ import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.HolidayRepo;
 import com.paves.employee_leave_management.service.HolidaysServiceImple;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -44,7 +45,7 @@ public class HolidaysController {
     private HolidayRepo holidayRepo;
 
     @Autowired
-    private HolidaysServiceImple holidaysService;
+    private HolidaysServiceInterface holidaysService;
 
     @Autowired
     private EmployeeRepo employeeRepo;
@@ -232,7 +233,8 @@ public class HolidaysController {
     @GetMapping("/year/{year}")
     @PreAuthorize("hasAnyRole('HR', 'GENERAL','PROJECT-MANAGER','RESOURCE-MANAGER') ")
     public ResponseEntity<List<Holidays>> getHolidaysByYear(@PathVariable int year) {
-        return holidaysService.getHolidaysByYear(year);
+        List<Holidays> holidaysList =  holidaysService.getHolidaysByYear(year);
+        return ResponseEntity.ok(holidaysList);
     }
 
     // 🔹 Delete all holidays for a specific year

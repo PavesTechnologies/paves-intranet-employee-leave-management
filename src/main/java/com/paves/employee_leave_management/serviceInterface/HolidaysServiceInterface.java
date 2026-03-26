@@ -6,11 +6,15 @@ import com.paves.employee_leave_management.entities.Holidays;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 
 public interface HolidaysServiceInterface {
     ResponseEntity<List<Holidays>> getAllHolidays();
+
+    ByteArrayInputStream createHolidayTemplate() throws IOException, SQLException;
 
     ResponseEntity<Holidays> getHolidayById(Long id);
 
@@ -20,7 +24,7 @@ public interface HolidaysServiceInterface {
 
     ResponseEntity<String> deleteHoliday(Long id);
 
-    ResponseEntity<List<Holidays>> getHolidaysByYear(int year);
+    List<Holidays> getHolidaysByYear(int year);
 
     ResponseEntity<String> deleteHolidaysByYear(int year);
 
