@@ -1532,7 +1532,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Override
     public List<EmployeeApprovedLeavesDTO> getAllApprovedLeavesByYearGroupedByEmployee(Integer year) {
         List<LeaveRequest> approvedLeaves = leaveRequestRepo.findAllApprovedLeavesByYear(year);
-        List<Holidays> holidays = holidaysService.getHolidaysByYear(year).getBody();
+        List<Holidays> holidays = holidaysService.getHolidaysByYear(year);
         Set<LocalDate> holidayDates = holidays != null ? 
             holidays.stream().map(Holidays::getHolidayDate).collect(java.util.stream.Collectors.toSet()) : 
             java.util.Collections.emptySet();
@@ -1588,7 +1588,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
         
         String employeeName = approvedLeaves.get(0).getEmployee().getFullName();
-        List<Holidays> holidays = holidaysService.getHolidaysByYear(year).getBody();
+        List<Holidays> holidays = holidaysService.getHolidaysByYear(year);
         Set<LocalDate> holidayDates = holidays != null ?
             holidays.stream().map(Holidays::getHolidayDate).collect(java.util.stream.Collectors.toSet()) : 
             java.util.Collections.emptySet();
