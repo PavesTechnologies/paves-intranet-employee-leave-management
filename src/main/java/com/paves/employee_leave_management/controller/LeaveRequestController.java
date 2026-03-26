@@ -506,7 +506,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/approved/{year}")
-    @PreAuthorize("hasAnyRole('RESOURCE-MANAGER','PROJECT-MANAGER')")
+    @PreAuthorize("hasRole('RESOURCE-MANAGER')")
     public ResponseEntity<ApiResponse<List<EmployeeApprovedLeavesDTO>>> getAllApprovedLeavesByYear(
             @PathVariable Integer year) {
         try {
@@ -519,8 +519,8 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/approved/{employeeId}/{year}")
-    @PreAuthorize("hasAnyRole('RESOURCE-MANAGER','PROJECT-MANAGER')")
-    public ResponseEntity<ApiResponse<EmployeeApprovedLeavesDTO>> getApprovedLeavesByYearForEmployee(
+    @PreAuthorize("hasRole('RESOURCE-MANAGER')")
+    public ResponseEntity<ApiResponse<EmployeeApprovedLeavesDTO>> getApprovedLeavesByEmployeeAndYear(
             @PathVariable String employeeId, 
             @PathVariable Integer year) {
         try {

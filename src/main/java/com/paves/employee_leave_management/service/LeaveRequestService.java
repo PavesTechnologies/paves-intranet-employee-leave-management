@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.swing.text.html.Option;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -51,6 +52,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Autowired
     private GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface;
+    @Autowired
+    private HolidaysServiceInterface holidaysService;
 
     @Autowired
     private GenderBasedRepo genderBasedRepo;
@@ -1529,6 +1532,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Override
     public List<EmployeeApprovedLeavesDTO> getAllApprovedLeavesByYearGroupedByEmployee(Integer year) {
         List<LeaveRequest> approvedLeaves = leaveRequestRepo.findAllApprovedLeavesByYear(year);
+        List<Holidays> holidays = holidaysService.getHolidaysByYear(year).getBody();
+        Set<LocalDate> holidayDates = holidays != null ? 
+            holidays.stream().map(Holidays::getHolidayDate).collect(java.util.stream.Collectors.toSet()) : 
+            java.util.Collections.emptySet();
         
         return approvedLeaves.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
@@ -1552,7 +1559,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                                 List<LocalDate> dates = new ArrayList<>();
                                 LocalDate current = leave.getStartDate();
                                 while (!current.isAfter(leave.getEndDate())) {
-                                    dates.add(current);
+                                    // Exclude weekends and holidays
+                                    if (current.getDayOfWeek() != DayOfWeek.SATURDAY && 
+                                        current.getDayOfWeek() != DayOfWeek.SUNDAY && 
+                                        !holidayDates.contains(current)) {
+                                        dates.add(current);
+                                    }
                                     current = current.plusDays(1);
                                 }
                                 return dates.stream();
@@ -1576,13 +1588,22 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
         
         String employeeName = approvedLeaves.get(0).getEmployee().getFullName();
+        List<Holidays> holidays = holidaysService.getHolidaysByYear(year).getBody();
+        Set<LocalDate> holidayDates = holidays != null ?
+            holidays.stream().map(Holidays::getHolidayDate).collect(java.util.stream.Collectors.toSet()) : 
+            java.util.Collections.emptySet();
         
         List<LocalDate> approvedLeaveDates = approvedLeaves.stream()
                 .flatMap(leave -> {
                     List<LocalDate> dates = new ArrayList<>();
                     LocalDate current = leave.getStartDate();
                     while (!current.isAfter(leave.getEndDate())) {
-                        dates.add(current);
+                        // Exclude weekends and holidays
+                        if (current.getDayOfWeek() != DayOfWeek.SATURDAY && 
+                            current.getDayOfWeek() != DayOfWeek.SUNDAY && 
+                            !holidayDates.contains(current)) {
+                            dates.add(current);
+                        }
                         current = current.plusDays(1);
                     }
                     return dates.stream();
