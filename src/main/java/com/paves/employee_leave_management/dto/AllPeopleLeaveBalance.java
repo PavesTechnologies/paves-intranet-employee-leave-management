@@ -5,13 +5,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.io.Serializable;
 
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class AllPeopleLeaveBalance {
+public class AllPeopleLeaveBalance implements Serializable {
     private String employeeId;
     private String employeeName;
     private String leaveTypeId;

@@ -21,6 +21,8 @@ public class ApprovalRequestDTO {
     @NotBlank(message = "Leave ID is required")
     private String leaveId;
 
+    private int year;
+
     // Optional comment for approval
     private String comment;
 }

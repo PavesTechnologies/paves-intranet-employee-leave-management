@@ -10,12 +10,15 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 
 public interface LeaveTypeServiceInterface {
+
+    public List<Map<String, String>> getLeaveTypes();
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType);
 
-    public ResponseEntity<AllLeaveTypesListResponseDTO> getAllLeaveTypes();
+    public AllLeaveTypesListResponseDTO getAllLeaveTypes();
 
     //    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId);
     @Transactional

@@ -13,6 +13,7 @@ import com.paves.employee_leave_management.serviceInterface.LeaveRequestServiceI
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -20,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -160,6 +162,7 @@ public class LeaveRequestController {
                     .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
         }
     }
+
 
     @GetMapping("/employee/{employeeId}/{year}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
@@ -517,7 +520,7 @@ public class LeaveRequestController {
 
     @GetMapping("/approved/{employeeId}/{year}")
     @PreAuthorize("hasAnyRole('RESOURCE-MANAGER','PROJECT-MANAGER')")
-    public ResponseEntity<ApiResponse<EmployeeApprovedLeavesDTO>> getHolidaysByYear(
+    public ResponseEntity<ApiResponse<EmployeeApprovedLeavesDTO>> getApprovedLeavesByYearForEmployee(
             @PathVariable String employeeId, 
             @PathVariable Integer year) {
         try {
@@ -525,8 +528,8 @@ public class LeaveRequestController {
             if (approvedLeaves != null) {
                 return ResponseEntity.ok(new ApiResponse<>(true, "Approved leaves retrieved successfully", approvedLeaves));
             } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ApiResponse<>(false, "No approved leaves found for employee in " + year, null));
+                return ResponseEntity.status(HttpStatus.OK)
+                        .body(new ApiResponse<>(true, "No approved leaves found for employee in " + year, approvedLeaves));
             }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

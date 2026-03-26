@@ -12,6 +12,9 @@ import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.*;
 import jakarta.persistence.Transient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -438,6 +441,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Override
     @Transactional
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#request.getEmployeeId() + '-' + #request.getYear()"),
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '-' + #request.getYear()")
+            }
+    )
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
         ValidationResultDTO validationResult = validateLeaveRequest(request);
 
@@ -525,6 +534,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
+    @Cacheable(value = "leaveRequestsByEmployee", key = "#employeeId")
     public List<LeaveRequestResponseDTO> getLeaveRequestsByEmployee(String employeeId) {
         List<LeaveRequest> leaveRequests = leaveRequestRepo.findByEmployee_EmployeeId(employeeId);
         return leaveRequests.stream().filter(leaveRequest ->
@@ -552,13 +562,13 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
+    @Cacheable(value = "leaveRequestsByEmployeeAndYear", key = "#employeeId + '-' + #year")
     public List<LeaveRequestResponseDTO> getLeaveRequestsByEmployeeAndByYear(String employeeId, int year) {
         List<LeaveRequest> leaveRequests = leaveRequestRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
         return
                 leaveRequests.stream()
                         .filter(leaveRequest ->
-                                leaveRequest.getStatus() != LeaveStatus.CANCELLED &&
-                                        leaveRequest.getStatus() != LeaveStatus.REJECTED)
+                                leaveRequest.getStatus() != LeaveStatus.PENDING )
                         .map(leave -> LeaveRequestResponseDTO.builder()
                                 .employeeId(leave.getEmployeeId())
                                 .employeeFullName(leave.getEmployee().getFullName())
@@ -594,60 +604,97 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(
+                    value = "pendingLeaveRequestsByEmployeeAndYear",
+                    key = "#employeeId + '-' + #result.requestDate.year"
+            ),
+            @CacheEvict(
+                    value = "leaveRequestsByEmployeeAndYear",
+                    key = "#employeeId + '-' + #result.requestDate.year"
+            ),
+            @CacheEvict(
+                    value = "employeeLeaveBalance",
+                    key = "#employeeId + '-' + #result.requestDate.year"
+            )
+    })
     public LeaveRequest cancelLeaveRequest(String leaveId, String employeeId) {
+
+        // Fetch leave request
         LeaveRequest request = leaveRequestRepo.findById(leaveId)
                 .orElseThrow(() -> new RuntimeException("Leave request not found"));
 
+        // Authorization check
         if (!request.getEmployee().getEmployeeId().equals(employeeId)) {
             throw new RuntimeException("Unauthorized: You can only cancel your own leave requests");
         }
 
+        // Status validation
         if (request.getStatus() != LeaveStatus.PENDING) {
             throw new RuntimeException("Cannot cancel a leave request that is not pending");
         }
 
-
+        // Update request status
         request.setStatus(LeaveStatus.CANCELLED);
         request.setResponseDate(LocalDate.now());
 
-        if(request.getGenderBasedLeaveType().getLeaveTypeId().equals("L-ML")|| request.getGenderBasedLeaveType().getLeaveTypeId().equals("L-PL")){
+        int year = request.getRequestDate().getYear();
+
+        // Update leave balance
+        if (request.getGenderBasedLeaveType() != null) {
             genderBasedLeaveBalanceServiceInterface.updateLeaveBalanceAfterRejected(
-                    request.getEmployee().getEmployeeId(),
+                    employeeId,
                     request.getGenderBasedLeaveType().getLeaveTypeId(),
                     request.getDaysRequested(),
-                    request.getRequestDate().getYear());
-        }else{
+                    year
+            );
+        } else {
             leaveBalanceService.updateLeaveBalanceAfterRejected(
-                    request.getEmployee().getEmployeeId(),
+                    employeeId,
                     request.getLeaveType().getLeaveTypeId(),
                     request.getDaysRequested(),
-                    request.getRequestDate().getYear());
+                    year
+            );
         }
 
+        // Save updated request
         LeaveRequest cancelledRequest = leaveRequestRepo.save(request);
 
         // Notify manager
         Employee employee = cancelledRequest.getEmployee();
         Employee manager = employee.getManager();
-        if (manager != null && manager.getEmail() != null && cancelledRequest != null) {
+
+        if (manager != null && manager.getEmail() != null) {
+
             Map<String, Object> templateModel = new LinkedHashMap<>();
             templateModel.put("title", "Leave Request Cancelled");
             templateModel.put("recipientName", manager.getFirstName());
-            templateModel.put("messageBody", "A leave request from <strong>" + employee.getFullName() + "</strong> has been cancelled by the employee.");
+            templateModel.put(
+                    "messageBody",
+                    "A leave request from <strong>" + employee.getFullName() + "</strong> has been cancelled by the employee."
+            );
             templateModel.put("detailsTitle", "Cancelled Request Details");
 
             Map<String, String> details = new LinkedHashMap<>();
             details.put("Employee", employee.getFullName());
-            if(cancelledRequest.getGenderBasedLeaveType()!=null){
-                details.put("Leave Type", resolveLeaveLabel(request.getGenderBasedLeaveType().getLeaveTypeId()));
-            }else{
-                details.put("Leave Type", resolveLeaveLabel(request.getLeaveType().getLeaveTypeId()));
-            }
+
+            String leaveTypeLabel = request.getGenderBasedLeaveType() != null
+                    ? resolveLeaveLabel(request.getGenderBasedLeaveType().getLeaveTypeId())
+                    : resolveLeaveLabel(request.getLeaveType().getLeaveTypeId());
+
+            details.put("Leave Type", leaveTypeLabel);
             details.put("Start Date", cancelledRequest.getStartDate().toString());
             details.put("End Date", cancelledRequest.getEndDate().toString());
+
             templateModel.put("details", details);
 
-            EmailDTO emailDTO = new EmailDTO(manager.getEmail(), "Leave Request Cancelled - " + employee.getFullName(), "generic-notification.html", true);
+            EmailDTO emailDTO = new EmailDTO(
+                    manager.getEmail(),
+                    "Leave Request Cancelled - " + employee.getFullName(),
+                    "generic-notification.html",
+                    true
+            );
+
             emailDTO.setTemplateModel(templateModel);
             asyncNotificationService.queueEmail(emailDTO);
         }
@@ -673,6 +720,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
+//    @Cacheable(value = "leaveHistory", key = "#queryDTO.managerId + '-' + #queryDTO.year")
     public List<LeaveRequestManagerViewDTO> getRequestsForManager(ManagerQueryDTO queryDTO) {
         List<LeaveRequest> leaveRequest =  leaveRequestRepo.findManagerRequestsByCriteria(queryDTO);
         return leaveRequest.stream().map((leave)->
@@ -705,13 +753,34 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Override
     @Transactional
+    @Caching(evict = {
+
+            // Employee caches
+            @CacheEvict(
+                    value = "pendingLeaveRequestsByEmployeeAndYear",
+                    key = "#result.employee.employeeId + '-' + #approvalRequest.year"
+            ),
+            @CacheEvict(
+                    value = "leaveRequestsByEmployeeAndYear",
+                    key = "#result.employee.employeeId + '-' + #approvalRequest.year"
+            )
+    })
     public LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest) {
+
         LeaveRequest request = leaveRequestRepo
-                .findByLeaveIdAndEmployee_Manager_EmployeeId(approvalRequest.getLeaveId(), approvalRequest.getManagerId())
-                .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + approvalRequest.getLeaveId() + " for this manager"));
+                .findByLeaveIdAndEmployee_Manager_EmployeeId(
+                        approvalRequest.getLeaveId(),
+                        approvalRequest.getManagerId()
+                )
+                .orElseThrow(() -> new RuntimeException(
+                        "Leave request not found with ID: "
+                                + approvalRequest.getLeaveId() + " for this manager"
+                ));
 
         Employee manager = employeeRepo.findById(approvalRequest.getManagerId())
-                .orElseThrow(() -> new RuntimeException("Manager not found with ID: " + approvalRequest.getManagerId()));
+                .orElseThrow(() -> new RuntimeException(
+                        "Manager not found with ID: " + approvalRequest.getManagerId()
+                ));
 
         request.setStatus(LeaveStatus.APPROVED);
         request.setApprovedBy(manager);
@@ -723,23 +792,36 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
         LeaveRequest approvedRequest = leaveRequestRepo.save(request);
 
-        if (request.getEmployee().getEmail() != null && approvedRequest != null) {
+        // Email logic (unchanged)
+        if (approvedRequest.getEmployee().getEmail() != null) {
+
             Map<String, Object> templateModel = new LinkedHashMap<>();
             templateModel.put("title", "Leave Application Approved");
-            templateModel.put("recipientName", request.getEmployee().getFullName());
-            templateModel.put("messageBody", "Your leave application for <strong>" + resolveLeaveLabel(request.getResolvedLeaveName()) + "</strong> has been approved.");
+            templateModel.put("recipientName", approvedRequest.getEmployee().getFullName());
+            templateModel.put("messageBody",
+                    "Your leave application for <strong>"
+                            + resolveLeaveLabel(approvedRequest.getResolvedLeaveName())
+                            + "</strong> has been approved.");
             templateModel.put("detailsTitle", "Approval Details");
 
             Map<String, String> details = new LinkedHashMap<>();
-            details.put("Leave Type", resolveLeaveLabel(request.getResolvedLeaveTypeId()));
-            details.put("Start Date", request.getStartDate().toString());
-            details.put("End Date", request.getEndDate().toString());
+            details.put("Leave Type", resolveLeaveLabel(approvedRequest.getResolvedLeaveTypeId()));
+            details.put("Start Date", approvedRequest.getStartDate().toString());
+            details.put("End Date", approvedRequest.getEndDate().toString());
+
             if (approvalRequest.getComment() != null) {
                 details.put("Manager's Comment", approvalRequest.getComment());
             }
+
             templateModel.put("details", details);
 
-            EmailDTO emailDTO = new EmailDTO(request.getEmployee().getEmail(), "Leave Application Approved", "generic-notification.html", true);
+            EmailDTO emailDTO = new EmailDTO(
+                    approvedRequest.getEmployee().getEmail(),
+                    "Leave Application Approved",
+                    "generic-notification.html",
+                    true
+            );
+
             emailDTO.setTemplateModel(templateModel);
             asyncNotificationService.queueEmail(emailDTO);
         }
@@ -1151,6 +1233,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Override
     @Transactional
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.employeeId + '-' + #request.year")
+            }
+    )
     public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest, LeaveRequestValidationDTO request) {
         return leaveRequestRepo.findByLeaveIdAndEmployee_EmployeeId(
                         leaveRequest.getLeaveId(), leaveRequest.getEmployee().getEmployeeId())
@@ -1359,6 +1446,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
+    @Cacheable(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#employeeId + '-' + #year")
     public List<LeaveRequestResponseDTO> getPendingLeaveRequestsByEmployeeAndYear(String employeeId, int year) {
         List<LeaveRequest> leaveRequest = leaveRequestRepo.findByEmployee_EmployeeIdAndStatusAndYear(employeeId, LeaveStatus.PENDING, year);
         return leaveRequest.stream()

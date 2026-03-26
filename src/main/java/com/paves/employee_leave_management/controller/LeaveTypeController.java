@@ -72,12 +72,7 @@ public class LeaveTypeController {
     @GetMapping("/types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
     public List<Map<String, String>> getLeaveTypes() {
-        return Arrays.stream(LeaveTypesEnum.values())
-                .map(type -> Map.of(
-                        "name", type.name(),
-                        "label", type.getLabel()
-                ))
-                .toList();
+        return service.getLeaveTypes();
     }
 
     @GetMapping("/accrual-frequencies")
@@ -150,7 +145,11 @@ public class LeaveTypeController {
     @GetMapping("/get-all-leave-types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
     public ResponseEntity<AllLeaveTypesListResponseDTO> getAllLeaveTypes() {
-        return service.getAllLeaveTypes();
+         AllLeaveTypesListResponseDTO allLeaveTypesListResponseDTO =  service.getAllLeaveTypes();
+         if(allLeaveTypesListResponseDTO == null){
+             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+         }
+         return ResponseEntity.ok(allLeaveTypesListResponseDTO);
     }
 
     @PatchMapping("/update-leave-type/{leaveTypeId}")

@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -20,6 +21,8 @@ public interface LeaveBalanceServiceInterface {
     LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year);
 
     void createLeaveBalanceForNewEmployee(String EmpId);
+
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(Integer year, int page, int size);
 
     void processAccrualForLeaveType();
 
@@ -33,11 +36,11 @@ public interface LeaveBalanceServiceInterface {
 
     void triggerMonthlyLeaveAccrual();
 
-    ResponseEntity<LeaveBalance> findByBalanceId(String balanceId);
+    LeaveBalance findByBalanceId(String balanceId);
 
     ResponseEntity<List<LeaveBalance>> getAllLeaveBalances();
 
-    ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalanceByYear(Integer year);
+    List<AllPeopleLeaveBalance> getAllLeaveBalanceByYear(Integer year);
 
     public List<LeaveBalance> getCurrentYearBalances(String employeeId);
 
@@ -59,11 +62,13 @@ public interface LeaveBalanceServiceInterface {
 
     EmployeeLeaveBalance findByEmployeeIdAndYearPerEmployee(String employeeId, Integer year);
 
+    EmployeeLeaveBalanceForDropdown getLeaveBalanceForDropdown(String employeeId, Integer year);
+
     void createLeaveBalanceForAllEmployees(LeaveType leaveType);
 
     List<String> autocomplete(String query);
 
-    List<LeaveBalance> searchLeaveBalances(String query);
+    List<LeaveBalance> searchLeaveBalances(String query, int year);
 
     List<String> autocompleteEmployee(String query);
     

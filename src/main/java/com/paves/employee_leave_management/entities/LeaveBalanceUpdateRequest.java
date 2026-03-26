@@ -11,6 +11,7 @@ public class LeaveBalanceUpdateRequest {
     private String employeeId;
     private List<BalanceUpdate> balances;
     private String performedBy;
+    private int year;
 
 
     @Data

@@ -21,6 +21,8 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -789,12 +791,12 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
-    public ResponseEntity<LeaveBalance> findByBalanceId(String balanceId) {
+    public LeaveBalance findByBalanceId(String balanceId) {
         LeaveBalance balance = leaveBalanceDao.findById(balanceId);
         if (balance == null) {
             throw new LeaveBalanceExceptionHandler("Balance not found: " + balanceId);
         }
-        return new ResponseEntity<>(balance, HttpStatus.FOUND);
+        return balance;
     }
 
     @Override
@@ -812,7 +814,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
-    public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalanceByYear(Integer year) {
+    @Cacheable(value= "employeesLeaveBalances", key="#year")
+    public List<AllPeopleLeaveBalance> getAllLeaveBalanceByYear(Integer year) {
 
         int currentYear = LocalDate.now().getYear();
 
@@ -857,7 +860,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             allPeopleLeaveBalance.add(dto);
         }
 
-        return new ResponseEntity<>(allPeopleLeaveBalance, HttpStatus.OK);
+        return allPeopleLeaveBalance;
     }
 
 
@@ -925,6 +928,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Auditable
     @Transactional
     @Override
+    @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '_' +#request.getYear()")
     public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
         System.out.println("=== Updating balances for employee: " + request.getEmployeeId());
 
@@ -1242,11 +1246,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
-    public List<LeaveBalance> searchLeaveBalances(String query) {
+    public List<LeaveBalance> searchLeaveBalances(String query, int year) {
         if (query == null || query.isBlank()) {
             return leaveBalanceRepo.findAll();
         }
-        return leaveBalanceRepo.searchByEmployee(query);
+        return leaveBalanceRepo.searchByEmployee(query, year);
     }
     
     @Override
@@ -1255,6 +1259,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
+//    @Cacheable(value = "employeeLeaveBalance", key = "#employeeId + '-' + #year")
     public EmployeeLeaveBalance findByEmployeeIdAndYearPerEmployee(String employeeId, Integer year){
                 List<LeaveBalance> regular = leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
                 List<GenderBasedLeaveBalance> genderBasedLeaveBalances = genderBasedLeaveBalancesRepo.findByEmployeeIdAndYear(employeeId, year);
@@ -1263,6 +1268,47 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 employeeLeaveBalance.setGenderBasedLeaveBalances(genderBasedLeaveBalances);
                 employeeLeaveBalance.setRegular(regular);
                 return employeeLeaveBalance;
+    }
+
+    @Override
+    @Cacheable(value = "employeeLeaveBalance", key = "#employeeId + '_' + #year")
+    public EmployeeLeaveBalanceForDropdown getLeaveBalanceForDropdown(String employeeId, Integer year) {
+
+        System.out.println("🔥 DB HIT - Leave Balance");
+
+        List<LeaveBalance> regular =
+                leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
+
+        List<GenderBasedLeaveBalance> genderBased =
+                genderBasedLeaveBalancesRepo.findByEmployeeIdAndYear(employeeId, year);
+
+
+        List<LeaveBalanceRemainingForLeaveDropDown> regularList = regular.stream()
+                .map(lb -> {
+                    LeaveBalanceRemainingForLeaveDropDown dto = new LeaveBalanceRemainingForLeaveDropDown();
+                    dto.setLeaveName(lb.getLeaveType().getLeaveName());
+                    dto.setRemainingLeaves(lb.getRemainingLeaves());
+                    dto.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
+                    return dto;
+                })
+                .toList();
+
+
+        List<LeaveBalanceRemainingForLeaveDropDown> genderList = genderBased.stream()
+                .map(gb -> {
+                    LeaveBalanceRemainingForLeaveDropDown dto = new LeaveBalanceRemainingForLeaveDropDown();
+                    dto.setLeaveName(gb.getLeaveType().getLeaveName());
+                    dto.setRemainingLeaves(gb.getRemainingDays() * 1.0);
+                    dto.setLeaveTypeId(gb.getLeaveType().getLeaveTypeId());
+                    return dto;
+                })
+                .toList();
+
+        EmployeeLeaveBalanceForDropdown response = new EmployeeLeaveBalanceForDropdown();
+        response.setRegular(regularList);
+        response.setGenderBasedLeaveBalances(genderList);
+
+        return response;
     }
 
     @Override
@@ -1363,6 +1409,79 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
             leaveBalanceRepo.saveAll(toSave);
         }
+
+    }
+
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(Integer year, int page, int size) {
+
+        List<LeaveBalance> regularLeaveBalances = leaveBalanceRepo.findAllByYear(year);
+        List<GenderBasedLeaveBalance> genderBasedLeaveBalances = genderBasedLeaveBalancesRepo.findAllByYear(year);
+
+        // One entry per employee
+        Map<String, EmployeeLeaveBalanceDTO> employeeMap = new LinkedHashMap<>();
+
+        // 🔹 Group regular leave balances by employee
+        for (LeaveBalance lb : regularLeaveBalances) {
+            String empId = lb.getEmployee().getEmployeeId();
+
+            employeeMap.computeIfAbsent(empId, k -> {
+                EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
+                dto.setEmployeeId(empId);
+                dto.setEmployeeName(lb.getEmployee().getFirstName() + " " + lb.getEmployee().getLastName());
+                dto.setGender(lb.getEmployee().getGender());
+                dto.setYear(lb.getYear());
+                dto.setLeaves(new ArrayList<>());
+                return dto;
+            });
+
+            LeaveDetail detail = new LeaveDetail();
+            detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
+            detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
+            detail.setRemainingLeaves(lb.getRemainingLeaves());
+
+            employeeMap.get(empId).getLeaves().add(detail);
+        }
+
+        // 🔹 Group gender-based leave balances by employee
+        for (GenderBasedLeaveBalance lb : genderBasedLeaveBalances) {
+            String empId = lb.getEmployeeId();
+
+            employeeMap.computeIfAbsent(empId, k -> {
+                EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
+                dto.setEmployeeId(empId);
+                dto.setEmployeeName(""); // fill if you have access to employee name here
+                dto.setGender(lb.getLeaveType().getGender());
+                dto.setYear(lb.getYear());
+                dto.setLeaves(new ArrayList<>());
+                return dto;
+            });
+
+            LeaveDetail detail = new LeaveDetail();
+            detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
+            detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
+            detail.setRemainingLeaves(lb.getRemainingDays());
+
+            employeeMap.get(empId).getLeaves().add(detail);
+        }
+
+        // 🔹 Paginate the grouped result
+        List<EmployeeLeaveBalanceDTO> allEmployees = new ArrayList<>(employeeMap.values());
+        int totalItems = allEmployees.size();
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, totalItems);
+
+        List<EmployeeLeaveBalanceDTO> pageData = (fromIndex >= totalItems)
+                ? new ArrayList<>()
+                : allEmployees.subList(fromIndex, toIndex);
+
+        // 🔹 Build paginated response
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", pageData);
+        response.put("currentPage", page);
+        response.put("totalItems", totalItems);
+        response.put("totalPages", (int) Math.ceil((double) totalItems / size));
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
 
