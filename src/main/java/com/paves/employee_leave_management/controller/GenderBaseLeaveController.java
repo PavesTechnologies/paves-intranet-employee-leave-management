@@ -89,7 +89,4 @@ public class GenderBaseLeaveController {
                 "Leave types fetched successfully",
                 genderBasedLeaves);
     }
-
-
-
 }

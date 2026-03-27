@@ -11,6 +11,7 @@ import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.*;
 import jakarta.persistence.Transient;
+import org.hibernate.annotations.Cache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -907,6 +908,18 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Override
     @Transactional
+    @Caching(evict = {
+
+            // Employee caches
+            @CacheEvict(
+                    value = "pendingLeaveRequestsByEmployeeAndYear",
+                    key = "#result.employee.employeeId + '-' + #rejectionRequest.year"
+            ),
+            @CacheEvict(
+                    value = "leaveRequestsByEmployeeAndYear",
+                    key = "#result.employee.employeeId + '-' + #rejectionRequest.year"
+            )
+    })
     public LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest) {
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(rejectionRequest.getLeaveId(), rejectionRequest.getManagerId())
@@ -966,6 +979,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     @Override
     @Transactional
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#result.employee.employeeId + '-' + #updateRequest.year"),
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#result.employee.employeeId + '-' + #updateRequest.year")
+            }
+    )
     public LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest) {
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(updateRequest.getLeaveId(), updateRequest.getManagerId())

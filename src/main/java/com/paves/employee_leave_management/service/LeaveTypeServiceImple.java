@@ -17,6 +17,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -63,7 +64,14 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Override
     @Transactional
-//    @CacheEvict(value="all-leave-type", allEntries = true)
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+            }
+    )
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType) {
         leaveType.generateId(); // ensure leaveTypeId is set
 
@@ -107,6 +115,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 //                dbLeaveType.setPolicyDocument(leaveType.getPolicyDocument());
                 dbLeaveType.setCreateAt(LocalDateTime.now());
                 dbLeaveType.setEffectiveStartDate(leaveType.getEffectiveStartDate());
+                dbLeaveType.setDeactivationEffectiveDate(null);
 
                 dbLeaveType.setLastUpdatedAt(null);
                 LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
@@ -195,6 +204,14 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Transactional
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+            }
+    )
     public ApiResponse<LeaveType> updateLeaveType(LeaveType updatedLeaveType, String leaveTypeId) {
         Optional<LeaveType> existingOpt = leaveTypeRepo.findByLeaveTypeId(leaveTypeId);
         if (existingOpt.isEmpty()) {
@@ -262,6 +279,14 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     }
 
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+            }
+    )
     public ResponseEntity<String> deleteLeaveType(String leaveTypeId) {
         LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
                 .orElseThrow(() -> new RuntimeException("Leave type not found."));
@@ -281,6 +306,14 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     }
 
     @Transactional
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+            }
+    )
     public ResponseEntity<String> deActiveLeaveType(String leaveTypeId, LocalDate effectiveDate) {
         LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
                 .orElseThrow(() -> new RuntimeException("Leave Type Not Found"));

@@ -23,4 +23,6 @@ public class RejectionRequestDTO {
 
     @NotBlank(message = "Comment is required for rejection")
     private String comment;
+
+    private int year;
 }
