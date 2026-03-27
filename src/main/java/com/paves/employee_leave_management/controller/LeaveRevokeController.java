@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.controller;
 
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveRevokeDTO;
+import com.paves.employee_leave_management.dto.RevokeRequestDTO;
 import com.paves.employee_leave_management.entities.LeaveRevoke;
 import com.paves.employee_leave_management.service.LeaveRevokeRequestService;
 import com.paves.employee_leave_management.serviceInterface.LeaveRevokeRequest;
@@ -37,8 +38,8 @@ public class LeaveRevokeController {
 
     @PostMapping("/approve/{revokeId}")
     @PreAuthorize("hasRole('MANAGER')")
-    public ApiResponse<String> approveRequest(@PathVariable String revokeId) {
-        leaveRevokeRequestService.approveRequest(revokeId);
+    public ApiResponse<String> approveRequest(@PathVariable String revokeId, @RequestBody RevokeRequestDTO revokeRequestDTO) {
+        leaveRevokeRequestService.approveRequest(revokeId, revokeRequestDTO);
         template.convertAndSend("/topic/leave-updated", "updated");
         return new ApiResponse<>(true, "Leave revoke request approved successfully", null);
     }
@@ -58,6 +59,4 @@ public class LeaveRevokeController {
         template.convertAndSend("/topic/leave-updated", "updated");
         return new ApiResponse<>(true, "Leave revoke request rejected successfully", null);
     }
-
-
 }

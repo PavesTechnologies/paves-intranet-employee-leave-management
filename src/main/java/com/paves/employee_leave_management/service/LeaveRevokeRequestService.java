@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.LeaveRevokeDTO;
+import com.paves.employee_leave_management.dto.RevokeRequestDTO;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveRevoke;
 import com.paves.employee_leave_management.enums.LeaveRevokeStatus;
@@ -11,6 +12,8 @@ import com.paves.employee_leave_management.serviceInterface.EmailServiceInterfac
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveRevokeRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,7 +81,13 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
 
     @Override
     @Transactional
-    public void approveRequest(String id) {
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#revokeRequestDTO.employeeId + '-' + #revokeRequestDTO.year"),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", key = "#revokeRequestDTO.employeeId + '-' + #revokeRequestDTO.year"),
+            }
+    )
+    public void approveRequest(String id, RevokeRequestDTO revokeRequestDTO) {
         System.out.println("id: " + id);
         LeaveRevoke revokeRequest = leaveRevokeRepo.findById(id.trim()).orElseThrow(() -> {
             throw new RuntimeException("Leave revoke request not found");

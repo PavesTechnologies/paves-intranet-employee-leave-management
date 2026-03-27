@@ -11,9 +11,12 @@ import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInter
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -35,6 +38,14 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
     private GenderBasedLeaveBalanceService genderBasedLeaveBalanceService;
 
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+            }
+    )
     public ApiResponse<Object> createGenderBaseLeave(GenderBasedLeave genderBaseLeave) {
         genderBaseLeave.generateId();
 
@@ -46,6 +57,9 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
                     null);
         }
 
+        genderBaseLeave.setActive(Boolean.TRUE);
+        genderBaseLeave.setCreatedAt(LocalDateTime.now());
+        genderBaseLeave.setEffectiveEndDate(null);
         GenderBasedLeave saved = genderBasedRepo.save(genderBaseLeave);
 
         boolean shouldActivateNow = !saved.getEffectiveStartDate().isAfter(LocalDate.now());
@@ -63,6 +77,14 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
     }
 
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+            }
+    )
     public ApiResponse<Object> updateGenderBaseLeave(GenderBasedLeave genderBaseLeave, String leaveTypeId) {
         Optional<GenderBasedLeave> existing = genderBasedRepo.findById(leaveTypeId);
         if(existing.isEmpty()){
@@ -78,6 +100,14 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
     }
 
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+            }
+    )
     public ApiResponse<Object> deActiveGenderBaseLeaveType(String leaveTypeId, LocalDate effectiveDate) {
         GenderBasedLeave existing = genderBasedRepo.findById(leaveTypeId).orElseThrow(()->new RuntimeException("Leave type not found"));
         if(effectiveDate.isAfter(LocalDate.now())){
