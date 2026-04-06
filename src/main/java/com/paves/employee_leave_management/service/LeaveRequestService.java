@@ -1606,7 +1606,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             return null;
         }
         
-        String employeeName = approvedLeaves.get(0).getEmployee().getFullName();
+        String employeeName = approvedLeaves.getFirst().getEmployee().getFullName();
         List<Holidays> holidays = holidaysService.getHolidaysByYear(year);
         Set<LocalDate> holidayDates = holidays != null ?
             holidays.stream().map(Holidays::getHolidayDate).collect(java.util.stream.Collectors.toSet()) : 
