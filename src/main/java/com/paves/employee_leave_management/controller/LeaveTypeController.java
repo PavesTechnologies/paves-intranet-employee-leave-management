@@ -12,6 +12,7 @@ import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 @CrossOrigin
 @RestController
 @RequestMapping("/api/leave")
+@Tag(name = "Leave Type", description = "APIs for leave management")
 public class LeaveTypeController {
 
     @Autowired

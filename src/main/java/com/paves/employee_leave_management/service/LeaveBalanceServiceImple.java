@@ -1326,6 +1326,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Transactional
     @Override
+    @CacheEvict(value = "employeeLeaveBalance", allEntries = true)
     public void processCarryForward(int year) {
 
         List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
