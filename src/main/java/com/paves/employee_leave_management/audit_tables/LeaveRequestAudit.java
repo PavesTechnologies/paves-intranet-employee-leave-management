@@ -55,4 +55,3 @@ public class LeaveRequestAudit extends BaseAuditEntity {
     // private String changedBy;
     // private LocalDateTime changedAt;
 }
-

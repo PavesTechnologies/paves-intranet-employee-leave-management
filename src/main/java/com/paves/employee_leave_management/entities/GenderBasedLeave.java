@@ -92,6 +92,9 @@ public class GenderBasedLeave {
     @Column(name = "weekends_and_holidays_allowed", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean weekendsAndHolidaysAllowed = false;
 
+    @Column(name = "max_no_of_times")
+    private Integer MaxNoOfTimes;
+
 //    @JsonIgnore
 //    private String updateType;
     

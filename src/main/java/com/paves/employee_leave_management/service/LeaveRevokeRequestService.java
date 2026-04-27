@@ -89,6 +89,7 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
     )
     public void approveRequest(String id, RevokeRequestDTO revokeRequestDTO) {
         System.out.println("id: " + id);
+        System.out.println("revokeRequestDTO: " + revokeRequestDTO);
         LeaveRevoke revokeRequest = leaveRevokeRepo.findById(id.trim()).orElseThrow(() -> {
             throw new RuntimeException("Leave revoke request not found");
         });
@@ -123,13 +124,13 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
         revokeRequest.setStatus(LeaveRevokeStatus.APPROVED);
         leaveRevokeRepo.save(revokeRequest);
 
-        try {
-            if (request.getEmployee().getEmail() != null) {
-                emailService.sendLeaveRevokeNotification(request.getEmployee().getEmail(), request.getEmployee().getFullName(), request.getLeaveType().getLeaveName(), request.getStartDate().toString(), request.getEndDate().toString());
-            }
-        } catch (Exception e) {
-            System.err.println("Failed to send revoke email: " + e.getMessage());
-        }
+//        try {
+//            if (request.getEmployee().getEmail() != null) {
+//                emailService.sendLeaveRevokeNotification(request.getEmployee().getEmail(), request.getEmployee().getFullName(), request.getLeaveType().getLeaveName(), request.getStartDate().toString(), request.getEndDate().toString());
+//            }
+//        } catch (Exception e) {
+//            System.err.println("Failed to send revoke email: " + e.getMessage());
+//        }
     }
 
     @Override
@@ -151,6 +152,8 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
             leaveRevokeDTO.setDays(leaveRequest.get().getDaysRequested());
             leaveRevokeDTO.setStatus(leaveRevoke.getStatus());
             leaveRevokeDTO.setReason(leaveRevoke.getReason());
+            leaveRevokeDTO.setManagerId(leaveRevoke.getManagerId());
+            leaveRevokeDTO.setYear(leaveRequest.get().getYear());
             leaveRevokeDTO.setLeaveName(leaveRequestService.resolveLeaveLabel(leaveRequest.get().getResolvedLeaveName()));
             leaveRevokeDTOList.add(leaveRevokeDTO);
         });

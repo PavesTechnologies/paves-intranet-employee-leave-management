@@ -2,12 +2,12 @@ package com.paves.employee_leave_management.dto;
 
 import lombok.*;
 
-@Getter
-@Setter
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Data
-public class RevokeRequestDTO {
+@Getter
+@Setter
+public class EmployeesDTO {
+    private String name;
     private String employeeId;
-    private int year;
 }

@@ -315,37 +315,55 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             }
     )
     public ResponseEntity<String> deActiveLeaveType(String leaveTypeId, LocalDate effectiveDate) {
+
         LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
                 .orElseThrow(() -> new RuntimeException("Leave Type Not Found"));
 
+        // ✅ FUTURE DATE → Schedule
         if (effectiveDate.isAfter(LocalDate.now())) {
-            // Future effective date → schedule it
             leaveType.setDeactivationEffectiveDate(effectiveDate);
-//            leaveType.setActive(true); // still active until the date arrives
-//            leaveTypeRepo.save(leaveType);
+            leaveTypeRepo.save(leaveType); // ✅ FIXED
 
-            return new ResponseEntity<>(
-                    "Leave type scheduled for deactivation on " + effectiveDate,
-                    HttpStatus.OK);
-        } else {
-            // Effective date has passed → deactivate immediately
-            leaveType.setActive(false);
-            leaveType.setDeactivationEffectiveDate(LocalDate.now());
-            leaveTypeRepo.save(leaveType);
-            if(leaveType.getLeaveTypeId().equals("L-COMPOFF")){
-                leaveCompoffRepo.deleteByIdleaveCompoffAndStatus(Long.valueOf(leaveTypeId), LeaveStatusCompoff.PENDING);
-                return new ResponseEntity<>(
-                        "Leave type deactivated immediately (effective date already passed)",
-                        HttpStatus.OK);
-            }
-            leaveRequestRepo.deleteByLeaveTypeAndStatus(leaveType, LeaveStatus.PENDING);
-            // Optional: cleanup leave balances
-            leaveBalanceRepo.deleteByLeaveType(leaveType);
-
-            return new ResponseEntity<>(
-                    "Leave type deactivated immediately (effective date already passed)",
-                    HttpStatus.OK);
+            return ResponseEntity.ok(
+                    "Leave type scheduled for deactivation on " + effectiveDate
+            );
         }
+
+        // ✅ VALIDATION BEFORE DEACTIVATION
+
+        // Special case: COMPOFF
+        if ("L-COMPOFF".equals(leaveType.getLeaveTypeId())) {
+            List<LeaveCompoff> compOffList =
+                    leaveCompoffRepo.findByStatus(LeaveStatusCompoff.PENDING);
+
+            if (!compOffList.isEmpty()) {
+                return ResponseEntity.badRequest().body(
+                        "Cannot deactivate. Pending CompOff requests exist for " + leaveTypeId
+                );
+            }
+        }
+
+        // General leave request validation
+        List<LeaveRequest> pendingRequests =
+                leaveRequestRepo.findByStatus(LeaveStatus.PENDING);
+
+        if (!pendingRequests.isEmpty()) {
+            return ResponseEntity.badRequest().body(
+                    "Cannot deactivate. Pending leave requests exist for " + leaveTypeId
+            );
+        }
+
+        // ✅ SAFE TO DEACTIVATE
+        leaveType.setActive(false);
+        leaveType.setDeactivationEffectiveDate(LocalDate.now());
+        leaveTypeRepo.save(leaveType);
+
+        // ⚠️ Optional cleanup (use carefully)
+        leaveBalanceRepo.deleteByLeaveType(leaveType);
+
+        return ResponseEntity.ok(
+                "Leave type deactivated successfully"
+        );
     }
 
 

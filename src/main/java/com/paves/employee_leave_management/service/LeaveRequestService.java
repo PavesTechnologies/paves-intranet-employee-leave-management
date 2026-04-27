@@ -5,10 +5,8 @@ import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
-import com.paves.employee_leave_management.repo.EmployeeRepo;
-import com.paves.employee_leave_management.repo.GenderBasedRepo;
-import com.paves.employee_leave_management.repo.LeaveRequestRepo;
-import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.helper.LeaveRequestSpecification;
+import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.*;
 import jakarta.persistence.Transient;
 import org.hibernate.annotations.Cache;
@@ -16,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +37,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     );
     @Autowired
     private LeaveRequestRepo leaveRequestRepo;
+    @Autowired
+    private LeaveRequestRepository leaveRequestRepository;
+
     @Autowired
     private EmployeeRepo employeeRepo;
     @Autowired
@@ -300,15 +302,15 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         // ✅ Use gender-based approved query
         List<LeaveRequest> approvedML = leaveRequestRepo.findApprovedGenderBasedLeavesByType(employee.getEmployeeId(), "L-ML");
         long longLeaves = approvedML.stream()
-                .filter(lr -> lr.getDaysRequested() >= 48)
+                .filter(lr -> lr.getDaysRequested() >= leaveType.getMinLeaveDays())
                 .count();
 
-        if (request.getDaysRequested() >= 48 && longLeaves >= 2) {
-            result.addError("Maternity leave for 6 months (48+ days) can only be availed twice.");
+        if (request.getDaysRequested() >= leaveType.getMinLeaveDays() && longLeaves >= leaveType.getMaxNoOfTimes()) {
+            result.addError("Maternity leave for full days or "+leaveType.getMinLeaveDays()+" can only be availed "+leaveType.getMaxNoOfTimes()+"." );
             return;
         }
 
-        if (request.getDaysRequested() >= 48 &&
+        if (request.getDaysRequested() >= leaveType.getMinLeaveDays() &&
                 request.getDaysRequested() != genderBasedRepo.findByLeaveTypeId("L-ML").get().getMaxLeaveDays()) {
             result.addError("Standard maternity leave should be exactly " +
                     genderBasedRepo.findByLeaveTypeId("L-ML").get().getMaxLeaveDays() + " days.");
@@ -331,7 +333,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         // ✅ Use gender-based approved query
         List<LeaveRequest> approvedPL = leaveRequestRepo.findApprovedGenderBasedLeavesByType(employee.getEmployeeId(), "L-PL");
 
-        if (approvedPL.size() >= 2) {
+        if (approvedPL.size() >= leaveType.getMaxNoOfTimes()) {
             result.addError("Paternity leave can only be availed twice. You have already used the maximum limit.");
             return;
         }
@@ -340,7 +342,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             result.addError("Paternity leave must be exactly 5 continuous days.");
         }
 
-        if (approvedPL.size() == 1) {
+        if (approvedPL.size() < leaveType.getMaxNoOfTimes()) {
             LeaveRequest previousLeave = approvedPL.get(0);
             long gap = ChronoUnit.DAYS.between(previousLeave.getStartDate(), request.getStartDate());
             if (gap < 365) {
@@ -455,10 +457,18 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         ValidationResultDTO validationResult = validateLeaveRequest(request);
 
         if (!validationResult.isValid()) {
-            throw new RuntimeException("Leave request validation failed: " + String.join(", ", validationResult.getErrors()));
+            throw new RuntimeException(String.join(", ", validationResult.getErrors()));
         }
 
         Employee employee = employeeService.getByEmployeeId(request.getEmployeeId()).getBody();
+        Employee appliedBy;
+        if(request.getAppliedBy()!=null){
+            appliedBy = employeeService.getByEmployeeId(request.getAppliedBy()).getBody();
+        }
+        else{
+            appliedBy = employee;
+        }
+
 //        GenderBasedLeave genderBasedLeave = genderBasedRepo.findByLeaveTypeId(request.getLeaveTypeId()).get();
 
         LeaveRequest.LeaveRequestBuilder builder = LeaveRequest.builder()
@@ -472,6 +482,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .startSession(request.getStartSession())
                 .endSession(request.getEndSession())
                 .requestDate(LocalDate.now())
+                .appliedBy(appliedBy)
                 .createdAt(LocalDateTime.now());
 
         String leaveName; // for email
@@ -538,7 +549,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
-    @Cacheable(value = "leaveRequestsByEmployee", key = "#employeeId")
+    @Cacheable(
+            value = "leaveRequestsByEmployee",
+            key = "#employeeId",
+            unless = "#result == null || #result.isEmpty()"
+    )
     public List<LeaveRequestResponseDTO> getLeaveRequestsByEmployee(String employeeId) {
         List<LeaveRequest> leaveRequests = leaveRequestRepo.findByEmployee_EmployeeId(employeeId);
         return leaveRequests.stream().filter(leaveRequest ->
@@ -726,8 +741,13 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Override
 //    @Cacheable(value = "leaveHistory", key = "#queryDTO.managerId + '-' + #queryDTO.year")
     public List<LeaveRequestManagerViewDTO> getRequestsForManager(ManagerQueryDTO queryDTO) {
-        List<LeaveRequest> leaveRequest =  leaveRequestRepo.findManagerRequestsByCriteria(queryDTO);
-        return leaveRequest.stream().map((leave)->
+
+        Specification<LeaveRequest> spec =
+                LeaveRequestSpecification.filterByManagerQuery(queryDTO);
+
+        List<LeaveRequest> leaveRequests = leaveRequestRepository.findAll(spec);
+
+        return leaveRequests.stream().map(leave ->
                 LeaveRequestManagerViewDTO.builder()
                         .leaveId(leave.getLeaveId())
                         .requestDate(leave.getRequestDate())
@@ -735,7 +755,6 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         .employeeFullName(leave.getEmployee().getFullName())
                         .startDate(leave.getStartDate())
                         .endDate(leave.getEndDate())
-//                        .approvedBy(leave.getEmployee().getManager().getEmployeeId())
                         .year(leave.getYear())
                         .leaveTypeId(getResolvedLeaveTypeId(leave))
                         .leaveName(resolveLeaveLabel(leave.getResolvedLeaveName()))
@@ -746,8 +765,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         .daysRequested(leave.getDaysRequested())
                         .reason(leave.getReason())
                         .jobTitle(leave.getEmployee().getJobTitle())
-                        .build())
-                .collect(Collectors.toList());
+                        .build()
+        ).toList();
     }
 
     @Override
@@ -1093,6 +1112,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         if (updateRequest.getDriveLink() != null) request.setDriveLink(updateRequest.getDriveLink());
         request.setStartSession(updateRequest.getStartSession());
         request.setEndSession(updateRequest.getEndSession());
+        request.setLeaveName(resolveRawName(updateRequest.getLeaveName()));
 
         // ✅ Step 7: Apply new balance deduction — route to correct service
         double newDays = updateRequest.getDaysRequested() != null
@@ -1257,7 +1277,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Transactional
     @Caching(
             evict = {
-                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.employeeId + '-' + #request.year")
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.employeeId + '-' + #request.year"),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#request.employeeId +'-' + #request.year")
             }
     )
     public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest, LeaveRequestValidationDTO request) {
@@ -1280,14 +1301,14 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                                 existingRequest.getEmployee().getEmployeeId(),
                                 existingLeaveTypeId,
                                 existingRequest.getDaysRequested(),
-                                existingRequest.getRequestDate().getYear()
+                                existingRequest.getYear()
                         );
                     } else {
                         leaveBalanceService.updateLeaveBalanceAfterRejected(
                                 existingRequest.getEmployee().getEmployeeId(),
                                 existingLeaveTypeId,
                                 existingRequest.getDaysRequested(),
-                                existingRequest.getRequestDate().getYear()
+                                existingRequest.getYear()
                         );
                     }
 
@@ -1465,6 +1486,18 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         } catch (IllegalArgumentException e) {
             return rawName; // fallback to raw name if not found in enum
         }
+    }
+
+    public String resolveRawName(String label) {
+        if (label == null) return null;
+
+        for (LeaveTypesEnum type : LeaveTypesEnum.values()) {
+            if (type.getLabel().equalsIgnoreCase(label.trim())) {
+                return type.name(); // returns enum constant like PATERNITY_LEAVE
+            }
+        }
+
+        return label; // fallback if not found
     }
 
     @Override

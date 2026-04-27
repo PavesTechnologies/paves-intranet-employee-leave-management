@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.daoInterface.EmployeeDAO;
 import com.paves.employee_leave_management.dto.ApiResponse;
+import com.paves.employee_leave_management.dto.EmployeesDTO;
 import com.paves.employee_leave_management.dto.UserDTOFromUMS;
 import com.paves.employee_leave_management.dto.UserResponseDTO;
 import com.paves.employee_leave_management.entities.Employee;
@@ -11,6 +12,9 @@ import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInter
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.web.reactive.function.client.WebClientAutoConfiguration;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -72,10 +76,10 @@ public class EmployeeServiceImple implements EmployeeServiceInterface {
     }
 
     @Override
-    public ResponseEntity<List<Employee>> getAllEmployees() {
+    public List<Employee> getAllEmployees() {
         List<Employee> emps = employeeDAO.findAll();
         if (emps != null) {
-            return new ResponseEntity<List<Employee>>(emps, HttpStatus.ACCEPTED);
+            return emps;
         } else {
             throw new EmployeeExceptionHandler("No employees found");
         }
@@ -150,5 +154,31 @@ public class EmployeeServiceImple implements EmployeeServiceInterface {
         );
     }
 
+    @Override
+    public List<EmployeesDTO> getAllEmployeePaginated() {
+        PageRequest pageRequest = PageRequest.of(0, 10);
+        Page<Employee> employees =  employeeRepo.findAll(pageRequest);
+        List<EmployeesDTO> employeesDTOList = new ArrayList<>();
+        for (Employee emp: employees){
+            EmployeesDTO employeesDTO = new EmployeesDTO();
+            employeesDTO.setEmployeeId(emp.getEmployeeId());
+            employeesDTO.setName(emp.getFirstName() + " " + emp.getLastName());
+            employeesDTOList.add(employeesDTO);
+        }
+        return employeesDTOList;
+    }
 
+    @Override
+    public List<EmployeesDTO> searchEmployees(String search, int page, String managerId) {
+        Pageable pageable = PageRequest.of(page, 10);
+        // You should use the query created above to ensure Managers only see THEIR employees
+        Page<Employee> employees = employeeRepo.searchManagedEmployees(search, managerId, pageable);
+
+        return employees.stream().map(emp -> {
+            EmployeesDTO dto = new EmployeesDTO();
+            dto.setEmployeeId(emp.getEmployeeId());
+            dto.setName(emp.getFirstName() + " " + emp.getLastName());
+            return dto;
+        }).collect(Collectors.toList());
+    }
 }
