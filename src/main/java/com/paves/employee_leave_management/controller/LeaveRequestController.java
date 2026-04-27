@@ -47,12 +47,12 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> applyLeave(@Valid @RequestBody LeaveRequestValidationDTO request) {
         try {
             // Validate the leave request
-            ValidationResultDTO validationResult = leaveRequestService.validateLeaveRequest(request);
+          /*  ValidationResultDTO validationResult = leaveRequestService.validateLeaveRequest(request);
             if (!validationResult.isValid()) {
                 String errorMessage = String.join("; ", validationResult.getErrors());
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(false, errorMessage, null));
-            }
+            }*/
 
             // Save the leave request
             LeaveRequest savedLeaveRequest = leaveRequestService.saveLeaveRequest(request);
@@ -61,7 +61,7 @@ public class LeaveRequestController {
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(false, "Error processing leave application: " + e.getMessage(), null));
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
         }
     }
 
@@ -95,7 +95,8 @@ public class LeaveRequestController {
                     .startSession(validationDTO.getStartSession())
                     .endSession(validationDTO.getEndSession())
                     .reason(validationDTO.getReason())
-                    .requestDate(LocalDate.now())
+                    .requestDate(validationDTO.getRequestDate())
+                    .year(validationDTO.getYear())
                     .build();
 
             ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest, validationDTO);
@@ -132,7 +133,8 @@ public class LeaveRequestController {
                     .startSession(validationDTO.getStartSession())
                     .endSession(validationDTO.getEndSession())
                     .reason(validationDTO.getReason())
-                    .requestDate(LocalDate.now())
+                    .requestDate(validationDTO.getRequestDate())
+                    .year(validationDTO.getYear())
                     .build();
 
             ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest, validationDTO);
@@ -534,6 +536,29 @@ public class LeaveRequestController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "Error retrieving approved leaves: " + e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/apply-on-behalf")
+    @PreAuthorize("hasRole('HR')")
+    public ResponseEntity<ApiResponse<Object>> applyLeaveBehalf(@RequestBody LeaveRequestValidationDTO leaveRequestValidationDTO){
+        try {
+            // Validate the leave request
+            ValidationResultDTO validationResult = leaveRequestService.validateLeaveRequest(leaveRequestValidationDTO);
+            if (!validationResult.isValid()) {
+                String errorMessage = String.join("; ", validationResult.getErrors());
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(false, errorMessage, null));
+            }
+
+            // Save the leave request
+            LeaveRequest savedLeaveRequest = leaveRequestService.saveLeaveRequest(leaveRequestValidationDTO);
+            template.convertAndSend("/topic/data-updated", "updated");
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully", savedLeaveRequest));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error processing leave application: " + e.getMessage(), null));
         }
     }
 }

@@ -2,11 +2,15 @@ package com.paves.employee_leave_management.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -21,33 +25,51 @@ import java.time.Duration;
 public class RedisConfig {
 
     @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        // 1. Setup the ObjectMapper to handle "Any" object type
-        ObjectMapper mapper = new ObjectMapper();
+    public RedisCacheConfiguration cacheConfiguration() {
 
-        // Essential for handling Java 8 Date/Time API (like your 'year' or timestamps)
-        mapper.registerModule(new JavaTimeModule());
+        ObjectMapper objectMapper = new ObjectMapper();
 
-        // This is the MAGIC line: It adds class info to the JSON so
-        // Redis knows if it's an 'EmployeeResponse' or a 'Leave' object.
-        mapper.activateDefaultTyping(
-                LaissezFaireSubTypeValidator.instance,
-                ObjectMapper.DefaultTyping.NON_FINAL,
-                JsonTypeInfo.As.PROPERTY
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        // 🔥 THIS IS THE KEY FIX
+        objectMapper.activateDefaultTyping(
+                objectMapper.getPolymorphicTypeValidator(),
+                ObjectMapper.DefaultTyping.NON_FINAL
         );
 
-        // 2. Create the Serializer with our smart mapper
-        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(mapper);
+        GenericJackson2JsonRedisSerializer serializer =
+                new GenericJackson2JsonRedisSerializer(objectMapper);
 
-        // 3. Define the Cache Config (Key = String, Value = JSON)
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(60)) // Set global timeout
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
-                .disableCachingNullValues();
+        return RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofMinutes(30))
+                .serializeKeysWith(
+                        RedisSerializationContext.SerializationPair
+                                .fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(
+                        RedisSerializationContext.SerializationPair
+                                .fromSerializer(serializer))
+                .disableCachingNullValues()
+                .prefixCacheNameWith("lms:");
+    }
 
+    // Primary Redis Cache Manager
+    @Bean
+    @Primary
+    public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
         return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(config)
+                .cacheDefaults(cacheConfiguration())
+                .transactionAware()
                 .build();
+    }
+
+    // Fallback Cache (VERY IMPORTANT)
+    @Bean
+    public CacheManager fallbackCacheManager() {
+        return new ConcurrentMapCacheManager(
+                "employeeLeaveBalance",
+                "leaveRequestsByEmployee",
+                "all-leave-types"
+        );
     }
 }

@@ -60,8 +60,13 @@ public class LeaveRequest {
     private LeaveStatus status = LeaveStatus.PENDING;
     @ManyToOne
     @JoinColumn(name = "approved_by")
-    @JsonIgnoreProperties({"firstName", "lastName", "email", "gender", "phone", "hireDate", "salary", "jobTitle", "password"})
+    @JsonIgnoreProperties({"email", "gender", "phone", "hireDate", "salary", "jobTitle", "password"})
     private Employee approvedBy;
+
+    @ManyToOne
+    @JoinColumn(name = "applied_by")
+    @JsonIgnoreProperties({"email", "gender", "phone", "hireDate", "salary", "password"})
+    private Employee appliedBy;
     @Builder.Default
     @Column(name = "request_date", nullable = false)
     private LocalDate requestDate = LocalDate.now();

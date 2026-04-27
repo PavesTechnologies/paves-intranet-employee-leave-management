@@ -103,11 +103,18 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
     Optional<LeaveRequest> findByLeaveIdAndEmployeeIdWithDetails(@Param("leaveId") String leaveId,
                                                                  @Param("employeeId") String employeeId);
 
-    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} " +
-            "AND (:#{#queryDTO.status} IS NULL AND lr.status = 'PENDING' OR lr.status = :#{#queryDTO.status}) " +
-            "AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId}) " +
-            "AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId}) " +
-            "AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})")
+    @Query("""
+        SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId}
+    AND (
+        (:#{#queryDTO.status} IS NULL AND lr.status = 'PENDING')
+        OR
+        (:#{#queryDTO.status} IS NOT NULL AND lr.status = :#{#queryDTO.status})
+        )
+    AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId})
+    AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId})
+    AND (
+        :#{#queryDTO.fromDate} IS NULL OR :#{#queryDTO.toDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})
+    """)
     List<LeaveRequest> findManagerRequestsByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
 
 

@@ -34,4 +34,6 @@ public class ManagerUpdateRequestDTO {
     private LocalDate requestDate;
     private String reason;
     private String driveLink;
+    private int year;
+    private String leaveName;
 }

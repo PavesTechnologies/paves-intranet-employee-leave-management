@@ -53,6 +53,12 @@ public class Employee {
     @JoinColumn(name = "manager_id")
     @JsonIgnore
     private Employee manager;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hr_id")
+    @JsonIgnore
+    private Employee hr;
+
     // 🔹 Reverse mapping: manager → subordinates
     @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore

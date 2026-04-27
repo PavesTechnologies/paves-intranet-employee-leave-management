@@ -24,4 +24,6 @@ public class LeaveRevokeDTO {
     private LocalDate endDate;
     private LeaveRevokeStatus status;
     private String reason;
+    private String managerId;
+    private Integer year;
 }
