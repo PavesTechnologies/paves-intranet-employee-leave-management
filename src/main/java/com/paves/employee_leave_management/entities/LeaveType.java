@@ -1,8 +1,8 @@
 package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.paves.employee_leave_management.audit_new.AuditEntityListener;
-import com.paves.employee_leave_management.audit_new.Auditable;
+import com.paves.employee_leave_management.audit.AuditEntityListener;
+import com.paves.employee_leave_management.audit.Auditable;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import jakarta.persistence.*;
@@ -18,7 +18,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Auditable
 @ToString
 //@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 @EntityListeners(AuditEntityListener.class)

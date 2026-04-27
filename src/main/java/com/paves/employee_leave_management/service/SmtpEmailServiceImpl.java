@@ -168,7 +168,7 @@ public class SmtpEmailServiceImpl implements EmailServiceInterface {
                 "startDate", startDate,
                 "endDate", endDate
         );
-        return sendEmailFromTemplate(employeeEmail, subject, "leave-revocation-notification.html", templateModel);
+        return sendEmailFromTemplate(employeeEmail, subject, "leave-revoke-notification.html", templateModel);
     }
 
     @Override

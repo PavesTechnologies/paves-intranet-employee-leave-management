@@ -1289,6 +1289,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     dto.setLeaveName(lb.getLeaveType().getLeaveName());
                     dto.setRemainingLeaves(lb.getRemainingLeaves());
                     dto.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
+                    dto.setAllowHalfDay(lb.getLeaveType().getAllowHalfDay());
                     return dto;
                 })
                 .toList();
@@ -1300,6 +1301,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     dto.setLeaveName(gb.getLeaveType().getLeaveName());
                     dto.setRemainingLeaves(gb.getRemainingDays() * 1.0);
                     dto.setLeaveTypeId(gb.getLeaveType().getLeaveTypeId());
+                    dto.setAllowHalfDay(false);
                     return dto;
                 })
                 .toList();
