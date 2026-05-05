@@ -35,7 +35,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers("/topic/**").permitAll()
+//                        .requestMatchers("/topic/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception

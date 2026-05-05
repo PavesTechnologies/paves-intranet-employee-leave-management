@@ -2,19 +2,25 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.EmailDTO;
 import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
+import com.paves.employee_leave_management.dto.LeaveWebSocketEvent;
 import com.paves.employee_leave_management.dto.PendingCompoffResponseDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
+import com.paves.employee_leave_management.enums.WsEventType;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveCompoffRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -23,17 +29,35 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
+
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
+
+    public enum CompoffEmailType {
+        REQUEST,
+        APPROVED,
+        REJECTED,
+        CANCELLED
+    }
+
     private final LeaveCompoffRepo leaveCompoffRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final EmployeeRepo employeeRepo;
     private final LeaveTypeRepo leaveTypeRepo;
     private final AsyncNotificationServiceInterface asyncNotificationService;
 
+
+
+
+
     @Override
-    public void requestCompoff(LeaveCompoffRequestDTO dto) {
+    @Transactional
+    public LeaveCompoff requestCompoff(LeaveCompoffRequestDTO dto) {
+
         Employee employee = employeeRepo.findById(dto.getEmployeeId())
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + dto.getEmployeeId()));
 
@@ -42,7 +66,8 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
         if (manager == null) {
             throw new RuntimeException("No manager assigned for employee");
         }
-        String managerId = employee.getManager().getEmployeeId();
+
+        String managerId = manager.getEmployeeId();
 
         LeaveCompoff compoff = LeaveCompoff.builder()
                 .employeeId(dto.getEmployeeId())
@@ -56,144 +81,119 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                 .endSession(dto.getEndSession())
                 .build();
 
-        LeaveCompoff cf = leaveCompoffRepo.save(compoff);
+        LeaveCompoff savedCompoff = leaveCompoffRepo.save(compoff);
 
-        // Send notification to manager
-        String employeeFullName = employee.getFirstName() + " " + employee.getLastName();
-        Map<String, Object> templateModel = new LinkedHashMap<>();
-        templateModel.put("title", "New Comp-Off Request");
-        templateModel.put("recipientName", manager.getFirstName());
-        templateModel.put("messageBody", "A new comp-off request has been submitted by <strong>" + employeeFullName + "</strong>.");
-        templateModel.put("detailsTitle", "Request Details");
+        // 🔥 Fire and forget email (non-blocking)
+        sendCompoffEmail(CompoffEmailType.REQUEST, employee, manager, savedCompoff);
 
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("Employee", employeeFullName);
-        details.put("Date", cf.getStartDate().toString());
-        details.put("Reason", cf.getNote());
-        templateModel.put("details", details);
-
-        templateModel.put("closingMessage", "Please review the request in the Leave Management System.");
-
-        EmailDTO emailDTO = new EmailDTO(manager.getEmail(), "New Comp-Off Request", "generic-notification.html", true);
-        emailDTO.setTemplateModel(templateModel);
-        asyncNotificationService.queueEmail(emailDTO);
+        return savedCompoff;
     }
 
 
     @Override
-    public void approveCompoff(Long compoffId) {
+    public LeaveCompoff approveCompoff(Long compoffId) {
+
         LeaveCompoff compoff = leaveCompoffRepo.findById(compoffId)
                 .orElseThrow(() -> new RuntimeException("Compoff request not found"));
 
         LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId("L-COMPOFF").orElse(null);
 
         int expiryDays = 0;
-        LocalDate date = null;
+        LocalDate expiryDate = null;
 
         if (leaveType != null && leaveType.getExpiryDays() != 0) {
-
             expiryDays = leaveType.getExpiryDays();
-            date = LocalDate.now().plusDays(expiryDays);
+            expiryDate = LocalDate.now().plusDays(expiryDays);
         }
-
 
         LeaveStatusCompoff currentStatus = compoff.getStatus();
 
-        // ✅ Allow approve if status is PENDING or REJECTED
-        if (currentStatus != LeaveStatusCompoff.PENDING && currentStatus != LeaveStatusCompoff.REJECTED) {
+        if (currentStatus != LeaveStatusCompoff.PENDING &&
+                currentStatus != LeaveStatusCompoff.REJECTED) {
             throw new RuntimeException("Only pending or rejected compoffs can be approved.");
         }
 
-        LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
-                compoff.getEmployeeId(), "L-COMPOFF", LocalDate.now().getYear());
+        LeaveBalance balance = leaveBalanceRepo
+                .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+                        compoff.getEmployeeId(),
+                        "L-COMPOFF",
+                        LocalDate.now().getYear()
+                );
 
         if (balance == null) {
             throw new RuntimeException("Leave balance not found for employee: " + compoff.getEmployeeId());
         }
 
         double duration = compoff.getDuration();
+
         balance.setTotalLeaves(balance.getTotalLeaves() + duration);
         balance.setRemainingLeaves(balance.getRemainingLeaves() + duration);
         balance.setAccruedLeaves(balance.getAccruedLeaves() + duration);
+        balance.setLastAccrualDate(LocalDate.now());
 
         compoff.setStatus(LeaveStatusCompoff.APPROVED);
         compoff.setActionDate(LocalDate.now());
-        compoff.setExpiryDate(date);
-        balance.setLastAccrualDate(LocalDate.now());
+        compoff.setExpiryDate(expiryDate);
 
         leaveCompoffRepo.save(compoff);
         leaveBalanceRepo.save(balance);
 
-        // Send notification to employee
-        Employee employee = compoff.getEmployee();
-        Map<String, Object> templateModel = new LinkedHashMap<>();
-        templateModel.put("title", "Comp-Off Request Approved");
-        templateModel.put("recipientName", employee.getFirstName());
-        templateModel.put("messageBody", "Your comp-off request has been <strong>approved</strong>.");
-        templateModel.put("detailsTitle", "Request Details");
+        // 🔥 Fire-and-forget email
+        sendCompoffEmail(CompoffEmailType.APPROVED, compoff.getEmployee(), compoff.getEmployee().getManager(), compoff);
 
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("Date", compoff.getStartDate().toString());
-        details.put("Reason", compoff.getNote());
-        templateModel.put("details", details);
-
-        EmailDTO emailDTO = new EmailDTO(employee.getEmail(), "Comp-Off Request Approved", "generic-notification.html", true);
-        emailDTO.setTemplateModel(templateModel);
-        asyncNotificationService.queueEmail(emailDTO);
+        return compoff;
     }
 
+
     @Override
-    public void rejectCompoff(Long compoffId) {
+    public LeaveCompoff rejectCompoff(Long compoffId) {
+
         LeaveCompoff compoff = leaveCompoffRepo.findById(compoffId)
                 .orElseThrow(() -> new RuntimeException("Compoff request not found"));
 
         LeaveStatusCompoff currentStatus = compoff.getStatus();
 
-        // ✅ Allow reject if status is PENDING or APPROVED
-        if (currentStatus != LeaveStatusCompoff.PENDING && currentStatus != LeaveStatusCompoff.APPROVED) {
+        if (currentStatus != LeaveStatusCompoff.PENDING &&
+                currentStatus != LeaveStatusCompoff.APPROVED) {
             throw new RuntimeException("Only pending or approved compoffs can be rejected.");
         }
 
-        // ✅ If APPROVED → REJECTED, subtract from balance
         if (currentStatus == LeaveStatusCompoff.APPROVED) {
-            LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
-                    compoff.getEmployeeId(), "L-COMPOFF", LocalDate.now().getYear());
+            LeaveBalance balance = leaveBalanceRepo
+                    .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+                            compoff.getEmployeeId(),
+                            "L-COMPOFF",
+                            LocalDate.now().getYear()
+                    );
 
             if (balance == null) {
                 throw new RuntimeException("Leave balance not found for employee: " + compoff.getEmployeeId());
             }
 
             double duration = compoff.getDuration();
+
             balance.setTotalLeaves(Math.max(0, balance.getTotalLeaves() - duration));
             balance.setRemainingLeaves(Math.max(0, balance.getRemainingLeaves() - duration));
             balance.setAccruedLeaves(Math.max(0, balance.getAccruedLeaves() - duration));
+
             leaveBalanceRepo.save(balance);
         }
 
         compoff.setStatus(LeaveStatusCompoff.REJECTED);
         compoff.setActionDate(LocalDate.now());
-        compoff.setExpiryDate(null); // Optional
+        compoff.setExpiryDate(null);
 
-        leaveCompoffRepo.save(compoff);
 
-        // Send notification to employee
-        Employee employee = compoff.getEmployee();
-        Map<String, Object> templateModel = new LinkedHashMap<>();
-        templateModel.put("title", "Comp-Off Request Rejected");
-        templateModel.put("recipientName", employee.getFirstName());
-        templateModel.put("messageBody", "Your comp-off request has been <strong>rejected</strong>.");
-        templateModel.put("detailsTitle", "Request Details");
+        // 🔥 Generic email call
+        sendCompoffEmail(
+                CompoffEmailType.REJECTED,
+                compoff.getEmployee(),
+                null,
+                compoff
+        );
 
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("Date", compoff.getStartDate().toString());
-        details.put("Reason", compoff.getNote());
-        templateModel.put("details", details);
-
-        EmailDTO emailDTO = new EmailDTO(employee.getEmail(), "Comp-Off Request Rejected", "generic-notification.html", true);
-        emailDTO.setTemplateModel(templateModel);
-        asyncNotificationService.queueEmail(emailDTO);
+        return leaveCompoffRepo.save(compoff);
     }
-
 
     @Override
     public List<LeaveCompoff> getCompoffsByEmployee(String employeeId) {
@@ -252,7 +252,7 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
     }
 
     @Override
-    public void cancelPendingCompOffByEmployee(Long id) {
+    public LeaveCompoff cancelPendingCompOffByEmployee(Long id) {
         LeaveCompoff compOff = leaveCompoffRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("CompOff request not Found "));
 
@@ -262,26 +262,9 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
         compOff.setNote("Cancelled by employee: ");
 
+        sendCompoffEmail(CompoffEmailType.CANCELLED, compOff.getEmployee(), null, compOff);
 
-        leaveCompoffRepo.save(compOff);
-
-        // Send notification to employee
-        Employee employee = compOff.getEmployee();
-        Map<String, Object> templateModel = new LinkedHashMap<>();
-        templateModel.put("title", "Comp-Off Request Cancelled");
-        templateModel.put("recipientName", employee.getFirstName());
-        templateModel.put("messageBody", "Your comp-off request has been <strong>cancelled</strong>.");
-        templateModel.put("detailsTitle", "Request Details");
-
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("Date", compOff.getStartDate().toString());
-        details.put("Reason", compOff.getNote());
-        templateModel.put("details", details);
-
-        EmailDTO emailDTO = new EmailDTO(employee.getEmail(), "Comp-Off Request Cancelled", "generic-notification.html", true);
-        emailDTO.setTemplateModel(templateModel);
-        asyncNotificationService.queueEmail(emailDTO);
-
+        return leaveCompoffRepo.save(compOff);
     }
 
     @Override
@@ -305,6 +288,90 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
                     leaveBalanceRepo.save(balance);
                 }
             }
+        }
+    }
+
+    private void sendCompoffEmail(
+            CompoffEmailType type,
+            Employee employee,
+            Employee manager,
+            LeaveCompoff compoff
+    ) {
+        try {
+
+            String employeeFullName = employee.getFirstName() + " " + employee.getLastName();
+
+            String subject = "";
+            String recipientEmail = "";
+            String recipientName = "";
+            String messageBody = "";
+
+            Map<String, String> details = new LinkedHashMap<>();
+
+            switch (type) {
+
+                case REQUEST:
+                    subject = "New Comp-Off Request";
+                    recipientEmail = manager.getEmail();
+                    recipientName = manager.getFirstName();
+                    messageBody = "A new comp-off request has been submitted by <strong>" + employeeFullName + "</strong>.";
+
+                    details.put("Employee", employeeFullName);
+                    details.put("Date", compoff.getStartDate().toString());
+                    details.put("Reason", compoff.getNote());
+                    break;
+
+                case APPROVED:
+                    subject = "Comp-Off Request Approved";
+                    recipientEmail = employee.getEmail();
+                    recipientName = employee.getFirstName();
+                    messageBody = "Your comp-off request has been <strong>approved</strong>.";
+
+                    details.put("Date", compoff.getStartDate().toString());
+                    details.put("Reason", compoff.getNote());
+                    break;
+
+                case REJECTED:
+                    subject = "Comp-Off Request Rejected";
+                    recipientEmail = employee.getEmail();
+                    recipientName = employee.getFirstName();
+                    messageBody = "Your comp-off request has been <strong>rejected</strong>.";
+
+                    details.put("Date", compoff.getStartDate().toString());
+                    details.put("Reason", compoff.getNote());
+                    break;
+
+                case CANCELLED:
+                    subject = "Comp-Off Request Cancelled";
+                    recipientEmail = employee.getEmail();
+                    recipientName = employee.getFirstName();
+                    messageBody = "Your comp-off request has been <strong>Cancelled</strong>.";
+
+                    details.put("Date", compoff.getStartDate().toString());
+                    break;
+            }
+
+            Map<String, Object> templateModel = new LinkedHashMap<>();
+            templateModel.put("title", subject);
+            templateModel.put("recipientName", recipientName);
+            templateModel.put("messageBody", messageBody);
+            templateModel.put("detailsTitle", "Request Details");
+            templateModel.put("details", details);
+            templateModel.put("closingMessage", "Please check the Leave Management System.");
+
+            EmailDTO emailDTO = new EmailDTO(
+                    recipientEmail,
+                    subject,
+                    "generic-notification.html",
+                    true
+            );
+
+            emailDTO.setTemplateModel(templateModel);
+
+            asyncNotificationService.queueEmail(emailDTO);
+
+        } catch (Exception e) {
+            log.error("Failed to send comp-off email for type: {}", type, e);
         }
     }
 

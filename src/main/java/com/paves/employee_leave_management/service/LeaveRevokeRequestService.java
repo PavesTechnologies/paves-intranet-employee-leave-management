@@ -58,7 +58,7 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
 
 
     @Override
-    public String newRevokeRequest(LeaveRevoke revokeRequest) {
+    public LeaveRevoke newRevokeRequest(LeaveRevoke revokeRequest) {
         Optional<LeaveRequest> leaveRequest = leaveRequestRepo.findById(revokeRequest.getLeaveRequestId());
 
         if (leaveRequest.isEmpty()) {
@@ -75,8 +75,7 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
         }
         revokeRequest.setStatus(LeaveRevokeStatus.PENDING);
         revokeRequest.setManagerId(leaveRequest.get().getEmployee().getManager().getEmployeeId());
-        leaveRevokeRepo.save(revokeRequest);
-        return "Leave revoke request submitted successfully";
+        return leaveRevokeRepo.save(revokeRequest);
     }
 
     @Override
@@ -161,12 +160,12 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
     }
 
     @Override
-    public void rejectRequest(String id) {
+    public LeaveRevoke rejectRequest(String id) {
         LeaveRevoke revokeRequest = leaveRevokeRepo.findById(id.trim()).orElseThrow(() -> {
             throw new RuntimeException("Leave revoke request not found");
         });
         revokeRequest.setStatus(LeaveRevokeStatus.REJECTED);
-        leaveRevokeRepo.save(revokeRequest);
+        return leaveRevokeRepo.save(revokeRequest);
     }
 
 

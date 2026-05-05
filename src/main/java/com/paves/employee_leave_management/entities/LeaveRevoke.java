@@ -25,6 +25,8 @@ public class LeaveRevoke {
     private LeaveRevokeStatus status;
     @Column(name = "manager_id")
     private String managerId;
+    @Column(name = "employee_id")
+    private String employeeId;
 
     @PrePersist
     private void generateId() {
