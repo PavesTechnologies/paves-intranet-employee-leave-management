@@ -1,0 +1,17 @@
+package com.paves.employee_leave_management.enums;
+
+
+public enum WsEventType {
+    LEAVE_APPLIED,
+    LEAVE_APPROVED,
+    LEAVE_REJECTED,
+    LEAVE_CANCELLED,
+    LEAVE_UPDATED,
+    REVOKE_REQUESTED,
+    REVOKE_APPROVED,
+    REVOKE_REJECTED,
+    COMPOFF_REQUESTED,
+    COMPOFF_APPROVED,
+    COMPOFF_REJECTED,
+    COMPOFF_CANCELLED
+}

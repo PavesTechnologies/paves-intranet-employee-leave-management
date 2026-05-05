@@ -911,7 +911,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     public void updateLeaveBalanceAfterRejected(String employeeId, String leaveTypeId, double daysRequested, int year) {
         LeaveBalance balance = leaveBalanceRepo
                 .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
-        balance.setUsedLeaves(balance.getUsedLeaves() - daysRequested);
+//        if(leaveTypeId.equalsIgnoreCase("L-UP") && balance.getUsedLeaves()>0){
+//            balance.setUsedLeaves(balance.getUsedLeaves() - daysRequested);
+//        }else{
+//        }
+            balance.setUsedLeaves(balance.getUsedLeaves() - daysRequested);
         if (!leaveTypeId.equalsIgnoreCase("L-UP")) {
             balance.setRemainingLeaves(balance.getRemainingLeaves() + daysRequested);
         }

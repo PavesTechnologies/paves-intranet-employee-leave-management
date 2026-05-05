@@ -5,6 +5,7 @@ import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.enums.WsEventType;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -56,7 +58,15 @@ public class LeaveRequestController {
 
             // Save the leave request
             LeaveRequest savedLeaveRequest = leaveRequestService.saveLeaveRequest(request);
-            template.convertAndSend("/topic/data-updated", "updated");
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.LEAVE_APPLIED.name(),
+                    savedLeaveRequest.getLeaveId(),
+                    savedLeaveRequest.getEmployee().getEmployeeId(),
+                    savedLeaveRequest.getEmployee().getManager().getEmployeeId()
+            );
+
+            String managerId = savedLeaveRequest.getEmployee().getManager().getEmployeeId();
+            template.convertAndSend("/topic/manager/leave-requests", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully", savedLeaveRequest));
 
         } catch (Exception e) {
@@ -101,7 +111,15 @@ public class LeaveRequestController {
 
             ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest, validationDTO);
             if (result.isValid()) {
-                template.convertAndSend("/topic/data-updated", "updated");
+
+                LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                        WsEventType.LEAVE_UPDATED.name(),
+                        leaveRequest.getLeaveId(),
+                        leaveRequest.getEmployee().getEmployeeId(),
+                        leaveRequest.getEmployee().getManager().getEmployeeId()
+                );
+
+                template.convertAndSend("/topic/manager/leave-requests", event);
                 return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
             } else {
                 String errorMessage = String.join("; ", result.getErrors());
@@ -139,7 +157,13 @@ public class LeaveRequestController {
 
             ValidationResultDTO result = leaveRequestService.updateRequestByEmployee(leaveRequest, validationDTO);
             if (result.isValid()) {
-                template.convertAndSend("/topic/data-updated", "updated");
+                LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                        WsEventType.LEAVE_UPDATED.name(),
+                        leaveRequest.getLeaveId(),
+                        leaveRequest.getEmployee().getEmployeeId(),
+                        leaveRequest.getEmployee().getManager().getEmployeeId()
+                );
+                template.convertAndSend("/topic/manager/leave-requests", event);
                 return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
             } else {
                 String errorMessage = String.join("; ", result.getErrors());
@@ -229,7 +253,15 @@ public class LeaveRequestController {
             @PathVariable String employeeId) {
         try {
             LeaveRequest cancelledRequest = leaveRequestService.cancelLeaveRequest(leaveId, employeeId);
-            template.convertAndSend("/topic/data-updated", "updated");
+
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.LEAVE_CANCELLED.name(),
+                    leaveId,
+                    employeeId,
+                    cancelledRequest.getEmployee().getManager().getEmployeeId()
+            );
+
+            template.convertAndSend("/topic/manager/leave-requests", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Cancelled By employee", cancelledRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -327,7 +359,7 @@ public class LeaveRequestController {
 
 //            List<LeaveRequest> leaveHistory = leaveRequestService.getLeaveHistoryForManager(queryDTO);
             List<LeaveRequestManagerViewDTO> leaveHistory = leaveRequestService.getRequestsForManager(queryDTO);
-            template.convertAndSend("/topic/data-updated", "updated");
+//            template.convertAndSend("/topic/data-updated", "updated");
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave history retrieved successfully", leaveHistory));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -356,7 +388,17 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(@Valid @RequestBody ApprovalRequestDTO approvalRequest) {
         try {
             LeaveRequest approvedRequest = leaveRequestService.approveRequest(approvalRequest);
-            template.convertAndSend("/topic/data-updated", "updated");
+
+            String employeeId = approvedRequest.getEmployee().getEmployeeId();
+            String managerId = approvalRequest.getManagerId();
+
+            Map<String, Object> event = Map.of(
+                    "type", WsEventType.LEAVE_APPROVED.name(),
+                    "leaveId", approvedRequest.getLeaveId(),
+                    "status", approvedRequest.getStatus()
+            );
+
+            template.convertAndSendToUser(employeeId,"/queue/data-updated", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request approved successfully", approvedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -395,7 +437,17 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(@Valid @RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(rejectionRequest);
-            template.convertAndSend("/topic/data-updated", "updated");
+
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.LEAVE_REJECTED.name(),
+                    rejectedRequest.getLeaveId(),
+                    rejectedRequest.getEmployee().getEmployeeId(),
+                    rejectedRequest.getEmployee().getManager().getEmployeeId()
+            );
+
+            String employeeId = rejectedRequest.getEmployee().getEmployeeId();
+
+            template.convertAndSendToUser(employeeId,"/queue/data-updated", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request rejected successfully", rejectedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -412,7 +464,16 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(@Valid @RequestBody ManagerUpdateRequestDTO updateRequest) {
         try {
             LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(updateRequest);
-            template.convertAndSend("/topic/data-updated", "updated");
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.LEAVE_UPDATED.name(),
+                    updatedRequest.getLeaveId(),
+                    updatedRequest.getEmployee().getEmployeeId(),
+                    updatedRequest.getEmployee().getManager().getEmployeeId()
+            );
+
+            String employeeId = updatedRequest.getEmployee().getEmployeeId();
+
+            template.convertAndSendToUser(employeeId, "queue/data-updated", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", updatedRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -553,7 +614,15 @@ public class LeaveRequestController {
 
             // Save the leave request
             LeaveRequest savedLeaveRequest = leaveRequestService.saveLeaveRequest(leaveRequestValidationDTO);
-            template.convertAndSend("/topic/data-updated", "updated");
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.LEAVE_APPLIED.name(),
+                    savedLeaveRequest.getLeaveId(),
+                    savedLeaveRequest.getEmployee().getEmployeeId(),
+                    savedLeaveRequest.getEmployee().getManager().getEmployeeId()
+            );
+
+            String managerId = savedLeaveRequest.getEmployee().getManager().getEmployeeId();
+            template.convertAndSend("/topic/manager/leave-requests", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully", savedLeaveRequest));
 
         } catch (Exception e) {

@@ -8,11 +8,11 @@ import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import java.util.List;
 
 public interface LeaveCompoffSerivceInterface {
-    void requestCompoff(LeaveCompoffRequestDTO dto);
+    LeaveCompoff requestCompoff(LeaveCompoffRequestDTO dto);
 
-    void approveCompoff(Long compoffId);
+    LeaveCompoff approveCompoff(Long compoffId);
 
-    void rejectCompoff(Long compoffId);
+    LeaveCompoff rejectCompoff(Long compoffId);
 
     List<LeaveCompoff> getCompoffsByEmployee(String employeeId);
 
@@ -23,7 +23,7 @@ public interface LeaveCompoffSerivceInterface {
 
     void cancelPendingCompoff(Long compOffId);
 
-    void cancelPendingCompOffByEmployee(Long id);
+    LeaveCompoff cancelPendingCompOffByEmployee(Long id);
 
     void expireUnusedCompoffs();
 }

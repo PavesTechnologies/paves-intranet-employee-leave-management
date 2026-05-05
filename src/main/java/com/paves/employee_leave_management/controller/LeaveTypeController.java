@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -71,9 +72,20 @@ public class LeaveTypeController {
         throw new RuntimeException("Invalid authentication principal");
     }
 
+
+    private String getMakerRole(Authentication authentication){
+        return  authentication.getAuthorities().
+                stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(auth -> auth.startsWith("ROLE_"))
+                .map(auth->auth.replace("ROLE_", ""))
+                .findFirst()
+                .orElse("HR");
+    }
+
     @GetMapping("/types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
-    public List<Map<String, String>> getLeaveTypes() {
+    public List<Map<String, String>> getLeaveTypes(Authentication authentication) {
         return service.getLeaveTypes();
     }
 
@@ -88,12 +100,14 @@ public class LeaveTypeController {
 
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> addLeaveType(@Valid @RequestBody LeaveType leaveType) {
+    public ResponseEntity<ApiResponse<Object>> addLeaveType(@Valid @RequestBody LeaveType leaveType, Authentication authentication) {
         Employee maker = getAuthenticatedUser();
         // Assuming the role is stored in the jobTitle field for now
         // String makerRole = maker.getJobTitle();
 
-        String makerRole = "HR";
+        String makerRole = getMakerRole(authentication);
+
+
         if (leaveType.getEffectiveStartDate() == null) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
@@ -141,6 +155,8 @@ public class LeaveTypeController {
 
         approvalService.submitForApproval(dto, maker, makerRole);
 
+
+
         return ResponseEntity.ok(new ApiResponse<>(true, "Request to add leave type has been submitted for approval.", null));
     }
 
@@ -156,10 +172,10 @@ public class LeaveTypeController {
 
     @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PreAuthorize("hasRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> updateLeave(@PathVariable String leaveTypeId, @RequestBody UpdateLeaveRequest request) {
+    public ResponseEntity<ApiResponse<Object>> updateLeave(@PathVariable String leaveTypeId, @RequestBody UpdateLeaveRequest request, Authentication authentication) {
         Employee maker = getAuthenticatedUser();
 //        String makerRole = maker.getJobTitle();
-        String makerRole = "HR";
+        String makerRole = getMakerRole(authentication);
 
         LeaveType leaveType = null;
         GenderBasedLeave genderBasedLeave = null ;
@@ -214,10 +230,11 @@ public class LeaveTypeController {
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<ApiResponse<Object>> deleteLeaveType(
             @PathVariable String leaveTypeId,
-            @RequestBody Map<String, String> requestBody) {
+            @RequestBody Map<String, String> requestBody,
+            Authentication authentication) {
 
         Employee maker = getAuthenticatedUser();
-        String makerRole = "HR";
+        String makerRole = getMakerRole(authentication);
 
         String effectiveDateStr = requestBody.get("deactivationEffectiveDate");
 
