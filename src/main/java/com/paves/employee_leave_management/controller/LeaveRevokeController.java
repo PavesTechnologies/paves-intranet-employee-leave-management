@@ -31,7 +31,7 @@ public class LeaveRevokeController {
     }
 
     @PostMapping("/revoke")
-    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'GENERAL', 'HR_MANAGER')")
+    @PreAuthorize("hasAnyRole('HR', 'REPORTING_MANAGER', 'GENERAL', 'HR_MANAGER')")
     public ApiResponse<String> newRevokeRequest(@RequestBody LeaveRevoke revokeRequest) {
         LeaveRevoke response = leaveRevokeRequestService.newRevokeRequest(revokeRequest);
 
@@ -53,7 +53,7 @@ public class LeaveRevokeController {
     }
 
     @PostMapping("/approve/{revokeId}")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('REPORTING_MANAGER')")
     public ApiResponse<String> approveRequest(@PathVariable String revokeId, @RequestBody RevokeRequestDTO revokeRequestDTO) {
         leaveRevokeRequestService.approveRequest(revokeId, revokeRequestDTO);
 
@@ -68,7 +68,7 @@ public class LeaveRevokeController {
     }
 
     @GetMapping("/pending/{managerId}")
-    @PreAuthorize("hasRole('MANAGER') and @permissionService.isOwner(authentication, #managerId)")
+    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isOwner(authentication, #managerId)")
     public ApiResponse<List<LeaveRevokeDTO>> getPendingRequests(@PathVariable String managerId) {
         List<LeaveRevokeDTO> pendingRequests = leaveRevokeRequestService.getPendingRequests(managerId);
 //        template.convertAndSend("/topic/leave-updated", "updated");
@@ -76,7 +76,7 @@ public class LeaveRevokeController {
     }
 
     @PostMapping("/reject/{revokeId}")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('REPORTING_MANAGER')")
     public ApiResponse<String> rejectRequest(@PathVariable String revokeId) {
         LeaveRevoke revoke =leaveRevokeRequestService.rejectRequest(revokeId);
 
