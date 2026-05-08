@@ -218,4 +218,15 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
             @Param("leaveName") String leaveName,
             @Param("year") Integer year
     );
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.year = :year ")
+    List<LeaveRequest> findByEmployeeAndLeaveNameAndYear(
+            @Param("employeeId") String employeeId,
+            @Param("leaveName") String leaveName,
+            @Param("year") Integer year
+    );
+
+
 }

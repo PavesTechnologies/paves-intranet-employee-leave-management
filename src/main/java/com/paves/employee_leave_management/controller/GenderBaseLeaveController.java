@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -57,15 +58,25 @@ public class GenderBaseLeaveController {
         throw new RuntimeException("Invalid authentication principal");
     }
 
+    private String getMakerRole(Authentication authentication){
+        return  authentication.getAuthorities().
+                stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(auth -> auth.startsWith("ROLE_"))
+                .map(auth->auth.replace("ROLE_", ""))
+                .findFirst()
+                .orElse("HR");
+    }
+
     @PostMapping(
             value = "/add-leave",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('HR')")
     public ResponseEntity<ApiResponse<Object>> createGenderBaseLeave(
-            @Valid @RequestBody GenderBasedLeave genderBasedLeave) {
+            @Valid @RequestBody GenderBasedLeave genderBasedLeave, Authentication authentication) {
 
         Employee maker = getAuthenticatedUser();
-        String makerRole = "HR";
+        String makerRole = getMakerRole(authentication);
 
         ApiResponse<Object> response =
                 validationAndExecution.validateGenderBaseLeave(genderBasedLeave, maker, makerRole);
