@@ -8,7 +8,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # -------- RUN --------
-FROM eclipse-temurin:21-jre-jammy
+FROM gcr.io/distroless/java21-debian12
 WORKDIR /app
 
 COPY --from=builder /build/target/*.jar app.jar
