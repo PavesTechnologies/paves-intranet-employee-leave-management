@@ -5,6 +5,8 @@ import com.paves.employee_leave_management.dto.EmployeeCdcEvent;
 import com.paves.employee_leave_management.entities.Employee;
 
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.service.LeaveBalanceServiceImple;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -25,6 +27,8 @@ public class EmployeeCdcConsumer {
 
     private final EmployeeRepo employeeRepository;
     private final ObjectMapper objectMapper;
+
+    private final LeaveBalanceServiceInterface leaveBalanceService;
 
     @KafkaListener(
             topics = "eos.eos_v1.employee_details",
@@ -70,10 +74,16 @@ public class EmployeeCdcConsumer {
     }
 
     private void handleUpsert(EmployeeCdcEvent event) {
+
+        String lmsId = (event.getEmployeeId() != null && !event.getEmployeeId().isBlank())
+                ? event.getEmployeeId()
+                : event.getEmployeeUuid();
         // Step 1 — find or create employee
         Employee employee = employeeRepository
                 .findById(event.getEmployeeUuid())
                 .orElse(new Employee());
+
+
 
         // Step 2 — map basic fields
         employee.setEmployeeUuid(event.getEmployeeUuid());
@@ -140,7 +150,15 @@ public class EmployeeCdcConsumer {
 
         // Step 5 — save
         employeeRepository.save(employee);
-        log.info("Upserted employee: {}", event.getEmployeeUuid());
+        log.info("Upserted employee: {} ({})", lmsId, event.getEmployeeUuid());
+
+        try {
+            leaveBalanceService.createLeaveBalanceForNewEmployee(lmsId);
+            log.info("Leave balances created for employee: {}", lmsId);
+        } catch (Exception e) {
+            log.error("Failed to create leave balances for employee: {} — {}",
+                    lmsId, e.getMessage());
+        }
 
         // Step 6 — after saving, try to back-fill any employees
         // who were waiting for this employee to exist as their manager/HR
