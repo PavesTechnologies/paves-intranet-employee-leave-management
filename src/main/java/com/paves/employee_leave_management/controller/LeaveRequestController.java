@@ -574,7 +574,7 @@ public class LeaveRequestController {
             @PathVariable Integer year) {
         try {
 
-            
+
             List<EmployeeApprovedLeavesDTO> approvedLeaves = leaveRequestService.getAllApprovedLeavesByYearGroupedByEmployee(year);
             return ResponseEntity.ok(new ApiResponse<>(true, "All approved leaves retrieved successfully", approvedLeaves));
         } catch (Exception e) {
