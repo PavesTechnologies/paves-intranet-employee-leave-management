@@ -76,7 +76,8 @@ public class EmployeeCdcConsumer {
                 .orElse(new Employee());
 
         // Step 2 — map basic fields
-        employee.setEmployeeId(event.getEmployeeUuid());
+        employee.setEmployeeId(event.getEmployeeId() != null ?
+                event.getEmployeeId() : event.getEmployeeUuid());
         employee.setFirstName(safe(event.getFirstName(), "Unknown"));
         employee.setLastName(safe(event.getLastName(), "Unknown"));
         employee.setEmail(safe(event.getWorkEmail(),
@@ -96,12 +97,16 @@ public class EmployeeCdcConsumer {
         // parse joining date
         if (event.getJoiningDate() != null && !event.getJoiningDate().isBlank()) {
             try {
+                // Try direct parse first
                 employee.setHireDate(LocalDate.parse(event.getJoiningDate()));
             } catch (Exception e) {
-                employee.setHireDate(LocalDate.now());
+                try {
+                    // It's epoch days
+                    employee.setHireDate(LocalDate.ofEpochDay(Long.parseLong(event.getJoiningDate())));
+                } catch (Exception ex) {
+                    employee.setHireDate(LocalDate.now());
+                }
             }
-        } else {
-            employee.setHireDate(LocalDate.now());
         }
 
         // Step 3 — link manager if exists in LMS already
@@ -141,26 +146,27 @@ public class EmployeeCdcConsumer {
         backFillDependents(event.getEmployeeUuid());
     }
 
-    private void backFillDependents(String newlyAddedUuid) {
-        // find employees whose manager_id = this uuid but manager is not set yet
-        employeeRepository.findByManagerIsNullAndManagerId(newlyAddedUuid)
+    private void backFillDependents(String lmsId) {
+        // nothing changes here — manager_id and hr_id in LMS
+        // now point to employee_id (5100001 format)
+        // so back-fill still works correctly
+        employeeRepository.findByManagerIsNullAndManagerId(lmsId)
                 .forEach(emp -> {
-                    employeeRepository.findById(newlyAddedUuid).ifPresent(manager -> {
+                    employeeRepository.findById(lmsId).ifPresent(manager -> {
                         emp.setManager(manager);
                         employeeRepository.save(emp);
                         log.info("Back-filled manager {} for employee {}",
-                                newlyAddedUuid, emp.getEmployeeId());
+                                lmsId, emp.getEmployeeId());
                     });
                 });
 
-        // find employees whose hr_id = this uuid but hr is not set yet
-        employeeRepository.findByHrIsNullAndHrId(newlyAddedUuid)
+        employeeRepository.findByHrIsNullAndHrId(lmsId)
                 .forEach(emp -> {
-                    employeeRepository.findById(newlyAddedUuid).ifPresent(hr -> {
+                    employeeRepository.findById(lmsId).ifPresent(hr -> {
                         emp.setHr(hr);
                         employeeRepository.save(emp);
                         log.info("Back-filled HR {} for employee {}",
-                                newlyAddedUuid, emp.getEmployeeId());
+                                lmsId, emp.getEmployeeId());
                     });
                 });
     }
