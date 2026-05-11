@@ -93,7 +93,7 @@ public class EmployeeCdcConsumer {
         employee.setLastName(safe(event.getLastName(), "Unknown"));
         employee.setEmail(safe(event.getWorkEmail(),
                 event.getEmployeeUuid() + "@placeholder.com"));
-        employee.setGender(safe(event.getGender(), "Other"));
+        employee.setGender(safe(event.getGender().toUpperCase(), "Other"));
         employee.setPhone(event.getContactNumber());
         employee.setJobTitle(safe(event.getDesignationUuid(), "Employee"));
         employee.setRole(safe(event.getEmploymentStatus(), "EMPLOYEE"));
@@ -119,33 +119,33 @@ public class EmployeeCdcConsumer {
                 }
             }
         }
-
-        // Step 3 — link manager if exists in LMS already
-        if (event.getReportingManagerUuid() != null) {
-            Optional<Employee> manager = employeeRepository
-                    .findById(event.getReportingManagerUuid());
-            if (manager.isPresent()) {
-                employee.setManager(manager.get());
-                log.info("Linked manager {} to employee {}",
-                        event.getReportingManagerUuid(), event.getEmployeeUuid());
-            } else {
-                log.warn("Manager {} not in LMS yet, skipping manager link for {}",
-                        event.getReportingManagerUuid(), event.getEmployeeUuid());
-            }
+// Step 3 — link manager
+        if (event.getReportingManagerUuid() != null
+                && !event.getReportingManagerUuid().isBlank()) {
+            employeeRepository.findById(event.getReportingManagerUuid())
+                    .ifPresentOrElse(
+                            manager -> {
+                                employee.setManager(manager);
+                                log.info("Linked manager {} to employee {}",
+                                        event.getReportingManagerUuid(), lmsId);
+                            },
+                            () -> log.warn("Manager {} not in LMS yet, skipping for {}",
+                                    event.getReportingManagerUuid(), lmsId)
+                    );
         }
 
-        // Step 4 — link HR (created_by) if exists in LMS already
-        if (event.getCreatedBy() != null) {
-            Optional<Employee> hr = employeeRepository
-                    .findById(event.getCreatedBy());
-            if (hr.isPresent()) {
-                employee.setHr(hr.get());
-                log.info("Linked HR {} to employee {}",
-                        event.getCreatedBy(), event.getEmployeeUuid());
-            } else {
-                log.warn("HR {} not in LMS yet, skipping HR link for {}",
-                        event.getCreatedBy(), event.getEmployeeUuid());
-            }
+// Step 4 — link HR (created_by)
+        if (event.getCreatedBy() != null && !event.getCreatedBy().isBlank()) {
+            employeeRepository.findById(event.getCreatedBy())
+                    .ifPresentOrElse(
+                            hr -> {
+                                employee.setHr(hr);
+                                log.info("Linked HR {} to employee {}",
+                                        event.getCreatedBy(), lmsId);
+                            },
+                            () -> log.warn("HR {} not in LMS yet, skipping for {}",
+                                    event.getCreatedBy(), lmsId)
+                    );
         }
 
         // Step 5 — save
