@@ -76,6 +76,7 @@ public class EmployeeCdcConsumer {
                 .orElse(new Employee());
 
         // Step 2 — map basic fields
+        employee.setEmployeeUuid(event.getEmployeeUuid());
         employee.setEmployeeId(event.getEmployeeId() != null ?
                 event.getEmployeeId() : event.getEmployeeUuid());
         employee.setFirstName(safe(event.getFirstName(), "Unknown"));

@@ -27,6 +27,10 @@ public class Employee {
     @ToString.Include
     @EqualsAndHashCode.Include
     private String employeeId;
+
+    @Column(name = "employee_uuid", unique = true)
+    private String employeeUuid;
+
     @Column(name = "first_name", length = 50, nullable = false)
     @ToString.Include
     private String firstName;
