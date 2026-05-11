@@ -534,7 +534,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/getAllLeaves/{year}/{month}")
-    @PreAuthorize("hasAnyRole('HR', 'REPORTING_MANAGER')")
+    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'REPORTING_MANAGER', 'ADMIN')")
     public ResponseEntity<?> getAllLeavesForMonthYear(
             @PathVariable(value = "year", required = false) Integer year,
             @PathVariable(value = "month", required = false) Integer month) {
