@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface EmployeeRepo extends JpaRepository<Employee, String> {
@@ -29,4 +30,11 @@ public interface EmployeeRepo extends JpaRepository<Employee, String> {
             @Param("currentUserId") String currentUserId,
             Pageable pageable
     );
+
+    @Query("SELECT e FROM Employee e WHERE e.manager IS NULL AND e.managerId = :managerId")
+    List<Employee> findByManagerIsNullAndManagerId(@Param("managerId") String managerId);
+
+    // find employees waiting for their HR to arrive
+    @Query("SELECT e FROM Employee e WHERE e.hr IS NULL AND e.hrId = :hrId")
+    List<Employee> findByHrIsNullAndHrId(@Param("hrId") String hrId);
 }
