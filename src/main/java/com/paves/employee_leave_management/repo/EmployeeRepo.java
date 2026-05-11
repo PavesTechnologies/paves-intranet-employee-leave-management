@@ -37,4 +37,6 @@ public interface EmployeeRepo extends JpaRepository<Employee, String> {
     // find employees waiting for their HR to arrive
     @Query("SELECT e FROM Employee e WHERE e.hr IS NULL AND e.hrId = :hrId")
     List<Employee> findByHrIsNullAndHrId(@Param("hrId") String hrId);
+
+    Optional<Employee> findByEmployeeUuid(String employeeUuid);
 }

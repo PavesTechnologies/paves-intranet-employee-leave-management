@@ -11,6 +11,9 @@ public class EmployeeCdcEvent {
     @JsonProperty("employee_uuid")
     private String employeeUuid;
 
+    @JsonProperty("employee_id")
+    private String employeeId;
+
     @JsonProperty("first_name")
     private String firstName;
 
