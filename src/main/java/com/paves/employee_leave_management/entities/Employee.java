@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.paves.employee_leave_management.enums.EmployeeStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -95,6 +96,9 @@ public class Employee {
     private List<LeaveBalance> leaveBalances;
     @Column(name = "password", length = 255, nullable = false)
     private String password;
+
+    @Column(name = "status", nullable = false)
+    private EmployeeStatus status;
 
     @PrePersist
     public void generateId() {

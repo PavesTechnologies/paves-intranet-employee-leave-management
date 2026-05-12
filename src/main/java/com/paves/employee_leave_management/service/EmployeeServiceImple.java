@@ -6,6 +6,7 @@ import com.paves.employee_leave_management.dto.EmployeesDTO;
 import com.paves.employee_leave_management.dto.UserDTOFromUMS;
 import com.paves.employee_leave_management.dto.UserResponseDTO;
 import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.enums.EmployeeStatus;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
@@ -22,10 +23,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -180,5 +178,16 @@ public class EmployeeServiceImple implements EmployeeServiceInterface {
             dto.setName(emp.getFirstName() + " " + emp.getLastName());
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public void handleDelete(String employeeId) {
+        Optional<Employee> employee = employeeRepo.findByEmployeeUuid(employeeId);
+        if (employee.isPresent()) {
+            employee.get().setStatus(EmployeeStatus.INACTIVE);
+            employeeRepo.save(employee.get());
+        } else {
+            throw new EmployeeExceptionHandler("Employee not found with id: " + employeeId);
+        }
     }
 }

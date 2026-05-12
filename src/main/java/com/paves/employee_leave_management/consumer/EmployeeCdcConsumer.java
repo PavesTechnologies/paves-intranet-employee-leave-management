@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.dto.EmployeeCdcEvent;
 import com.paves.employee_leave_management.entities.Employee;
 
+import com.paves.employee_leave_management.enums.EmployeeStatus;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.service.LeaveBalanceServiceImple;
+import com.paves.employee_leave_management.serviceInterface.EmployeeServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +16,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -27,14 +31,15 @@ public class EmployeeCdcConsumer {
 
     private final EmployeeRepo employeeRepository;
     private final ObjectMapper objectMapper;
+    private final EmployeeServiceInterface employeeService;
 
     private final LeaveBalanceServiceInterface leaveBalanceService;
+    private final GenderBasedLeaveBalanceServiceInterface genderBasedLeaveBalanceService;
 
     @KafkaListener(
             topics = "eos.eos_v1.employee_details",
             groupId = "lms-employee-consumer"
     )
-    @Transactional
     public void consume(ConsumerRecord<String, String> record, Acknowledgment ack) {
         try {
             String value = record.value();
@@ -62,7 +67,13 @@ public class EmployeeCdcConsumer {
             if (isDeleted) {
                 handleDelete(event.getEmployeeUuid());
             } else {
-                handleUpsert(event);
+                try {
+                    handleUpsert(event);
+                } catch (Exception e) {
+                    log.error("Failed to upsert employee {} — {} — skipping this message",
+                            event.getEmployeeUuid(), e.getMessage());
+                    // acknowledge anyway — don't block the queue for one bad record
+                }
             }
 
             ack.acknowledge();
@@ -73,6 +84,7 @@ public class EmployeeCdcConsumer {
         }
     }
 
+    @Transactional
     private void handleUpsert(EmployeeCdcEvent event) {
 
         String lmsId = (event.getEmployeeId() != null && !event.getEmployeeId().isBlank())
@@ -97,6 +109,7 @@ public class EmployeeCdcConsumer {
         employee.setPhone(event.getContactNumber());
         employee.setJobTitle(safe(event.getDesignationUuid(), "Employee"));
         employee.setRole(safe(event.getEmploymentStatus(), "EMPLOYEE"));
+        employee.setStatus(resolveStatus(event.getEmploymentStatus()));
         employee.setSalary(BigDecimal.ZERO);
 
         // only set password on new employees, never overwrite existing
@@ -191,13 +204,30 @@ public class EmployeeCdcConsumer {
     }
 
     private void handleDelete(String employeeUuid) {
-        employeeRepository.findById(employeeUuid).ifPresent(emp -> {
-            employeeRepository.delete(emp);
-            log.info("Deleted employee: {}", employeeUuid);
-        });
+        employeeRepository.findByEmployeeUuid(employeeUuid).ifPresentOrElse(emp -> {
+            try {
+                genderBasedLeaveBalanceService.deleteLeaveBalance(emp.getEmployeeId());
+                leaveBalanceService.deleteLeaveBalance(emp.getEmployeeId());
+                log.info("Deleted leave balances for employee: {}", emp.getEmployeeId());
+            } catch (Exception e) {
+                log.error("Failed to delete leave balances for employee {} — {}",
+                        emp.getEmployeeId(), e.getMessage());
+            }
+            try {
+                employeeService.handleDelete(emp.getEmployeeId());
+                log.info("Deleted employee: {} ({})", emp.getEmployeeId(), employeeUuid);
+            } catch (Exception e) {
+                log.error("Failed to delete employee {} — {}",
+                        emp.getEmployeeId(), e.getMessage());
+            }
+        }, () -> log.warn("Delete event received but employee not found in LMS: {}", employeeUuid));
     }
 
     private String safe(String value, String fallback) {
         return (value != null && !value.isBlank()) ? value : fallback;
+    }
+
+    private EmployeeStatus resolveStatus(String status){
+         return  EmployeeStatus.valueOf(status.toUpperCase());
     }
 }
