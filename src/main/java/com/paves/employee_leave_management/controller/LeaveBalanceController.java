@@ -10,6 +10,7 @@ import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
+import com.paves.employee_leave_management.security.SecurityConfig;
 import com.paves.employee_leave_management.service.LeaveBlockScheduler;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
@@ -24,7 +25,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -130,14 +133,20 @@ public class LeaveBalanceController {
     }
 
     @GetMapping("/leave-balance")
+    @PreAuthorize("hasAnyRole('HR','ADMIN')")
     public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(
             @RequestParam Integer year,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal Jwt jwt) {
 
-//        testCache();
-        return leaveBalanceService.getAllLeaveBalanceByYear(year, page, size);
+        String employeeId = jwt.getClaimAsString("user_id");
+        boolean isAdmin = jwt.getClaimAsStringList("roles") != null
+                && jwt.getClaimAsStringList("roles").contains("ADMIN");
+
+        return leaveBalanceService.getAllLeaveBalanceByYear(year, page, size, employeeId, isAdmin);
     }
+
 
 
     @PostMapping("/upload-accruals")

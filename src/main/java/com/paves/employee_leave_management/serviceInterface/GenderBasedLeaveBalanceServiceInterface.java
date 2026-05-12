@@ -20,4 +20,5 @@ public interface GenderBasedLeaveBalanceServiceInterface {
     void updateLeaveBalanceAfterRejected(String employeeId, String leaveTypeId, double rejectedDays, int year);
     byte[] generateTemplate() throws IOException;
     UploadResponse handleAccruedUpload(MultipartFile file, String username) throws IOException;
+    void deleteLeaveBalance(String employeeId);
 }

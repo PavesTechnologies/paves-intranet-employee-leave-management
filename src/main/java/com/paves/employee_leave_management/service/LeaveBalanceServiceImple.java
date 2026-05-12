@@ -157,6 +157,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     .usedLeaves(usedLeaves)
                     .remainingLeaves(remainingLeaves)
                     .totalLeaves(totalLeaves)
+                    .isDeleted(false)
                     .build();
 
             balances.add(balance);
@@ -424,6 +425,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
 
             for (LeaveBalance balance : balances) {
+
+                if(balance.getIsDeleted())
+                    continue;
 
                 LeaveBalance newbalance = new LeaveBalance();
                 newbalance.setEmployee(balance.getEmployee());
@@ -725,6 +729,26 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
+    @Transactional
+    public void deleteLeaveBalance(String employeeId) {
+        log.info("Deleting leave balances for employee: {}", employeeId);
+        
+        // Find all leave balances for the employee
+        List<LeaveBalance> balances = leaveBalanceRepo.findByEmployeeEmployeeId(employeeId);
+        
+        if (balances.isEmpty()) {
+            log.warn("No leave balances found for employee: {}", employeeId);
+            return;
+        }
+        // Delete all leave balances for the employee
+        for (LeaveBalance balance : balances) {
+            balance.setIsDeleted(true);
+            leaveBalanceRepo.save(balance);
+        }
+        log.info("Deleted {} leave balances for employee: {}", balances.size(), employeeId);
+    }
+
+    @Override
     public void triggerMonthlyLeaveAccrual() {
 //        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear());
 //        if (balances.isEmpty()) {
@@ -772,7 +796,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public LeaveBalance findByBalanceId(String balanceId) {
         LeaveBalance balance = leaveBalanceDao.findById(balanceId);
-        if (balance == null) {
+        if (balance == null || balance.getIsDeleted()) {
             throw new LeaveBalanceExceptionHandler("Balance not found: " + balanceId);
         }
         return balance;
@@ -787,7 +811,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         java.time.Year currentYear = java.time.Year.now();
         List<LeaveBalance> filteredBalance = balance
                 .stream()
-                .filter(b -> b.getYear() == currentYear.getValue())
+                .filter(b -> b.getYear() == currentYear.getValue() && !b.getIsDeleted())
                 .collect(Collectors.toList());
         return new ResponseEntity<>(filteredBalance, HttpStatus.OK);
     }
@@ -809,6 +833,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         // 🔹 Regular leave balances
         for (LeaveBalance leaveBalance : regularLeaveBalance) {
 
+            if(leaveBalance.getIsDeleted()){
+                continue;
+            }
+
             AllPeopleLeaveBalance dto = new AllPeopleLeaveBalance();  // ✅ NEW object each iteration
 
             dto.setRemainingLeaves(leaveBalance.getRemainingLeaves());
@@ -826,6 +854,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         // 🔹 Gender-based leave balances
         for (GenderBasedLeaveBalance leaveBalance : genderBasedLeaveBalances) {
 
+            if(leaveBalance.getIsDeleted()){
+                continue;
+            }
             AllPeopleLeaveBalance dto = new AllPeopleLeaveBalance(); // ✅ NEW object each iteration
 
             dto.setRemainingLeaves(leaveBalance.getRemainingDays());
@@ -846,7 +877,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public ResponseEntity<List<LeaveBalance>> findByEmployeeId(String employeeId) {
         List<LeaveBalance> balance = leaveBalanceDao.findByEmployeeId(employeeId);
-        if (balance.isEmpty()) {
+        if (balance.isEmpty() || balance.stream().anyMatch(b -> b.getIsDeleted())) {
             throw new LeaveBalanceExceptionHandler("Leave Balances not found for employee: " + employeeId);
         }
         return new ResponseEntity<>(balance, HttpStatus.OK);
@@ -855,7 +886,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId, int year) {
         List<LeaveBalance> balance = leaveBalanceDao.findByEmployeeIdAndYear(employeeId,year);
-        if (balance.isEmpty()) {
+        if (balance.isEmpty() || balance.stream().anyMatch(b -> b.getIsDeleted())) {
             return null;
         }
         return new ResponseEntity<>(balance, HttpStatus.OK);
@@ -864,7 +895,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public ResponseEntity<List<LeaveBalance>> findByLeaveId(String leaveId) {
         List<LeaveBalance> balance = leaveBalanceDao.findByLeaveId(leaveId);
-        if (balance.isEmpty()) {
+        if (balance.isEmpty() || balance.stream().anyMatch(b -> b.getIsDeleted())) {
             throw new LeaveBalanceExceptionHandler("Leave Balances not found for leave name : " + leaveId);
         }
         return new ResponseEntity<>(balance, HttpStatus.FOUND);
@@ -1014,7 +1045,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
         LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
-        if (balance == null) {
+        if (balance == null || balance.getIsDeleted()) {
             return null;
         }
         return LeaveBalanceDTO.builder()
@@ -1398,18 +1429,36 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     }
 
-    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(Integer year, int page, int size) {
 
-        List<LeaveBalance> regularLeaveBalances = leaveBalanceRepo.findAllByYear(year);
-        List<GenderBasedLeaveBalance> genderBasedLeaveBalances = genderBasedLeaveBalancesRepo.findAllByYear(year);
 
-        // One entry per employee
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(
+            Integer year, int page, int size, String employeeId, boolean isAdmin) {
+
+        System.out.println("employee Id and admin: "+employeeId+" "+isAdmin);
+
+        List<LeaveBalance> regularLeaveBalances;
+        List<GenderBasedLeaveBalance> genderBasedLeaveBalances;
+
+        if (isAdmin) {
+            regularLeaveBalances = leaveBalanceRepo
+                    .findAllByYearAndNotDeleted(year);
+            genderBasedLeaveBalances = genderBasedLeaveBalancesRepo
+                    .findAllByYearAndNotDeleted(year);
+        } else {
+            regularLeaveBalances = leaveBalanceRepo
+                    .findAllByYearAndHrId(year, employeeId);
+            genderBasedLeaveBalances = genderBasedLeaveBalancesRepo
+                    .findAllByYearAndHrId(year, employeeId);
+        }
+
+        System.out.println("regularLeaveBalances: " + regularLeaveBalances);
+        System.out.println("genderBasedLeaveBalances: " + genderBasedLeaveBalances);
+
+        // rest of your existing code stays exactly the same
         Map<String, EmployeeLeaveBalanceDTO> employeeMap = new LinkedHashMap<>();
 
-        // 🔹 Group regular leave balances by employee
         for (LeaveBalance lb : regularLeaveBalances) {
             String empId = lb.getEmployee().getEmployeeId();
-
             employeeMap.computeIfAbsent(empId, k -> {
                 EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
                 dto.setEmployeeId(empId);
@@ -1419,48 +1468,39 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 dto.setLeaves(new ArrayList<>());
                 return dto;
             });
-
             LeaveDetail detail = new LeaveDetail();
             detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
             detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
             detail.setRemainingLeaves(lb.getRemainingLeaves());
-
             employeeMap.get(empId).getLeaves().add(detail);
         }
 
-        // 🔹 Group gender-based leave balances by employee
         for (GenderBasedLeaveBalance lb : genderBasedLeaveBalances) {
             String empId = lb.getEmployeeId();
-
             employeeMap.computeIfAbsent(empId, k -> {
                 EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
                 dto.setEmployeeId(empId);
-                dto.setEmployeeName(""); // fill if you have access to employee name here
+                dto.setEmployeeName("");
                 dto.setGender(lb.getLeaveType().getGender());
                 dto.setYear(lb.getYear());
                 dto.setLeaves(new ArrayList<>());
                 return dto;
             });
-
             LeaveDetail detail = new LeaveDetail();
             detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
             detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
             detail.setRemainingLeaves(lb.getRemainingDays());
-
             employeeMap.get(empId).getLeaves().add(detail);
         }
 
-        // 🔹 Paginate the grouped result
         List<EmployeeLeaveBalanceDTO> allEmployees = new ArrayList<>(employeeMap.values());
         int totalItems = allEmployees.size();
         int fromIndex = page * size;
         int toIndex = Math.min(fromIndex + size, totalItems);
-
         List<EmployeeLeaveBalanceDTO> pageData = (fromIndex >= totalItems)
                 ? new ArrayList<>()
                 : allEmployees.subList(fromIndex, toIndex);
 
-        // 🔹 Build paginated response
         Map<String, Object> response = new HashMap<>();
         response.put("data", pageData);
         response.put("currentPage", page);

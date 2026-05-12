@@ -26,4 +26,6 @@ public interface EmployeeServiceInterface {
     List<EmployeesDTO> getAllEmployeePaginated();
 
     public List<EmployeesDTO> searchEmployees(String search, int page, String managerId);
+
+    public void handleDelete(String employeeId);
 }
