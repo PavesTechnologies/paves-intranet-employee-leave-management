@@ -85,14 +85,14 @@ public class EmployeeCdcConsumer {
     }
 
     @Transactional
-    private void handleUpsert(EmployeeCdcEvent event) {
+    public void handleUpsert(EmployeeCdcEvent event) {
 
         String lmsId = (event.getEmployeeId() != null && !event.getEmployeeId().isBlank())
                 ? event.getEmployeeId()
                 : event.getEmployeeUuid();
         // Step 1 — find or create employee
         Employee employee = employeeRepository
-                .findById(event.getEmployeeUuid())
+                .findByEmployeeUuid(event.getEmployeeUuid())
                 .orElse(new Employee());
 
 
@@ -203,7 +203,7 @@ public class EmployeeCdcConsumer {
                 });
     }
 
-    private void handleDelete(String employeeUuid) {
+    public void handleDelete(String employeeUuid) {
         employeeRepository.findByEmployeeUuid(employeeUuid).ifPresentOrElse(emp -> {
             try {
                 genderBasedLeaveBalanceService.deleteLeaveBalance(emp.getEmployeeId());
