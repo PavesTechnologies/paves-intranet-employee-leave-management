@@ -1157,7 +1157,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return updatedRequest;
     }
 
-    private String resolveLeaveLabelUpdateManager(String leaveTypeId) {
+    public String resolveLeaveLabelUpdateManager(String leaveTypeId) {
         if (GENDER_BASED_IDS.contains(leaveTypeId)) {
             return genderBasedLeaveServiceInterface.getLeaveType(leaveTypeId)
                     .map(GenderBasedLeave::getLeaveName)

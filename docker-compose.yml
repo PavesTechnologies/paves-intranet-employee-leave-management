@@ -10,3 +10,12 @@ services:
     image: pavesadmin/intranet-lms:latest
     env_file:
       - .env
+    restart: unless-stopped
+    networks:
+      - cdc-network
+
+networks:
+  cdc-network:
+    external: true
+    name: cdc-network
+

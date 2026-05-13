@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.paves.employee_leave_management.enums.EmployeeStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,6 +28,10 @@ public class Employee {
     @ToString.Include
     @EqualsAndHashCode.Include
     private String employeeId;
+
+    @Column(name = "employee_uuid", unique = true)
+    private String employeeUuid;
+
     @Column(name = "first_name", length = 50, nullable = false)
     @ToString.Include
     private String firstName;
@@ -54,10 +59,16 @@ public class Employee {
     @JsonIgnore
     private Employee manager;
 
+    @Column(name = "manager_id", insertable = false, updatable = false)
+    private String managerId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hr_id")
     @JsonIgnore
     private Employee hr;
+
+    @Column(name = "hr_id", insertable = false, updatable = false)
+    private String hrId;
 
     // 🔹 Reverse mapping: manager → subordinates
     @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -85,6 +96,10 @@ public class Employee {
     private List<LeaveBalance> leaveBalances;
     @Column(name = "password", length = 255, nullable = false)
     private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private EmployeeStatus status;
 
     @PrePersist
     public void generateId() {

@@ -15,8 +15,10 @@ import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.utils.ExcelUtil;
+import com.paves.employee_leave_management.utils.UtilsMethods;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory;
@@ -42,6 +44,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Autowired
@@ -75,139 +78,110 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Autowired
     private GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
 
+    private static final int MID_MONTH_THRESHOLD = 15;
+
     @Override
     public void createLeaveBalanceForNewEmployee(String empId) {
-        Employee emp = employeeRepo.findById(empId).orElseThrow(() -> new EmployeeExceptionHandler("Employee not found: " + empId));
+        Employee emp = employeeRepo.findById(empId)
+                .orElseThrow(() -> new EmployeeExceptionHandler("Employee not found: " + empId));
 
         int currentYear = LocalDate.now().getYear();
-        List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
-//        List<GenderBasedLeave> genderBasedLeaveTypes = genderBasedRepo.findAll();
-        LocalDate onboardingDate = LocalDate.now();
+        LocalDate today = LocalDate.now();
         LocalDate hireDate = emp.getHireDate();
+
+        log.info("Creating leave balances for employee: {} for year: {}", empId, currentYear);
+
+        // create gender based leaves once — not inside the loop
+        if (emp.getGender() != null) {
+            createGenderBasedLeaveBalance(emp, currentYear);
+        }
+
+        List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
         List<LeaveBalance> balances = new ArrayList<>();
 
-
-
         for (LeaveType lt : leaveTypes) {
-            if(lt.getActive().equals(true)) {
-                if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(emp.getEmployeeId(), lt.getLeaveTypeId(), currentYear).isPresent()) {
-                    continue;
-                }
-                if (emp.getGender() != null) {
-                    createGenderBasedLeaveBalance(emp,currentYear);
-                }
-                if(lt.getLeaveName().equals(LeaveTypesEnum.PATERNITY_LEAVE.toString()) || lt.getLeaveName().equals(LeaveTypesEnum.MATERNITY_LEAVE.toString())){
-                    continue;
-                }
+            if (!Boolean.TRUE.equals(lt.getActive())) continue;
 
-                double accruedLeaves = 0;
-                double totalLeaves = 0;
-                double carriedForward = 0;
-                double usedLeaves = 0;
-
-                if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
-                    LocalDate accrualStart = (hireDate.getYear() < currentYear)
-                            ? LocalDate.of(currentYear, 1, 1)
-                            : hireDate;
-                    accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, lt.getAccrualRate(), lt.getEffectiveStartDate());
-//                totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
-                    int currYear = Year.now().getValue();
-
-                    int hireYear = hireDate.getYear();
-                    int effectiveYear = lt.getEffectiveStartDate().getYear();
-
-// CASE 1: Leave type effective start is after hire date's year
-// Employee cannot accrue before effectiveStartDate anyway
-                    LocalDate accrualStartDate = hireDate.isAfter(lt.getEffectiveStartDate())
-                            ? hireDate
-                            : lt.getEffectiveStartDate();
-
-// Now choose the later date between (hireDate, effectiveStartDate)
-                    int startMonth = accrualStartDate.getMonthValue();
-                    int startDay = accrualStartDate.getDayOfMonth();
-
-// CASE 2: If joining mid-month (after 15), don’t count that month
-                    if (startDay > 15) {
-                        startMonth += 1;
-                    }
-
-                    int monthsLeft = 12 - startMonth + 1; // inclusive count
-
-// Prevent negative values
-                    monthsLeft = Math.max(monthsLeft, 0);
-
-// Finally, calculate total leaves
-                    totalLeaves = monthsLeft * lt.getAccrualRate();
-
-
-                } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
-                    LocalDate accrualStart = (hireDate.getYear() < currentYear)
-                            ? LocalDate.of(currentYear, 1, 1)
-                            : hireDate;
-                    accruedLeaves = getAccruedLeaves(accrualStart, onboardingDate, lt.getAccrualRate(), lt.getEffectiveStartDate());
-
-                    carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear, lt);
-                    int currYear = Year.now().getValue();
-
-                    int hireYear = hireDate.getYear();
-                    int effectiveYear = lt.getEffectiveStartDate().getYear();
-
-// CASE 1: Leave type effective start is after hire date's year
-// Employee cannot accrue before effectiveStartDate anyway
-                    LocalDate accrualStartDate = hireDate.isAfter(lt.getEffectiveStartDate())
-                            ? hireDate
-                            : lt.getEffectiveStartDate();
-
-// Now choose the later date between (hireDate, effectiveStartDate)
-                    int startMonth = accrualStartDate.getMonthValue();
-                    int startDay = accrualStartDate.getDayOfMonth();
-
-// CASE 2: If joining mid-month (after 15), don’t count that month
-                    if (startDay > 15) {
-                        startMonth += 1;
-                    }
-
-                    int monthsLeft = 12 - startMonth + 1; // inclusive count
-
-// Prevent negative values
-                    monthsLeft = Math.max(monthsLeft, 0);
-
-// Finally, calculate total leaves
-                    totalLeaves = monthsLeft * lt.getAccrualRate();
-
-                }
-//                else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
-//                    accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
-//                    totalLeaves = accruedLeaves;
-//                } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
-//                    accruedLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
-//                    totalLeaves = accruedLeaves;
-//                }
-            else {
-                    totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
-                    accruedLeaves = 0;
-                }
-
-                double remainingLeaves = Math.max(0, (accruedLeaves + carriedForward) - usedLeaves);
-
-
-                LeaveBalance balance = LeaveBalance.builder()
-                        .employee(emp)
-                        .leaveType(lt)
-                        .year(currentYear)
-                        .accruedLeaves(accruedLeaves)
-                        .carriedForward(carriedForward)
-                        .encashedLeaves(0)
-                        .expiredLeaves(0.0)
-                        .lastAccrualDate(LocalDate.now())
-                        .usedLeaves(usedLeaves)
-                        .remainingLeaves(remainingLeaves)
-                        .totalLeaves(totalLeaves)
-                        .build();
-                balances.add(balance);
+            // skip if balance already exists
+            if (leaveBalanceRepo.findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
+                    emp.getEmployeeId(), lt.getLeaveTypeId(), currentYear).isPresent()) {
+                log.debug("Balance already exists for employee: {} leaveType: {}", empId, lt.getLeaveName());
+                continue;
             }
+
+            // skip maternity/paternity — handled by gender based
+            String leaveName = lt.getLeaveName();
+            if (leaveName.equals(LeaveTypesEnum.MATERNITY_LEAVE.toString())
+                    || leaveName.equals(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
+                continue;
+            }
+
+            double accruedLeaves = 0;
+            double totalLeaves = 0;
+            double carriedForward = 0;
+            double usedLeaves = 0;
+
+            boolean isAccrualBased = leaveName.equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())
+                    || leaveName.equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString());
+
+            if (isAccrualBased) {
+                // carried forward only applies to earned leave
+                if (leaveName.equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
+                    carriedForward = calculateEarnedLeaveCarryForward(hireDate, currentYear, lt);
+                }
+
+                accruedLeaves = getAccruedLeaves(
+                        hireDate.getYear() < currentYear ? LocalDate.of(currentYear, 1, 1) : hireDate,
+                        today,
+                        lt.getAccrualRate(),
+                        lt.getEffectiveStartDate()
+                );
+
+                totalLeaves = calculateProRataTotal(hireDate, lt);
+
+            } else {
+                totalLeaves = lt.getMaxDaysPerYear() != null ? lt.getMaxDaysPerYear() : 0;
+                accruedLeaves = 0;
+            }
+
+            double remainingLeaves = Math.max(0, (accruedLeaves + carriedForward) - usedLeaves);
+
+            LeaveBalance balance = LeaveBalance.builder()
+                    .employee(emp)
+                    .leaveType(lt)
+                    .year(currentYear)
+                    .accruedLeaves(accruedLeaves)
+                    .carriedForward(carriedForward)
+                    .encashedLeaves(0)
+                    .expiredLeaves(0.0)
+                    .lastAccrualDate(today)
+                    .usedLeaves(usedLeaves)
+                    .remainingLeaves(remainingLeaves)
+                    .totalLeaves(totalLeaves)
+                    .isDeleted(false)
+                    .build();
+
+            balances.add(balance);
+            log.debug("Prepared balance for employee: {} leaveType: {} total: {}",
+                    empId, leaveName, totalLeaves);
         }
+
         leaveBalanceRepo.saveAll(balances);
+        log.info("Created {} leave balances for employee: {}", balances.size(), empId);
+    }
+
+    private double calculateProRataTotal(LocalDate hireDate, LeaveType lt) {
+        LocalDate accrualStartDate = hireDate.isAfter(lt.getEffectiveStartDate())
+                ? hireDate
+                : lt.getEffectiveStartDate();
+
+        int startMonth = accrualStartDate.getMonthValue();
+        if (accrualStartDate.getDayOfMonth() > MID_MONTH_THRESHOLD) {
+            startMonth += 1;
+        }
+
+        int monthsLeft = Math.max(0, 12 - startMonth + 1);
+        return monthsLeft * lt.getAccrualRate();
     }
 
     private double getEarnedLeave(LocalDate startDate, LocalDate endDate, double ratePerMonth) {
@@ -226,10 +200,14 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         return months * ratePerMonth;
     }
 
-    private double getAccruedLeaves(LocalDate startDate, LocalDate endDate, double ratePerMonth, LocalDate effectiveStartDate) {
-        if (startDate.isAfter(endDate) || startDate.isBefore(effectiveStartDate))
-            return 0;
-        LocalDate adjustedStart = startDate.getDayOfMonth() > 15 ? startDate.plusMonths(1).withDayOfMonth(1) : startDate.withDayOfMonth(1);
+    private double getAccruedLeaves(LocalDate startDate, LocalDate endDate,
+                                    double ratePerMonth, LocalDate effectiveStartDate) {
+        if (startDate.isAfter(endDate) || startDate.isBefore(effectiveStartDate)) return 0;
+
+        LocalDate adjustedStart = startDate.getDayOfMonth() > MID_MONTH_THRESHOLD
+                ? startDate.plusMonths(1).withDayOfMonth(1)
+                : startDate.withDayOfMonth(1);
+
         int months = 0;
         LocalDate iter = adjustedStart;
         while (!iter.isAfter(endDate.withDayOfMonth(1))) {
@@ -258,41 +236,44 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         return totalCarried;
     }
 
-    public void createGenderBasedLeaveBalance(Employee emp, int year){
+    public void createGenderBasedLeaveBalance(Employee emp, int year) {
         List<GenderBasedLeave> leaveTypes = genderBasedRepo.findAll();
-        List<GenderBasedLeaveBalance> balance = new ArrayList<>();
-        int totalLeaves = 0;
 
+        for (GenderBasedLeave lt : leaveTypes) {
+            if (!Boolean.TRUE.equals(lt.getActive())) continue;
 
-        for(GenderBasedLeave lt : leaveTypes){
-            if(lt.getActive().equals(true)) {
-                if (genderBasedLeaveBalancesRepo.findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(emp.getEmployeeId(), lt.getLeaveTypeId(), year).isPresent()) {
-                    continue;
-                }
-                if (emp.getGender() != null) {
-                    if (emp.getGender().equalsIgnoreCase("male") && lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString()))
-                        continue;
-                    if (emp.getGender().equalsIgnoreCase("female") && lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString()))
-                        continue;
-                }
-
-                if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString())) {
-                      totalLeaves = lt.getMaxLeaveDays() != null ? lt.getMaxLeaveDays() : 0;
-                } else if (lt.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString())) {
-                    totalLeaves = lt.getMaxLeaveDays() != null ? lt.getMaxLeaveDays() : 0;
-                }
-            GenderBasedLeaveBalance bal = new GenderBasedLeaveBalance();
-                bal.setTotalEntitledDays(totalLeaves);
-                bal.setCreatedAt(LocalDateTime.now());
-                bal.setEmployeeId(emp.getEmployeeId());
-                bal.setYear(year);
-                bal.setTimesUsed(0);
-                bal.setUpdatedAt(null);
-                bal.setLeaveType(lt);
-                genderBasedLeaveBalancesRepo.save(bal);
+            if (genderBasedLeaveBalancesRepo.findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+                    emp.getEmployeeId(), lt.getLeaveTypeId(), year).isPresent()) {
+                continue;
             }
-        }
 
+            String leaveName = lt.getLeaveName();
+            String gender = emp.getGender();
+
+            // skip mismatched gender leave types
+            if (gender != null) {
+                if (gender.equalsIgnoreCase("male")
+                        && leaveName.equalsIgnoreCase(LeaveTypesEnum.MATERNITY_LEAVE.toString())) continue;
+                if (gender.equalsIgnoreCase("female")
+                        && leaveName.equalsIgnoreCase(LeaveTypesEnum.PATERNITY_LEAVE.toString())) continue;
+            }
+
+            // totalLeaves moved inside loop — was a bug in original
+            int totalLeaves = lt.getMaxLeaveDays() != null ? lt.getMaxLeaveDays() : 0;
+
+            GenderBasedLeaveBalance bal = new GenderBasedLeaveBalance();
+            bal.setTotalEntitledDays(totalLeaves);
+            bal.setCreatedAt(LocalDateTime.now());
+            bal.setEmployeeId(emp.getEmployeeId());
+            bal.setYear(year);
+            bal.setTimesUsed(0);
+            bal.setUpdatedAt(null);
+            bal.setLeaveType(lt);
+            genderBasedLeaveBalancesRepo.save(bal);
+
+            log.debug("Created gender based balance for employee: {} leaveType: {}",
+                    emp.getEmployeeId(), leaveName);
+        }
     }
 
 
@@ -445,6 +426,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         }
 
             for (LeaveBalance balance : balances) {
+
+                if(balance.getIsDeleted())
+                    continue;
 
                 LeaveBalance newbalance = new LeaveBalance();
                 newbalance.setEmployee(balance.getEmployee());
@@ -746,6 +730,45 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
+    @Transactional
+    public void deleteLeaveBalance(String employeeId) {
+        log.info("Deleting leave balances for employee: {}", employeeId);
+        
+        // Find all leave balances for the employee
+        List<LeaveBalance> balances = leaveBalanceRepo.findByEmployeeEmployeeId(employeeId);
+        
+        if (balances.isEmpty()) {
+            log.warn("No leave balances found for employee: {}", employeeId);
+            return;
+        }
+        // Delete all leave balances for the employee
+        for (LeaveBalance balance : balances) {
+            balance.setIsDeleted(true);
+            leaveBalanceRepo.save(balance);
+        }
+        log.info("Deleted {} leave balances for employee: {}", balances.size(), employeeId);
+    }
+
+    @Override
+    public List<LeaveBalanceForDashboard> getLeaveBalancesForDashboard(String employeeId, int year) {
+        List<LeaveBalance> leaveBalances= leaveBalanceRepo.findByEmployeeEmployeeIdAndYear(employeeId, year);
+        if (leaveBalances.isEmpty()){
+            return null;
+        }
+        List<LeaveBalanceForDashboard> leaveBalanceForDashboard = new ArrayList<>();
+        for(LeaveBalance leaveBalance: leaveBalances){
+            LeaveBalanceForDashboard balances = new LeaveBalanceForDashboard();
+            balances.setTotalBalance(leaveBalance.getTotalLeaves());
+            balances.setRemainingBalance(leaveBalance.getRemainingLeaves());
+            balances.setLeaveName(UtilsMethods.resolveLeaveLabel(leaveBalance.getLeaveType().getLeaveName()));
+            balances.setEmployeeId(employeeId);
+
+            leaveBalanceForDashboard.add(balances);
+        }
+        return leaveBalanceForDashboard;
+    }
+
+    @Override
     public void triggerMonthlyLeaveAccrual() {
 //        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear());
 //        if (balances.isEmpty()) {
@@ -793,7 +816,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public LeaveBalance findByBalanceId(String balanceId) {
         LeaveBalance balance = leaveBalanceDao.findById(balanceId);
-        if (balance == null) {
+        if (balance == null || balance.getIsDeleted()) {
             throw new LeaveBalanceExceptionHandler("Balance not found: " + balanceId);
         }
         return balance;
@@ -808,7 +831,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         java.time.Year currentYear = java.time.Year.now();
         List<LeaveBalance> filteredBalance = balance
                 .stream()
-                .filter(b -> b.getYear() == currentYear.getValue())
+                .filter(b -> b.getYear() == currentYear.getValue() && !b.getIsDeleted())
                 .collect(Collectors.toList());
         return new ResponseEntity<>(filteredBalance, HttpStatus.OK);
     }
@@ -830,6 +853,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         // 🔹 Regular leave balances
         for (LeaveBalance leaveBalance : regularLeaveBalance) {
 
+            if(leaveBalance.getIsDeleted()){
+                continue;
+            }
+
             AllPeopleLeaveBalance dto = new AllPeopleLeaveBalance();  // ✅ NEW object each iteration
 
             dto.setRemainingLeaves(leaveBalance.getRemainingLeaves());
@@ -847,6 +874,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         // 🔹 Gender-based leave balances
         for (GenderBasedLeaveBalance leaveBalance : genderBasedLeaveBalances) {
 
+            if(leaveBalance.getIsDeleted()){
+                continue;
+            }
             AllPeopleLeaveBalance dto = new AllPeopleLeaveBalance(); // ✅ NEW object each iteration
 
             dto.setRemainingLeaves(leaveBalance.getRemainingDays());
@@ -867,7 +897,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public ResponseEntity<List<LeaveBalance>> findByEmployeeId(String employeeId) {
         List<LeaveBalance> balance = leaveBalanceDao.findByEmployeeId(employeeId);
-        if (balance.isEmpty()) {
+        if (balance.isEmpty() || balance.stream().anyMatch(b -> b.getIsDeleted())) {
             throw new LeaveBalanceExceptionHandler("Leave Balances not found for employee: " + employeeId);
         }
         return new ResponseEntity<>(balance, HttpStatus.OK);
@@ -876,7 +906,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public ResponseEntity<List<LeaveBalance>> findByEmployeeIdAndYear(String employeeId, int year) {
         List<LeaveBalance> balance = leaveBalanceDao.findByEmployeeIdAndYear(employeeId,year);
-        if (balance.isEmpty()) {
+        if (balance.isEmpty() || balance.stream().anyMatch(b -> b.getIsDeleted())) {
             return null;
         }
         return new ResponseEntity<>(balance, HttpStatus.OK);
@@ -885,7 +915,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public ResponseEntity<List<LeaveBalance>> findByLeaveId(String leaveId) {
         List<LeaveBalance> balance = leaveBalanceDao.findByLeaveId(leaveId);
-        if (balance.isEmpty()) {
+        if (balance.isEmpty() || balance.stream().anyMatch(b -> b.getIsDeleted())) {
             throw new LeaveBalanceExceptionHandler("Leave Balances not found for leave name : " + leaveId);
         }
         return new ResponseEntity<>(balance, HttpStatus.FOUND);
@@ -1035,7 +1065,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public LeaveBalanceDTO getLeaveBalance(String employeeId, String leaveTypeId, Integer year) {
         LeaveBalance balance = leaveBalanceRepo.findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
-        if (balance == null) {
+        if (balance == null || balance.getIsDeleted()) {
             return null;
         }
         return LeaveBalanceDTO.builder()
@@ -1419,18 +1449,36 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     }
 
-    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(Integer year, int page, int size) {
 
-        List<LeaveBalance> regularLeaveBalances = leaveBalanceRepo.findAllByYear(year);
-        List<GenderBasedLeaveBalance> genderBasedLeaveBalances = genderBasedLeaveBalancesRepo.findAllByYear(year);
 
-        // One entry per employee
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(
+            Integer year, int page, int size, String employeeId, boolean isAdmin) {
+
+        System.out.println("employee Id and admin: "+employeeId+" "+isAdmin);
+
+        List<LeaveBalance> regularLeaveBalances;
+        List<GenderBasedLeaveBalance> genderBasedLeaveBalances;
+
+        if (isAdmin) {
+            regularLeaveBalances = leaveBalanceRepo
+                    .findAllByYearAndNotDeleted(year);
+            genderBasedLeaveBalances = genderBasedLeaveBalancesRepo
+                    .findAllByYearAndNotDeleted(year);
+        } else {
+            regularLeaveBalances = leaveBalanceRepo
+                    .findAllByYearAndHrId(year, employeeId);
+            genderBasedLeaveBalances = genderBasedLeaveBalancesRepo
+                    .findAllByYearAndHrId(year, employeeId);
+        }
+
+        System.out.println("regularLeaveBalances: " + regularLeaveBalances);
+        System.out.println("genderBasedLeaveBalances: " + genderBasedLeaveBalances);
+
+        // rest of your existing code stays exactly the same
         Map<String, EmployeeLeaveBalanceDTO> employeeMap = new LinkedHashMap<>();
 
-        // 🔹 Group regular leave balances by employee
         for (LeaveBalance lb : regularLeaveBalances) {
             String empId = lb.getEmployee().getEmployeeId();
-
             employeeMap.computeIfAbsent(empId, k -> {
                 EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
                 dto.setEmployeeId(empId);
@@ -1440,48 +1488,39 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 dto.setLeaves(new ArrayList<>());
                 return dto;
             });
-
             LeaveDetail detail = new LeaveDetail();
             detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
             detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
             detail.setRemainingLeaves(lb.getRemainingLeaves());
-
             employeeMap.get(empId).getLeaves().add(detail);
         }
 
-        // 🔹 Group gender-based leave balances by employee
         for (GenderBasedLeaveBalance lb : genderBasedLeaveBalances) {
             String empId = lb.getEmployeeId();
-
             employeeMap.computeIfAbsent(empId, k -> {
                 EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
                 dto.setEmployeeId(empId);
-                dto.setEmployeeName(""); // fill if you have access to employee name here
+                dto.setEmployeeName("");
                 dto.setGender(lb.getLeaveType().getGender());
                 dto.setYear(lb.getYear());
                 dto.setLeaves(new ArrayList<>());
                 return dto;
             });
-
             LeaveDetail detail = new LeaveDetail();
             detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
             detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
             detail.setRemainingLeaves(lb.getRemainingDays());
-
             employeeMap.get(empId).getLeaves().add(detail);
         }
 
-        // 🔹 Paginate the grouped result
         List<EmployeeLeaveBalanceDTO> allEmployees = new ArrayList<>(employeeMap.values());
         int totalItems = allEmployees.size();
         int fromIndex = page * size;
         int toIndex = Math.min(fromIndex + size, totalItems);
-
         List<EmployeeLeaveBalanceDTO> pageData = (fromIndex >= totalItems)
                 ? new ArrayList<>()
                 : allEmployees.subList(fromIndex, toIndex);
 
-        // 🔹 Build paginated response
         Map<String, Object> response = new HashMap<>();
         response.put("data", pageData);
         response.put("currentPage", page);

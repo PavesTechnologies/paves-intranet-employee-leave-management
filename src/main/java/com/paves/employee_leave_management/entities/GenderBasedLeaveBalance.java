@@ -59,6 +59,9 @@ public class GenderBasedLeaveBalance {
     @Column(name = "times_used")
     private Integer timesUsed;
 
+    @Column(name = "is_deleted")
+    private Boolean isDeleted = false;
+
 
     @PrePersist
     public void onCreate() {

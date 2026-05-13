@@ -70,6 +70,9 @@ public class LeaveBalance {
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
 
+    @Column(name = "is_deleted")
+    private Boolean isDeleted;
+
     @PrePersist
     public void generateId() {
         if (balanceId == null) {

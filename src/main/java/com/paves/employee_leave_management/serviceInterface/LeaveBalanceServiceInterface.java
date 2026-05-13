@@ -22,7 +22,7 @@ public interface LeaveBalanceServiceInterface {
 
     void createLeaveBalanceForNewEmployee(String EmpId);
 
-    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(Integer year, int page, int size);
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(Integer year, int page, int size, String employeeId, boolean isAdmin);
 
     void processAccrualForLeaveType();
 
@@ -79,5 +79,9 @@ public interface LeaveBalanceServiceInterface {
     List<LeaveBalanceDTO> parseExcel(MultipartFile file) throws IOException;
 
     void processCarryForward(int year);
+
+    void deleteLeaveBalance(String employeeId);
+
+    List<LeaveBalanceForDashboard> getLeaveBalancesForDashboard(String employeeId, int year);
 }
 

@@ -9,6 +9,7 @@ import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
 import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveBalanceServiceInterface;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class GenderBasedLeaveBalanceService implements GenderBasedLeaveBalanceServiceInterface {
     @Autowired
     private GenderBasedLeaveBalancesRepo leaveBalanceRepo;
@@ -267,6 +269,25 @@ public class GenderBasedLeaveBalanceService implements GenderBasedLeaveBalanceSe
                 .processedCount(processedCount)
                 .errors(new ArrayList<>())
                 .build();
+    }
+
+    @Override
+    public void deleteLeaveBalance(String employeeId) {
+        log.info("Deleting leave balances for employee: {}", employeeId);
+
+        // Find all leave balances for the employee
+        List<GenderBasedLeaveBalance> balances = leaveBalanceRepo.findByEmployeeId(employeeId);
+
+        if (balances.isEmpty()) {
+            log.warn("No leave balances found for employee: {}", employeeId);
+            return;
+        }
+        // Delete all leave balances for the employee
+        for (GenderBasedLeaveBalance balance : balances) {
+            balance.setIsDeleted(true);
+            leaveBalanceRepo.save(balance);
+        }
+        log.info("Deleted {} leave balances for employee: {}", balances.size(), employeeId);
     }
 
 
