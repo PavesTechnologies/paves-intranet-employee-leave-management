@@ -15,6 +15,7 @@ import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.utils.ExcelUtil;
+import com.paves.employee_leave_management.utils.UtilsMethods;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -746,6 +747,25 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             leaveBalanceRepo.save(balance);
         }
         log.info("Deleted {} leave balances for employee: {}", balances.size(), employeeId);
+    }
+
+    @Override
+    public List<LeaveBalanceForDashboard> getLeaveBalancesForDashboard(String employeeId, int year) {
+        List<LeaveBalance> leaveBalances= leaveBalanceRepo.findByEmployeeEmployeeIdAndYear(employeeId, year);
+        if (leaveBalances.isEmpty()){
+            return null;
+        }
+        List<LeaveBalanceForDashboard> leaveBalanceForDashboard = new ArrayList<>();
+        for(LeaveBalance leaveBalance: leaveBalances){
+            LeaveBalanceForDashboard balances = new LeaveBalanceForDashboard();
+            balances.setTotalBalance(leaveBalance.getTotalLeaves());
+            balances.setRemainingBalance(leaveBalance.getRemainingLeaves());
+            balances.setLeaveName(UtilsMethods.resolveLeaveLabel(leaveBalance.getLeaveType().getLeaveName()));
+            balances.setEmployeeId(employeeId);
+
+            leaveBalanceForDashboard.add(balances);
+        }
+        return leaveBalanceForDashboard;
     }
 
     @Override
