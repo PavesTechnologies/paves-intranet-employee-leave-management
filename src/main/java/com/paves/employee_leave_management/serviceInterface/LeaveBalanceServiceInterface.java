@@ -81,5 +81,7 @@ public interface LeaveBalanceServiceInterface {
     void processCarryForward(int year);
 
     void deleteLeaveBalance(String employeeId);
+
+    List<LeaveBalanceForDashboard> getLeaveBalancesForDashboard(String employeeId, int year);
 }
 

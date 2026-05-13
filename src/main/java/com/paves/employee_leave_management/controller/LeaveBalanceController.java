@@ -346,5 +346,14 @@ public class LeaveBalanceController {
         return new ApiResponse<>(true, "send request to HR Manager", null );
     }
 
+    @GetMapping("employee-dashboard/leave-balance/{empId}/{year}")
+    public ApiResponse<List<LeaveBalanceForDashboard>> getLeaveBalancesForDashboard(@PathVariable String empId, @PathVariable int year){
+        List<LeaveBalanceForDashboard> leaveBalances =  leaveBalanceService.getLeaveBalancesForDashboard(empId, year);
+        if(leaveBalances.isEmpty()){
+            return new ApiResponse<>(false, "No leave balances found for employee: " + empId + " and year: " + year, null);
+        }
+        return new ApiResponse<>(true, "Leave balances for employee: " + empId + " and year: " + year, leaveBalances);
+    }
+
 
 }
