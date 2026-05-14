@@ -37,7 +37,7 @@ public class EmployeeCdcConsumer {
     private final GenderBasedLeaveBalanceServiceInterface genderBasedLeaveBalanceService;
 
     @KafkaListener(
-            topics = "eos.eos_v1.employee_details",
+            topics = "eos.eos.employee_details",
             groupId = "lms-employee-consumer"
     )
     public void consume(ConsumerRecord<String, String> record, Acknowledgment ack) {
