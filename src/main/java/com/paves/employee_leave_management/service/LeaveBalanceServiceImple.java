@@ -758,10 +758,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         List<LeaveBalanceForDashboard> leaveBalanceForDashboard = new ArrayList<>();
         for(LeaveBalance leaveBalance: leaveBalances){
             LeaveBalanceForDashboard balances = new LeaveBalanceForDashboard();
-            balances.setTotalBalance(leaveBalance.getTotalLeaves());
+            balances.setUsedLeaves(leaveBalance.getUsedLeaves());
             balances.setRemainingBalance(leaveBalance.getRemainingLeaves());
             balances.setLeaveName(UtilsMethods.resolveLeaveLabel(leaveBalance.getLeaveType().getLeaveName()));
-            balances.setEmployeeId(employeeId);
 
             leaveBalanceForDashboard.add(balances);
         }
