@@ -15,6 +15,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -1673,4 +1674,87 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         return request;
     }
 
+    @Override
+    public ResponseEntity<ApiResponse<List<TodayOnLeaveEmpDetails>>> getTodayOnLeaveEmpDetails() {
+        LocalDate today = LocalDate.now();
+        List<LeaveRequest> leaveRequests = leaveRequestRepo.findApprovedLeavesOnDate(today);
+
+        List<TodayOnLeaveEmpDetails> todayOnLeaveEmployees =
+                leaveRequests.stream()
+                        .filter(leave ->
+                                leave.getStatus() == LeaveStatus.APPROVED &&
+                                        !today.isBefore(leave.getStartDate()) &&
+                                        !today.isAfter(leave.getEndDate())
+                        )
+                        .map(leave -> {
+
+                            String session;
+
+                            // Single day leave
+                            if (leave.getStartDate().equals(leave.getEndDate())) {
+
+                                session = getSession(
+                                        leave.getStartSession()
+                                );
+                            }
+
+                            // Start date of multi-day leave
+                            else if (today.equals(leave.getStartDate())) {
+
+                                session = getSession(
+                                        leave.getStartSession()
+                                );
+                            }
+
+                            // End date of multi-day leave
+                            else if (today.equals(leave.getEndDate())) {
+
+                                session = getSession(
+                                        leave.getEndSession()
+                                );
+                            }
+
+                            // Middle days
+                            else {
+                                session = "Full Day";
+                            }
+
+                            return TodayOnLeaveEmpDetails.builder()
+                                    .employeeName(
+                                            leave.getEmployee().getFirstName()
+                                                    + " "
+                                                    + leave.getEmployee().getLastName()
+                                    )
+                                    .session(session)
+                                    .build();
+
+                        })
+                        .toList();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Employees On Leave Today Retrieved Successfully!", todayOnLeaveEmployees));
+    }
+
+    private String getSession(String session){
+
+        if(session == null){
+            return "Full Day";
+        }
+
+        switch(session.toLowerCase()){
+
+            case "first":
+                return "First Half";
+
+            case "second":
+                return "Second Half";
+
+            case "none":
+                return "Full Day";
+
+            case "fullday":
+                return "Full Day";
+
+            default:
+                return "Full Day";
+        }
+    }
 }
