@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.serviceInterface;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -64,4 +65,6 @@ public interface LeaveRequestServiceInterface {
     List<EmployeeApprovedLeavesDTO> getAllApprovedLeavesByYearGroupedByEmployee(Integer year);
     
     EmployeeApprovedLeavesDTO getApprovedLeavesByYearForEmployee(String employeeId, Integer year);
+
+    ResponseEntity<ApiResponse<List<TodayOnLeaveEmpDetails>>> getTodayOnLeaveEmpDetails();
 }
