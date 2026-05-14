@@ -78,7 +78,7 @@ public class HolidaysController {
 
     // 🔹 Get all holidays
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('HR','GENERAL','MANAGER')")
+    @PreAuthorize("hasAnyRole('HR', 'GENERAL', 'MANAGER')")
     public ResponseEntity<List<Holidays>> getAllHolidays() {
         return holidaysService.getAllHolidays();
     }
@@ -231,7 +231,6 @@ public class HolidaysController {
     }
 
     @GetMapping("/year/{year}")
-//    @PreAuthorize("hasAnyRole('HR', 'GENERAL','PROJECT-MANAGER','RESOURCE-MANAGER') ")
     public ResponseEntity<List<Holidays>> getHolidaysByYear(@PathVariable int year) {
         List<Holidays> holidaysList =  holidaysService.getHolidaysByYear(year);
         return ResponseEntity.ok(holidaysList);
@@ -296,7 +295,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/by-location/{year}")
-    @PreAuthorize("hasAnyRole('GENERAL','HR','MANAGER')")
+    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
     public ApiResponse<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(
             @PathVariable int year,
             @RequestParam("state") String state,
