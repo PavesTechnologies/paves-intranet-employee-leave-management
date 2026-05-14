@@ -228,5 +228,8 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
             @Param("year") Integer year
     );
 
+    @Query("SELECT l FROM LeaveRequest l WHERE l.status = 'APPROVED' " +
+            "AND l.startDate <= :date AND l.endDate >= :date")
+    List<LeaveRequest> findApprovedLeavesOnDate(@Param("date") LocalDate date);
 
 }

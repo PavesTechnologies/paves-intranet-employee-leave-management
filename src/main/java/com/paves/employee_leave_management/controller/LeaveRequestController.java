@@ -632,4 +632,9 @@ public class LeaveRequestController {
                     .body(new ApiResponse<>(false, "Error processing leave application: " + e.getMessage(), null));
         }
     }
+
+    @GetMapping("/dashboard/today-on-leave")
+    public ResponseEntity<ApiResponse<List<TodayOnLeaveEmpDetails>>> dashboardTodayOnLeave() {
+        return leaveRequestService.getTodayOnLeaveEmpDetails();
+    }
 }
