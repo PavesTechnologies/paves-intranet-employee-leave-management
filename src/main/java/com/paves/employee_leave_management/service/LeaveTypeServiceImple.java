@@ -2,18 +2,19 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.AllLeaveTypesListResponseDTO;
 import com.paves.employee_leave_management.dto.ApiResponse;
-import com.paves.employee_leave_management.dto.LeaveTypeDTO;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
+import com.paves.employee_leave_management.globalExceptionHandler.ApprovalBusinessException;
 import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -29,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
+@Slf4j
 public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
     @Autowired
@@ -166,6 +168,29 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                         + leaveType.getEffectiveStartDate(),
                 savedLeaveType);
     }
+
+    @Transactional
+    @Override
+    public ResponseEntity<ApiResponse<Object>> createDirectly(LeaveType leaveType, Employee maker) {
+        log.info("Super admin {} creating leave type directly: {}",
+                maker.getEmployeeId(), leaveType.getLeaveName());
+
+        // delegate entirely to existing business logic
+        ApiResponse<LeaveType> result = addLeaveType(leaveType);
+
+        if (!result.isSuccess()) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(false, result.getMessage(), null));
+        }
+
+        log.info("Leave type created directly by super admin: {} result: {}",
+                maker.getEmployeeId(), result.getMessage());
+
+        return ResponseEntity.ok(new ApiResponse<>(true, result.getMessage(), result.getData()));
+    }
+
+
 
     @Override
 //    @Cacheable("leave-types")
@@ -319,51 +344,36 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
                 .orElseThrow(() -> new RuntimeException("Leave Type Not Found"));
 
-        // ✅ FUTURE DATE → Schedule
         if (effectiveDate.isAfter(LocalDate.now())) {
             leaveType.setDeactivationEffectiveDate(effectiveDate);
-            leaveTypeRepo.save(leaveType); // ✅ FIXED
-
-            return ResponseEntity.ok(
-                    "Leave type scheduled for deactivation on " + effectiveDate
-            );
+            leaveTypeRepo.save(leaveType);
+            return ResponseEntity.ok("Leave type scheduled for deactivation on " + effectiveDate);
         }
 
-        // ✅ VALIDATION BEFORE DEACTIVATION
-
-        // Special case: COMPOFF
+        // COMPOFF validation
         if ("L-COMPOFF".equals(leaveType.getLeaveTypeId())) {
-            List<LeaveCompoff> compOffList =
-                    leaveCompoffRepo.findByStatus(LeaveStatusCompoff.PENDING);
-
+            List<LeaveCompoff> compOffList = leaveCompoffRepo
+                    .findByStatus(LeaveStatusCompoff.PENDING);
             if (!compOffList.isEmpty()) {
-                return ResponseEntity.badRequest().body(
-                        "Cannot deactivate. Pending CompOff requests exist for " + leaveTypeId
-                );
+                throw new ApprovalBusinessException(
+                        "Cannot deactivate. Pending CompOff requests exist for " + leaveTypeId);
             }
         }
 
-        // General leave request validation
-        List<LeaveRequest> pendingRequests =
-                leaveRequestRepo.findByStatus(LeaveStatus.PENDING);
-
+        // General pending requests validation
+        List<LeaveRequest> pendingRequests = leaveRequestRepo.findByStatusAndLeaveTypeId(LeaveStatus.PENDING, leaveTypeId);
         if (!pendingRequests.isEmpty()) {
-            return ResponseEntity.badRequest().body(
-                    "Cannot deactivate. Pending leave requests exist for " + leaveTypeId
-            );
+            throw new ApprovalBusinessException(
+                    "Cannot deactivate. " + pendingRequests.size() +
+                            " pending leave request(s) exist for leave type: " + leaveTypeId);
         }
-
-        // ✅ SAFE TO DEACTIVATE
+        // safe to deactivate
         leaveType.setActive(false);
         leaveType.setDeactivationEffectiveDate(LocalDate.now());
         leaveTypeRepo.save(leaveType);
-
-        // ⚠️ Optional cleanup (use carefully)
         leaveBalanceRepo.deleteByLeaveType(leaveType);
 
-        return ResponseEntity.ok(
-                "Leave type deactivated successfully"
-        );
+        return ResponseEntity.ok("Leave type deactivated successfully");
     }
 
 

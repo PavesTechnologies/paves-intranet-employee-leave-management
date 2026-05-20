@@ -84,13 +84,13 @@ public class LeaveTypeController {
     }
 
     @GetMapping("/types")
-    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL', 'SUPER_ADMIN')")
     public List<Map<String, String>> getLeaveTypes(Authentication authentication) {
         return service.getLeaveTypes();
     }
 
     @GetMapping("/accrual-frequencies")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public List<String> getAccrualFrequencies() {
         return Arrays.stream(AccrualFrequency.values())
                 .map(Enum::name)
@@ -99,7 +99,7 @@ public class LeaveTypeController {
 
 
     @PostMapping("/add-leave-type")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> addLeaveType(@Valid @RequestBody LeaveType leaveType, Authentication authentication) {
         Employee maker = getAuthenticatedUser();
         // Assuming the role is stored in the jobTitle field for now
@@ -146,6 +146,10 @@ public class LeaveTypeController {
             }
         }
 
+        if("SUPER_ADMIN".equalsIgnoreCase(makerRole)){
+            return service.createDirectly(leaveType, maker);
+        }
+
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.CREATE_LEAVE_TYPE);
 
@@ -156,12 +160,11 @@ public class LeaveTypeController {
         approvalService.submitForApproval(dto, maker, makerRole);
 
 
-
         return ResponseEntity.ok(new ApiResponse<>(true, "Request to add leave type has been submitted for approval.", null));
     }
 
     @GetMapping("/get-all-leave-types")
-    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL', 'SUPER_ADMIN')")
     public ResponseEntity<AllLeaveTypesListResponseDTO> getAllLeaveTypes() {
          AllLeaveTypesListResponseDTO allLeaveTypesListResponseDTO =  service.getAllLeaveTypes();
          if(allLeaveTypesListResponseDTO == null){
@@ -171,7 +174,7 @@ public class LeaveTypeController {
     }
 
     @PatchMapping("/update-leave-type/{leaveTypeId}")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> updateLeave(@PathVariable String leaveTypeId, @RequestBody UpdateLeaveRequest request, Authentication authentication) {
         Employee maker = getAuthenticatedUser();
 //        String makerRole = maker.getJobTitle();
@@ -227,7 +230,7 @@ public class LeaveTypeController {
     }
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> deleteLeaveType(
             @PathVariable String leaveTypeId,
             @RequestBody Map<String, String> requestBody,
@@ -324,7 +327,7 @@ public class LeaveTypeController {
 //    }
 
     @GetMapping("/get-all-leave-type-ids")
-    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL', 'SUPER_ADMIN')")
     public ResponseEntity<List<LeaveTypeIdDTO>> getAllLeaveTypeIds() {
         return new ResponseEntity<>(service.getAllLeaveTypeIds(), HttpStatus.OK);
     }

@@ -10,9 +10,13 @@ import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
+import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -20,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
+@Slf4j
 public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface {
 
     @Autowired
@@ -74,6 +79,39 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
                         : "Leave type will become active on " + saved.getEffectiveStartDate(),
                 saved
         );
+    }
+
+    @Transactional
+    public ResponseEntity<ApiResponse<Object>> createGenderBasedDirectly(
+            GenderBasedLeave genderBaseLeave, Employee maker) {
+
+        log.info("Super admin {} creating gender based leave directly: {}",
+                maker.getEmployeeId(), genderBaseLeave.getLeaveName());
+
+        // check if already exists and active — same as validateGenderBaseLeave
+        Optional<GenderBasedLeave> existing = genderBasedRepo
+                .findByLeaveNameIgnoreCase(genderBaseLeave.getLeaveName());
+
+        if (existing.isPresent() && Boolean.TRUE.equals(existing.get().getActive())) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(false,
+                            "Leave type already exists and is active", null));
+        }
+
+        // delegate to existing business logic
+        ApiResponse<Object> result = createGenderBaseLeave(genderBaseLeave);
+
+        if (!result.isSuccess()) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(false, result.getMessage(), null));
+        }
+
+        log.info("Gender based leave created directly by super admin: {} result: {}",
+                maker.getEmployeeId(), result.getMessage());
+
+        return ResponseEntity.ok(new ApiResponse<>(true, result.getMessage(), result.getData()));
     }
 
     @Override

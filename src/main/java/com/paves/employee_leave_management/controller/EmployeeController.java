@@ -23,32 +23,32 @@ public class EmployeeController {
 
 
     @PostMapping("/register")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<Employee> registerEmployee(@RequestBody Employee employee) {
         return serviceInterface.saveEmployee(employee);
     }
 
     @PutMapping("/update/{employeeId}")
-    @PreAuthorize("hasRole('HR') or @permissionService.isOwner(authentication, #employeeId)")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN') or @permissionService.isOwner(authentication, #employeeId)")
     public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId, @RequestBody Employee employee) {
         return serviceInterface.updateEmployee(employeeId, employee);
     }
 
     @PostMapping("/add-employees")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> addEmployees(@RequestHeader("Authorization") String token ){
         return serviceInterface.addEmployees(token);
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> getAllEmployees() {
         List<Employee> employees = serviceInterface.getAllEmployees();
         return ResponseEntity.ok(new ApiResponse<>(true, "All Employees", employees));
     }
 
     @GetMapping("/all-employees")
-    @PreAuthorize("hasAnyRole('HR', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('HR', 'MANAGER', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> getAllEmployeePaginated(){
         List<EmployeesDTO> employee = serviceInterface.getAllEmployeePaginated();
         return ResponseEntity.ok(new ApiResponse<>(true, "All Employees", employee));

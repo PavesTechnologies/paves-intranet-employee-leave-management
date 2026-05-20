@@ -104,4 +104,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ExceptionHandler(ApprovalBusinessException.class)
+    public ResponseEntity<ApiResponse<Object>> handleApprovalBusinessException(
+            ApprovalBusinessException e) {
+        return ResponseEntity
+                .status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ApiResponse<>(false, e.getReason(), null));
+    }
+
 }

@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.serviceInterface;
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
+import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
@@ -15,4 +16,8 @@ public interface GenderBasedLeaveServiceInterface {
     ApiResponse<Object> deActiveGenderBaseLeaveType(String leaveTypeId, LocalDate effectiveDate);
     List<GenderBasedLeave> getAllLeaveTypes();
     Optional<GenderBasedLeave> getLeaveType(String leaveType);
+
+    @Transactional
+    public ResponseEntity<ApiResponse<Object>> createGenderBasedDirectly(
+            GenderBasedLeave genderBaseLeave, Employee maker);
 }

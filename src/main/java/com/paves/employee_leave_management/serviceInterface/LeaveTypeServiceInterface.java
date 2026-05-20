@@ -4,6 +4,7 @@ import com.paves.employee_leave_management.dto.AllLeaveTypesListResponseDTO;
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveTypeDTO;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
+import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveType;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,9 @@ import java.util.Map;
 
 
 public interface LeaveTypeServiceInterface {
+
+    @Transactional
+    ResponseEntity<ApiResponse<Object>> createDirectly(LeaveType leaveType, Employee maker);
 
     public List<Map<String, String>> getLeaveTypes();
     public ApiResponse<LeaveType> addLeaveType(LeaveType leaveType);

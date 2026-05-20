@@ -33,6 +33,9 @@ public class ApprovalRequest {
     @Column(nullable = false)
     private RequestStatus status;
 
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
+    private String failureReason;
+
     @Lob
     private String payload; // Using String to store serialized JSON
 

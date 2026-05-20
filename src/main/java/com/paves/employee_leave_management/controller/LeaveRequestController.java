@@ -338,7 +338,7 @@ public class LeaveRequestController {
      * Get pending/filtered leave requests for manager
      */
     @PostMapping("/manager/requests")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isOwner(authentication, #queryDTO.managerId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isOwner(authentication, #queryDTO.managerId)")
     public ResponseEntity<ApiResponse<List<LeaveRequestManagerViewDTO>>> getRequestsForManager(@Valid @RequestBody ManagerQueryDTO queryDTO) {
         try {
             List<LeaveRequestManagerViewDTO> requests = leaveRequestService.getRequestsForManager(queryDTO);
@@ -353,7 +353,7 @@ public class LeaveRequestController {
      * Get leave history for manager with filtering
      */
     @PostMapping("/manager/history")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isOwner(authentication, #queryDTO.managerId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isOwner(authentication, #queryDTO.managerId)")
     public ResponseEntity<ApiResponse<List<LeaveRequestManagerViewDTO>>> getLeaveHistoryForManager(@Valid @RequestBody ManagerQueryDTO queryDTO) {
         try {
 
@@ -369,7 +369,7 @@ public class LeaveRequestController {
 
 
     @GetMapping("/manager/pending-count/{managerId}")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isOwner(authentication, #managerId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isOwner(authentication, #managerId)")
     public ResponseEntity<ApiResponse<Long>> getPendingCountForManager(@PathVariable String managerId) {
         try {
             Long count = leaveRequestRepo.countPendingLeavesByManager(managerId);
@@ -384,7 +384,7 @@ public class LeaveRequestController {
      * Approve leave request using request body
      */
     @PutMapping("/approve")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isManagerOfLeaveRequest(authentication, #approvalRequest.leaveId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isManagerOfLeaveRequest(authentication, #approvalRequest.leaveId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> approveRequest(@Valid @RequestBody ApprovalRequestDTO approvalRequest) {
         try {
             LeaveRequest approvedRequest = leaveRequestService.approveRequest(approvalRequest);
@@ -411,7 +411,7 @@ public class LeaveRequestController {
      */
 
     @PostMapping("/approve-batch")
-    @PreAuthorize("hasAnyRole('REPORTING_MANAGER')")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isManagerOfLeaveRequest(authentication, #batchApproval.leaveIds)")
     public ResponseEntity<List<LeaveRequest>> approveLeaveBatch(
             @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
         List<LeaveRequest> approved = leaveRequestService.approveMultipleRequests(batchApproval);
@@ -420,7 +420,7 @@ public class LeaveRequestController {
     }
 
     @PostMapping("/reject-batch")
-    @PreAuthorize("hasAnyRole('REPORTING_MANAGER')")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'HR', 'SUPER_ADMIN')")
     public ResponseEntity<List<LeaveRequest>> rejectLeaveBatch(
             @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
         List<LeaveRequest> rejected = leaveRequestService.rejectMultipleRequests(batchApproval);
@@ -433,7 +433,7 @@ public class LeaveRequestController {
      * Reject leave request using request body
      */
     @PutMapping("/reject")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isManagerOfLeaveRequest(authentication, #rejectionRequest.leaveId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isManagerOfLeaveRequest(authentication, #rejectionRequest.leaveId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> rejectRequest(@Valid @RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest rejectedRequest = leaveRequestService.rejectRequest(rejectionRequest);
@@ -460,7 +460,7 @@ public class LeaveRequestController {
      * Update leave request by manager using request body
      */
     @PutMapping("/update")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isManagerOfLeaveRequest(authentication, #updateRequest.leaveId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'HR', 'SUPER_ADMIN') and @permissionService.isManagerOfLeaveRequest(authentication, #updateRequest.leaveId)")
     public ResponseEntity<ApiResponse<LeaveRequest>> updateLeaveRequestByManager(@Valid @RequestBody ManagerUpdateRequestDTO updateRequest) {
         try {
             LeaveRequest updatedRequest = leaveRequestService.updateLeaveRequestByManager(updateRequest);
@@ -482,7 +482,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/history/{employeeId}")
-    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<List<LeaveRequest>> getLeaveHistoryByYear(
             @PathVariable String employeeId,
             @RequestParam int year
@@ -603,7 +603,7 @@ public class LeaveRequestController {
     }
 
     @PostMapping("/apply-on-behalf")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> applyLeaveBehalf(@RequestBody LeaveRequestValidationDTO leaveRequestValidationDTO){
         try {
             // Validate the leave request

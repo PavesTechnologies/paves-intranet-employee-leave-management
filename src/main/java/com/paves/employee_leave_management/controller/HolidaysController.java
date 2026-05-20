@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.paves.employee_leave_management.utils.UtilsMethods.getMakerRole;
+
 @RestController
 @RequestMapping("/api/holidays")
 @CrossOrigin
@@ -78,33 +80,52 @@ public class HolidaysController {
 
     // 🔹 Get all holidays
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('HR', 'GENERAL', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('HR', 'GENERAL', 'MANAGER', 'SUPER_ADMIN')")
     public ResponseEntity<List<Holidays>> getAllHolidays() {
         return holidaysService.getAllHolidays();
     }
 
     // 🔹 Get holiday by ID
     @GetMapping("/id/{id}")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<Holidays> getHolidayById(@PathVariable Long id) {
         return holidaysService.getHolidayById(id);
     }
 
     // 🔹 Add new holiday
     @PostMapping("/add")
-    @PreAuthorize("hasAnyRole('HR')")
-    public ResponseEntity<ApiResponse<Object>> addHoliday(@RequestBody List<Holidays> holidays) {
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> addHoliday(@RequestBody List<Holidays> holidays, Authentication authentication) {
+
+        String makerRole = getMakerRole(authentication);
+        Employee maker = getAuthenticatedUser();
+
+
+        if ("SUPER_ADMIN".equalsIgnoreCase(makerRole)) {
+            try {
+                ResponseEntity<String> result = holidaysService.addHoliday(holidays);
+                return ResponseEntity.ok(new ApiResponse<>(true,
+                        "Holidays added successfully by super admin.", null));
+            } catch (HolidayExceptionHandler e) {
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(new ApiResponse<>(false, e.getMessage(), null));
+            }
+        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.ADD_HOLIDAY);
+
+
+
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("newData", holidays);
         dto.setPayload(payload);
 
-        Employee maker = getAuthenticatedUser();
 
-        approvalService.submitForApproval(dto, maker, "HR");
+
+        approvalService.submitForApproval(dto, maker, makerRole);
 //        return holidaysService.addHoliday(holidays);
         return ResponseEntity.ok(new ApiResponse<>(true, "Request to add holiday submitted successfully", null));
     }
@@ -117,7 +138,7 @@ public class HolidaysController {
 //        return holidaysService.updateHoliday(holidays);
 //    }
     @PutMapping("/update") // Keep existing path and verb
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> submitUpdateHolidayRequest(
             @RequestBody Holidays updatedHolidayData // Body contains the full updated object
     ) { // Inject maker
@@ -176,7 +197,7 @@ public class HolidaysController {
 //        return holidaysService.deleteHoliday(id);
 //    }
     @DeleteMapping("/delete/{id}") // Keep existing path
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> deleteHoliday(
             @PathVariable Long id) { // Inject maker
 
@@ -238,13 +259,13 @@ public class HolidaysController {
 
     // 🔹 Delete all holidays for a specific year
     @DeleteMapping("/year/{year}")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<String> deleteHolidaysByYear(@PathVariable int year) {
         return holidaysService.deleteHolidaysByYear(year);
     }
 
     @PostMapping("/upload")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<String> uploadExcel(@RequestParam("file") MultipartFile file) {
         try {
             holidaysService.importHolidaysFromExcel(file);
@@ -256,7 +277,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/template/download")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN', 'ADMIN')")
     public ResponseEntity<InputStreamResource> downloadTemplate() throws IOException, SQLException {
         String filename = "holidays_template.xlsx";
         ByteArrayInputStream inputStream = holidaysService.createHolidayTemplate();
@@ -295,7 +316,7 @@ public class HolidaysController {
     }
 
     @GetMapping("/by-location/{year}")
-    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'MANAGER', 'SUPER_ADMIN', 'ADMIN')")
     public ApiResponse<List<HolidayNameDateDto>> getHolidaysByStateAndCountry(
             @PathVariable int year,
             @RequestParam("state") String state,

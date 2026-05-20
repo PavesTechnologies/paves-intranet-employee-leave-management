@@ -19,6 +19,8 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 @EnableCaching
@@ -57,8 +59,16 @@ public class RedisConfig {
     @Bean
     @Primary
     public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
+
+        Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
+
+        cacheConfigs.put("employeeLeaveBalance", cacheConfiguration().entryTtl(Duration.ofHours(1)));
+        cacheConfigs.put("leaveRequestsByEmployee", cacheConfiguration().entryTtl(Duration.ofMinutes(30)));
+        cacheConfigs.put("all-leave-types", cacheConfiguration().entryTtl(Duration.ofHours(6)));
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(cacheConfiguration())
+                .withInitialCacheConfigurations(cacheConfigs)
                 .transactionAware()
                 .build();
     }
