@@ -3,14 +3,17 @@ package com.paves.employee_leave_management.controller;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
+import com.paves.employee_leave_management.entities.LeaveBalanceJob;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.GenderBasedRepo;
+import com.paves.employee_leave_management.repo.LeaveBalanceJobRepository;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceJobServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -47,6 +50,9 @@ public class LeaveTypeController {
 
     @Autowired
     private GenderBasedRepo genderBasedRepo;
+
+    @Autowired
+    private LeaveBalanceJobServiceInterface leaveBalanceJobService;
 
     // This is a placeholder for getting the user from the JWT token
     private Employee getAuthenticatedUser() {
@@ -161,6 +167,26 @@ public class LeaveTypeController {
 
 
         return ResponseEntity.ok(new ApiResponse<>(true, "Request to add leave type has been submitted for approval.", null));
+    }
+
+
+    @GetMapping("/leave-balance-job/{jobId}")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> getJobProgress(@PathVariable String jobId) {
+        LeaveBalanceJob job = leaveBalanceJobService.getJobStatus(jobId);
+
+        Map<String, Object> progress = new LinkedHashMap<>();
+        progress.put("jobId", job.getJobId());
+        progress.put("leaveTypeName", job.getLeaveTypeName());
+        progress.put("status", job.getStatus());
+        progress.put("totalEmployees", job.getTotalEmployees());
+        progress.put("processedEmployees", job.getProcessedEmployees());
+        progress.put("progressPercentage", job.getProgressPercentage());
+        progress.put("errorMessage", job.getErrorMessage());
+        progress.put("startedAt", job.getStartedAt());
+        progress.put("completedAt", job.getCompletedAt());
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "Job status", progress));
     }
 
     @GetMapping("/get-all-leave-types")

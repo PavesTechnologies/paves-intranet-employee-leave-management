@@ -9,10 +9,7 @@ import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.ApprovalBusinessException;
 import com.paves.employee_leave_management.repo.*;
-import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.*;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,35 +30,47 @@ import java.util.*;
 @Slf4j
 public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
-    @Autowired
-    LeaveTypeRepo leaveTypeRepo;
+    private final LeaveTypeRepo leaveTypeRepo;
+    private final LeaveBalanceRepo leaveBalanceRepo;
+    private final GenderBasedRepo genderBasedRepo;
+    private final LeaveBalanceServiceInterface leaveBalanceService;
+    private final GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface;
+    private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
+    private final LeaveRequestRepo leaveRequestRepo;
+    private final LeaveCompoffRepo leaveCompoffRepo;
+    private final EmailServiceInterface emailService;
+    private final EmployeeRepo employeeRepo;
+    private final LeaveBalanceJobServiceInterface leaveBalanceJobService;
+    private final LeaveBalanceJobRepository jobRepository;
 
-    @Autowired
-    LeaveBalanceRepo leaveBalanceRepo;
+    public LeaveTypeServiceImple(
+            LeaveTypeRepo leaveTypeRepo,
+            LeaveBalanceRepo leaveBalanceRepo,
+            GenderBasedRepo genderBasedRepo,
+            LeaveBalanceServiceInterface leaveBalanceService,
+            GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface,
+            LeaveBalanceServiceInterface leaveBalanceServiceInterface,
+            LeaveRequestRepo leaveRequestRepo,
+            LeaveCompoffRepo leaveCompoffRepo,
+            EmailServiceInterface emailService,
+            EmployeeRepo employeeRepo,
+            LeaveBalanceJobServiceInterface leaveBalanceJobService,
+            LeaveBalanceJobRepository jobRepository
+    ) {
+        this.leaveTypeRepo = leaveTypeRepo;
+        this.leaveBalanceRepo = leaveBalanceRepo;
+        this.genderBasedRepo = genderBasedRepo;
+        this.leaveBalanceService = leaveBalanceService;
+        this.genderBasedLeaveServiceInterface = genderBasedLeaveServiceInterface;
+        this.leaveBalanceServiceInterface = leaveBalanceServiceInterface;
+        this.leaveRequestRepo = leaveRequestRepo;
+        this.leaveCompoffRepo = leaveCompoffRepo;
+        this.emailService = emailService;
+        this.employeeRepo = employeeRepo;
+        this.leaveBalanceJobService = leaveBalanceJobService;
+        this.jobRepository = jobRepository;
+    }
 
-    @Autowired
-    GenderBasedRepo genderBasedRepo;
-
-    @Autowired
-    LeaveBalanceServiceInterface leaveBalanceService;
-
-    @Autowired
-    GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface;
-
-    @Autowired
-    LeaveBalanceServiceInterface leaveBalanceServiceInterface;
-
-    @Autowired
-    LeaveRequestRepo leaveRequestRepo;
-
-    @Autowired
-    LeaveCompoffRepo leaveCompoffRepo;
-
-    @Autowired
-    private EmailServiceInterface emailService;
-
-    @Autowired
-    private EmployeeRepo employeeRepo;
 
 
     @Override
@@ -148,8 +157,13 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         leaveType.setCreateAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
 
+        String jobId;
         if (shouldActivateNow) {
-            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+//            leaveBalanceService.createLeaveBalanceForAllEmployees(savedLeaveType);
+            jobId = startLeaveBalanceJob(savedLeaveType, "SYSTEM");
+            savedLeaveType.setJobId(jobId);
+            leaveTypeRepo.save(savedLeaveType);
+            log.info("Started Leave Balance job {} for Leave Type {}", jobId, savedLeaveType.getLeaveName());
         }
 
         // Notify all employees
@@ -167,6 +181,19 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                         : "Leave type created and will become active on "
                         + leaveType.getEffectiveStartDate(),
                 savedLeaveType);
+    }
+
+    private String startLeaveBalanceJob(LeaveType leaveType, String createdBy) {
+        LeaveBalanceJob job = LeaveBalanceJob.builder()
+                .leaveTypeId(leaveType.getLeaveTypeId())
+                .leaveTypeName(leaveType.getLeaveName())
+                .status(LeaveBalanceJob.JobStatus.PENDING)
+                .createdBy(createdBy)
+                .build();
+
+        LeaveBalanceJob saved = jobRepository.save(job);
+        leaveBalanceJobService.processLeaveBalancesAsync(saved.getJobId(), leaveType.getLeaveTypeId());
+        return saved.getJobId();
     }
 
     @Transactional
