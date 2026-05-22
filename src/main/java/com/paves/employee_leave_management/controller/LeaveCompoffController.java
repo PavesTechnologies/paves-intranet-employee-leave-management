@@ -48,7 +48,7 @@ public class LeaveCompoffController {
     }
 
     @PutMapping("/approve")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isManagerOfCompoffRequest(authentication, #dto.compoffId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isManagerOfCompoffRequest(authentication, #dto.compoffId)")
     public ResponseEntity<ApiResponse<String>> approveCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
         try {
             LeaveCompoff request = compoffService.approveCompoff(dto.getCompoffId());
@@ -68,7 +68,7 @@ public class LeaveCompoffController {
     }
 
     @PutMapping("/reject")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isManagerOfCompoffRequest(authentication, #dto.compoffId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isManagerOfCompoffRequest(authentication, #dto.compoffId)")
     public ResponseEntity<ApiResponse<String>> rejectCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
         try {
             LeaveCompoff request =  compoffService.rejectCompoff(dto.getCompoffId());
@@ -94,14 +94,14 @@ public class LeaveCompoffController {
     }
 
     @PostMapping("/manager/status")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isOwner(authentication, #dto.managerId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isOwner(authentication, #dto.managerId)")
     public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByManagerAndStatus(@RequestBody ManagerCompoffStatusDTO dto) {
         List<LeaveCompoff> compoffs = compoffService.getCompoffsByManagerAndStatus(dto.getManagerId(), dto.getStatus());
         return ResponseEntity.ok(new ApiResponse<>(true, "Filtered Compoff list", compoffs));
     }
 
     @PostMapping("/pending")
-    @PreAuthorize("hasRole('REPORTING_MANAGER') and @permissionService.isOwner(authentication, #managerDTO.managerId)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isOwner(authentication, #managerDTO.managerId)")
     public ResponseEntity<ApiResponse<List<PendingCompoffResponseDTO>>> getPendingCompoffs(
             @RequestBody ManagerPendingCompoffDTO managerDTO) {
 

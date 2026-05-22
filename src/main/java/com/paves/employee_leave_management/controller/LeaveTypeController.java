@@ -3,14 +3,17 @@ package com.paves.employee_leave_management.controller;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
+import com.paves.employee_leave_management.entities.LeaveBalanceJob;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.GenderBasedRepo;
+import com.paves.employee_leave_management.repo.LeaveBalanceJobRepository;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceJobServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -48,6 +51,9 @@ public class LeaveTypeController {
     @Autowired
     private GenderBasedRepo genderBasedRepo;
 
+    @Autowired
+    private LeaveBalanceJobServiceInterface leaveBalanceJobService;
+
     // This is a placeholder for getting the user from the JWT token
     private Employee getAuthenticatedUser() {
         // In a real application, you would extract the user details from the Spring Security Context.
@@ -84,13 +90,13 @@ public class LeaveTypeController {
     }
 
     @GetMapping("/types")
-    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL', 'SUPER_ADMIN')")
     public List<Map<String, String>> getLeaveTypes(Authentication authentication) {
         return service.getLeaveTypes();
     }
 
     @GetMapping("/accrual-frequencies")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public List<String> getAccrualFrequencies() {
         return Arrays.stream(AccrualFrequency.values())
                 .map(Enum::name)
@@ -99,7 +105,7 @@ public class LeaveTypeController {
 
 
     @PostMapping("/add-leave-type")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> addLeaveType(@Valid @RequestBody LeaveType leaveType, Authentication authentication) {
         Employee maker = getAuthenticatedUser();
         // Assuming the role is stored in the jobTitle field for now
@@ -146,6 +152,10 @@ public class LeaveTypeController {
             }
         }
 
+        if("SUPER_ADMIN".equalsIgnoreCase(makerRole)){
+            return service.createDirectly(leaveType, maker);
+        }
+
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.CREATE_LEAVE_TYPE);
 
@@ -156,12 +166,31 @@ public class LeaveTypeController {
         approvalService.submitForApproval(dto, maker, makerRole);
 
 
-
         return ResponseEntity.ok(new ApiResponse<>(true, "Request to add leave type has been submitted for approval.", null));
     }
 
+
+    @GetMapping("/leave-balance-job/{jobId}")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> getJobProgress(@PathVariable String jobId) {
+        LeaveBalanceJob job = leaveBalanceJobService.getJobStatus(jobId);
+
+        Map<String, Object> progress = new LinkedHashMap<>();
+        progress.put("jobId", job.getJobId());
+        progress.put("leaveTypeName", job.getLeaveTypeName());
+        progress.put("status", job.getStatus());
+        progress.put("totalEmployees", job.getTotalEmployees());
+        progress.put("processedEmployees", job.getProcessedEmployees());
+        progress.put("progressPercentage", job.getProgressPercentage());
+        progress.put("errorMessage", job.getErrorMessage());
+        progress.put("startedAt", job.getStartedAt());
+        progress.put("completedAt", job.getCompletedAt());
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "Job status", progress));
+    }
+
     @GetMapping("/get-all-leave-types")
-    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL', 'SUPER_ADMIN')")
     public ResponseEntity<AllLeaveTypesListResponseDTO> getAllLeaveTypes() {
          AllLeaveTypesListResponseDTO allLeaveTypesListResponseDTO =  service.getAllLeaveTypes();
          if(allLeaveTypesListResponseDTO == null){
@@ -171,7 +200,7 @@ public class LeaveTypeController {
     }
 
     @PatchMapping("/update-leave-type/{leaveTypeId}")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> updateLeave(@PathVariable String leaveTypeId, @RequestBody UpdateLeaveRequest request, Authentication authentication) {
         Employee maker = getAuthenticatedUser();
 //        String makerRole = maker.getJobTitle();
@@ -227,7 +256,7 @@ public class LeaveTypeController {
     }
 
     @DeleteMapping("/delete-leave-type/{leaveTypeId}")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> deleteLeaveType(
             @PathVariable String leaveTypeId,
             @RequestBody Map<String, String> requestBody,
@@ -324,7 +353,7 @@ public class LeaveTypeController {
 //    }
 
     @GetMapping("/get-all-leave-type-ids")
-    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL')")
+    @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL', 'SUPER_ADMIN')")
     public ResponseEntity<List<LeaveTypeIdDTO>> getAllLeaveTypeIds() {
         return new ResponseEntity<>(service.getAllLeaveTypeIds(), HttpStatus.OK);
     }

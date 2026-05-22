@@ -91,7 +91,7 @@ public class LeaveBalanceController {
 
 
     @PostMapping("/generate/{employeeId}")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<String> generateLeaveBalance(@PathVariable String employeeId) {
         //employeeRepo.findAll().forEach(employee -> leaveBalanceService.createLeaveBalanceForNewEmployee(employee.getEmployeeId()));
         leaveBalanceService.createLeaveBalanceForNewEmployee(employeeId);
@@ -100,14 +100,14 @@ public class LeaveBalanceController {
     }
 
     @PostMapping("/carryforward")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<String> carryForward() {
         leaveBalanceService.processAccrualForLeaveType();
         return ResponseEntity.ok("Carry forward process completed.");
     }
 
     @GetMapping("/{balanceID}")
-    @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL')")
+    @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL', 'SUPER_ADMIN')")
     public ResponseEntity<LeaveBalance> getLeaveBalancesByBalanceId(@PathVariable String balanceID) {
         LeaveBalance leaveBalance =  leaveBalanceService.findByBalanceId(balanceID);
         return ResponseEntity.ok(leaveBalance);
@@ -120,7 +120,7 @@ public class LeaveBalanceController {
 //    }
 
     @GetMapping("/all-leave-balances/{year}")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<List<AllPeopleLeaveBalance>> getAllLeaveBalance(@PathVariable Integer year) {
         List<AllPeopleLeaveBalance> leaveBalances =  leaveBalanceService.getAllLeaveBalanceByYear(year);
         return ResponseEntity.ok(leaveBalances);
@@ -133,7 +133,7 @@ public class LeaveBalanceController {
     }
 
     @GetMapping("/leave-balance")
-    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    @PreAuthorize("hasAnyRole('HR','ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(
             @RequestParam Integer year,
             @RequestParam(defaultValue = "0") int page,
@@ -234,7 +234,7 @@ public class LeaveBalanceController {
 //    }
 
     @GetMapping("/type/{leaveTypeId}")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByLeaveName(@PathVariable String leaveTypeId) {
         return leaveBalanceService.findByLeaveId(leaveTypeId);
     }
@@ -246,7 +246,7 @@ public class LeaveBalanceController {
     }
 
     @PostMapping("/update-leave-balance")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<String> approveLeave(
             @RequestParam String employeeId,
             @RequestParam String leaveTypeId,
@@ -258,7 +258,7 @@ public class LeaveBalanceController {
     }
 
     @PutMapping("/update")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> updateLeave(@RequestBody LeaveBalanceUpdateRequest request) {
         Employee maker = getAuthenticatedUser();
         String makerRole = "HR"; // or maker.getJobTitle()
@@ -298,7 +298,7 @@ public class LeaveBalanceController {
     }
 
     @GetMapping("/search/{year}")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<List<LeaveBalance>> search(@RequestParam(value = "query", required = false) String query, @PathVariable int year) {
         List<LeaveBalance> results = leaveBalanceService.searchLeaveBalances(query, year);
         return ResponseEntity.ok(results);
@@ -306,7 +306,7 @@ public class LeaveBalanceController {
 
 
     @GetMapping("/autocomplete")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<List<String>> autocomplete(@RequestParam("query") String query) {
         List<String> suggestions = leaveBalanceService.autocompleteEmployee(query);
         return ResponseEntity.ok(suggestions);
@@ -315,7 +315,7 @@ public class LeaveBalanceController {
     @Autowired
     LeaveBlockScheduler lbs;
     @GetMapping("/monthly")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<String> monthly() {
 //        leaveBalanceService.processAccrualForLeaveType();
         lbs.deactivateDueLeaveTypes();
@@ -324,7 +324,7 @@ public class LeaveBalanceController {
 
 
     @PostMapping("/process-carry-forwards/{year}")
-    @PreAuthorize("hasAnyRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ApiResponse<Object> processCurryForwards(@PathVariable int year){
 
         List<LeaveRequest> pendingLeaveRequests = leaveRequestRepo.findByStatus(LeaveStatus.PENDING);

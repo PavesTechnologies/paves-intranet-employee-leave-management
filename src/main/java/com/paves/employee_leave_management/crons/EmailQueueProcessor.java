@@ -5,6 +5,7 @@ import com.paves.employee_leave_management.serviceInterface.AsyncNotificationSer
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
@@ -23,6 +24,9 @@ public class EmailQueueProcessor {
     private final SpringTemplateEngine templateEngine;
 
     @Scheduled(fixedRate = 60000) // Run every minute
+    @SchedulerLock(name = "Email_Queue_Processor",
+            lockAtLeastFor = "PT30S",
+            lockAtMostFor = "PT2M")
     public void processEmailQueue() {
         log.info("Processing email queue...");
         List<EmailDTO> emails = new ArrayList<>();
@@ -34,7 +38,12 @@ public class EmailQueueProcessor {
         }
 
         log.info("Sending {} emails from the queue.", emails.size());
+
+        int success = 0;
+        int failed = 0;
+
         for (EmailDTO email : emails) {
+            try{
             if (email.getTemplateModel() != null) {
                 Context context = new Context();
                 context.setVariables(email.getTemplateModel());
@@ -42,7 +51,12 @@ public class EmailQueueProcessor {
                 email.setBody(htmlBody);
             }
             emailService.sendEmail(email);
+            success++;
+            }catch(Exception e){
+            log.error("Failed to send email: {}", e.getMessage());
+            failed++;
         }
-        log.info("Finished processing email queue.");
+        }
+        log.info("Email queue processed — success: {} failed: {}", success, failed);
     }
 }

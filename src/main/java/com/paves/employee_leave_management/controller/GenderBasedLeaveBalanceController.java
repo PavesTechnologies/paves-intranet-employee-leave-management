@@ -7,6 +7,7 @@ import com.paves.employee_leave_management.entities.GenderBasedLeaveBalance;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.ValidationAndExecution;
+import com.paves.employee_leave_management.utils.UtilsMethods;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
@@ -17,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -60,12 +62,13 @@ public class GenderBasedLeaveBalanceController {
         throw new RuntimeException("Invalid authentication principal");
     }
 
+
     @PostMapping("/update-leave-balance")
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> updateLeaveBalanceForEmployee(
-            @Valid @RequestBody GenderBasedLeaveBalance leaveBalance) {
+            @Valid @RequestBody GenderBasedLeaveBalance leaveBalance, Authentication authentication) {
         Employee maker = getAuthenticatedUser();
-        String makerRole = "HR";
+        String makerRole = UtilsMethods.getMakerRole(authentication);
 
         ApiResponse<Object> response =
                 validationAndExecution.updateValidateGenderBaseLeaveBalance(leaveBalance, maker, makerRole);

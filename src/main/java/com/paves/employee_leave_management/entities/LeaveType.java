@@ -94,6 +94,9 @@ public class LeaveType {
     @Column(name = "last_updated_at", insertable = false)
     private LocalDateTime lastUpdatedAt;
 
+    @Column(name = "job_id")
+    private String jobId;
+
     @PrePersist
     public void generateId() {
         if ((leaveTypeId == null || leaveTypeId.isBlank()) && leaveName != null) {

@@ -11,14 +11,17 @@ import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.ApproverType;
 import com.paves.employee_leave_management.enums.RequestStatus;
+import com.paves.employee_leave_management.globalExceptionHandler.ApprovalBusinessException;
 import com.paves.employee_leave_management.repo.ApprovalRequestRepository;
 import com.paves.employee_leave_management.repo.ApprovalRuleRepository;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.FunctionalApproverRepository;
 import com.paves.employee_leave_management.serviceInterface.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -28,7 +31,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+
 @Service
+@Slf4j
 public class ApprovalServiceImpl implements ApprovalServiceInterface {
 
     @Autowired
@@ -163,23 +168,41 @@ public class ApprovalServiceImpl implements ApprovalServiceInterface {
             throw new IllegalStateException("You are not authorized to approve this request.");
         }
 
-        request.setStatus(RequestStatus.APPROVED);
-        request.setResolvedAt(LocalDateTime.now());
-
-        // Check if this is the final approval level before executing the business logic
         boolean isFinalApproval = approvalRequestRepository
-                .findByWorkflowIdAndRule_ApprovalLevel(request.getWorkflowId(), request.getRule().getApprovalLevel() + 1)
+                .findByWorkflowIdAndRule_ApprovalLevel(
+                        request.getWorkflowId(),
+                        request.getRule().getApprovalLevel() + 1)
                 .isEmpty();
 
         if (isFinalApproval) {
-            executeBusinessLogic(request);
-        }
-
-        approvalRequestRepository.save(request);
-
-        if (!isFinalApproval) {
+            try {
+                executeBusinessLogic(request);
+                request.setStatus(RequestStatus.APPROVED);
+                request.setResolvedAt(LocalDateTime.now());
+                approvalRequestRepository.save(request);
+            } catch (ApprovalBusinessException e) {
+                // save failure in NEW transaction so rollback doesn't affect it
+                saveFailure(request.getId(), e.getReason());
+                throw e;
+            }
+        } else {
+            request.setStatus(RequestStatus.APPROVED);
+            request.setResolvedAt(LocalDateTime.now());
+            approvalRequestRepository.save(request);
             activateNextApprovalLevel(request);
         }
+    }
+
+    // runs in its own transaction — survives rollback of parent
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveFailure(Long requestId, String reason) {
+        ApprovalRequest request = approvalRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+        request.setStatus(RequestStatus.FAILED);
+        request.setResolvedAt(LocalDateTime.now());
+        request.setFailureReason(reason);
+        approvalRequestRepository.save(request);
+        log.info("Approval request {} marked as FAILED: {}", requestId, reason);
     }
 
     @Override
@@ -230,12 +253,13 @@ public class ApprovalServiceImpl implements ApprovalServiceInterface {
                         LeaveType updatedLeaveType = objectMapper.convertValue(updatePayload.get("after"), LeaveType.class);
                         leaveTypeService.updateLeaveType(updatedLeaveType, updatedLeaveType.getLeaveTypeId());
                         break;
-                    case DEACTIVATE_LEAVE_TYPE:
-                        Map<String, String> deactivatePayload = objectMapper.readValue(payload, Map.class);
-                        String leaveTypeId = deactivatePayload.get("leaveTypeId");
-                        LocalDate effectiveDate = LocalDate.parse(deactivatePayload.get("deactivationEffectiveDate"));
-                        leaveTypeService.deActiveLeaveType(leaveTypeId, effectiveDate);
-                        break;
+                case DEACTIVATE_LEAVE_TYPE:
+                    Map<String, String> deactivatePayload = objectMapper.readValue(payload, Map.class);
+                    String leaveTypeId = deactivatePayload.get("leaveTypeId");
+                    LocalDate effectiveDate = LocalDate.parse(
+                            deactivatePayload.get("deactivationEffectiveDate"));
+                    leaveTypeService.deActiveLeaveType(leaveTypeId, effectiveDate);
+                    break;
                     case DEACTIVATE_GENDER_BASED_LEAVE_TYPE:
                         Map<String, String> deactivateGenderBaseLeavePayload = objectMapper.readValue(payload, Map.class);
                         String leaveTypeId1 = deactivateGenderBaseLeavePayload.get("leaveTypeId");

@@ -12,6 +12,7 @@ import com.paves.employee_leave_management.repo.HolidayRepo;
 import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import jakarta.persistence.Id;
+import jakarta.transaction.Transactional;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.Arrays.stream;
 
 
 @Service
@@ -179,25 +182,28 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     }
 
     @Override
+    @Transactional
     @Cacheable(value = "holidaysByYear", key = "#year")
     public List<Holidays> getHolidaysByYear(int year) {
         LocalDate today = LocalDate.now();
 
         List<Holidays> holidays = holidayRepo.findByYear(year)
-                .orElseThrow(() -> new HolidayExceptionHandler("No holidays found for this year"))
-                .stream()
-                .peek(h -> h.setIsActive(!h.getHolidayDate().isBefore(today)))
-                .sorted(
-                        Comparator.comparing(Holidays::getIsActive).reversed() // active first
-                                .thenComparing(Holidays::getHolidayDate)       // then by date
-                )
-                .collect(Collectors.toList());
+                .orElse(Collections.emptyList());
 
-        if(holidays.isEmpty()){
-            throw new HolidayExceptionHandler("No holidays found for this year");
+        if (holidays.isEmpty()) {
+            return new ArrayList<>();
         }
 
+        // Update isActive flag based on today's date
+        holidays.forEach(h -> h.setIsActive(!h.getHolidayDate().isBefore(today)));
+
+        holidays.sort(
+                Comparator.comparing(Holidays::getIsActive).reversed()
+                        .thenComparing(Holidays::getHolidayDate)
+        );
+
         holidayRepo.saveAll(holidays);
+
         return holidays;
     }
 

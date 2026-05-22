@@ -232,4 +232,15 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
             "AND l.startDate <= :date AND l.endDate >= :date")
     List<LeaveRequest> findApprovedLeavesOnDate(@Param("date") LocalDate date);
 
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = 'PENDING' AND lr.startDate < :cutoffDate")
+    List<LeaveRequest> findOverdueRequests(@Param("cutoffDate") LocalDate cutoffDate);
+
+
+    // in LeaveRequestRepo
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = :status AND lr.leaveType.leaveTypeId = :leaveTypeId")
+    List<LeaveRequest> findByStatusAndLeaveTypeId(
+            @Param("status") LeaveStatus status,
+            @Param("leaveTypeId") String leaveTypeId
+    );
+
 }

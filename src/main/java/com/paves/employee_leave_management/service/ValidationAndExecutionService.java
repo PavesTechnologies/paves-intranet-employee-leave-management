@@ -11,8 +11,10 @@ import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
 import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveBalanceServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.ValidationAndExecution;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -23,17 +25,24 @@ import java.util.Optional;
 @Service
 public class ValidationAndExecutionService implements ValidationAndExecution {
 
-    @Autowired
-    private GenderBasedRepo genderBasedRepo;
-
-    @Autowired
+    private final GenderBasedRepo genderBasedRepo;
     private GenderBasedLeaveBalanceServiceInterface leaveBalanceService;
-
-    @Autowired
+     private final GenderBasedLeaveServiceInterface genderBasedLeaveService;
     private GenderBasedLeaveBalancesRepo leaveBalanceRepo;
-
-    @Autowired
     private ApprovalServiceInterface approvalRequestService;
+
+    public ValidationAndExecutionService(GenderBasedLeaveServiceInterface genderBasedLeaveService,
+                                         GenderBasedRepo genderBasedRepo,
+                                         GenderBasedLeaveBalanceServiceInterface leaveBalanceService,
+                                         GenderBasedLeaveBalancesRepo leaveBalanceRepo,
+                                         ApprovalServiceInterface approvalRequestService) {
+        this.genderBasedLeaveService = genderBasedLeaveService;
+        this.genderBasedRepo = genderBasedRepo;
+        this.leaveBalanceService = leaveBalanceService;
+        this.leaveBalanceRepo = leaveBalanceRepo;
+        this.approvalRequestService = approvalRequestService;
+
+    }
 
     @Override
     public ApiResponse<Object> validateGenderBaseLeave(GenderBasedLeave genderBaseLeave, Employee maker, String makerRole) {
@@ -45,6 +54,11 @@ public class ValidationAndExecutionService implements ValidationAndExecution {
                     "Leave type already exists and is active",
                     null
             );
+        }
+
+        if("SUPER_ADMIN".equalsIgnoreCase(makerRole)){
+            ResponseEntity<ApiResponse<Object>> response =  genderBasedLeaveService.createGenderBasedDirectly(genderBaseLeave, maker);
+            return response.getBody();
         }
 
         // Send approval request

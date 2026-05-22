@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.paves.employee_leave_management.utils.UtilsMethods.getMakerRole;
+
 @RestController
 @RequestMapping("/api/gender-base-leave")
 public class GenderBaseLeaveController {
@@ -58,15 +60,6 @@ public class GenderBaseLeaveController {
         throw new RuntimeException("Invalid authentication principal");
     }
 
-    private String getMakerRole(Authentication authentication){
-        return  authentication.getAuthorities().
-                stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(auth -> auth.startsWith("ROLE_"))
-                .map(auth->auth.replace("ROLE_", ""))
-                .findFirst()
-                .orElse("HR");
-    }
 
     @PostMapping(
             value = "/add-leave",
