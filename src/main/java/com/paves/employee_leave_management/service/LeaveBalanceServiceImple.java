@@ -27,6 +27,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -81,6 +82,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     private static final int MID_MONTH_THRESHOLD = 15;
 
     @Override
+    @Async
     public void createLeaveBalanceForNewEmployee(String empId) {
         Employee emp = employeeRepo.findById(empId)
                 .orElseThrow(() -> new EmployeeExceptionHandler("Employee not found: " + empId));
@@ -284,6 +286,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         return totalCarried;
     }
 
+    @Async
     public void createGenderBasedLeaveBalance(Employee emp, int year) {
         List<GenderBasedLeave> leaveTypes = genderBasedRepo.findAll();
 
@@ -326,6 +329,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
 
     @Override
+    @Async
     public void processAccrualForLeaveType() {
         List<LeaveType> types = leaveTypeRepo.findAll();
         LocalDate today = LocalDate.now();
@@ -444,6 +448,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Override
     @Transactional
+    @Async
     public void runMonthlyAccrual(LeaveType type) {
         LocalDate today = LocalDate.now();
 
@@ -481,6 +486,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Override
     @Transactional
+    @Async
     public void runYearlyAccrual(LeaveType type) {
 
         List<LeaveBalance> balances =
@@ -549,6 +555,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     @Override
+    @Async
     public UploadResponse handleAccruedUpload(MultipartFile file, String username) throws IOException {
         List<RowError> errors = new ArrayList<>();
         int processedCount = 0;
@@ -731,6 +738,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
 
     @Override
+    @Async
     public void processYearEndCarryForward() {
 //        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear() - 1);
 //        if (balances.isEmpty()) {
@@ -996,11 +1004,15 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         LeaveBalance balance = leaveBalanceRepo
                 .findByEmployee_EmployeeIdAndLeaveType_LeaveTypeIdAndYear(employeeId, leaveTypeId, year);
 
-        balance.setUsedLeaves(balance.getUsedLeaves() + approvedDays);
+        balance.setUsedLeaves(round2(balance.getUsedLeaves() + approvedDays));
         if (!leaveTypeId.equalsIgnoreCase("L-UP")) {
-            balance.setRemainingLeaves(balance.getRemainingLeaves() - approvedDays);
+            balance.setRemainingLeaves(round2(balance.getRemainingLeaves() - approvedDays));
         }
         leaveBalanceRepo.save(balance);
+    }
+
+    private double round2(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     @Override
@@ -1206,6 +1218,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
 
     @Transactional
+    @Async
     public void createLeaveBalanceForAllEmployees(LeaveType leaveType) {
         int year = LocalDate.now().getYear();
         LocalDate createdDate = LocalDate.now();
