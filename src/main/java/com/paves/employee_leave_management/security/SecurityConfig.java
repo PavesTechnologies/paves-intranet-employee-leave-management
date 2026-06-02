@@ -31,8 +31,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> {
-                })
+                .cors(cors -> {})
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/public/**",
@@ -40,8 +39,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
-                        .requestMatchers("/ws/**").authenticated()
-//                        .requestMatchers("/topic/**").permitAll()
+                        // BUG FIX 1: Removed the space in the path, changed to permitAll
+                        // so SockJS info/handshake requests go through without being blocked
+                        .requestMatchers("/lms/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
@@ -50,11 +50,23 @@ public class SecurityConfig {
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
+                        // BUG FIX 2: Read token from query param for WebSocket handshake
+                        // SockJS can't send Authorization header during HTTP upgrade,
+                        // so token is passed as ?token= query param instead
+                        .bearerTokenResolver(request -> {
+                            String token = request.getParameter("token");
+                            if (token != null) return token;
+
+                            String header = request.getHeader("Authorization");
+                            if (header != null && header.startsWith("Bearer ")) {
+                                return header.substring(7);
+                            }
+                            return null;
+                        })
                         .jwt(jwt -> jwt
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())
                         )
                 );
-
 
         return http.build();
     }
