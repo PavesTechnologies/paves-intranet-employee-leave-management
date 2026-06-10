@@ -71,6 +71,18 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
 
     List<LeaveRequest> findByEmployee_EmployeeIdAndYear(String employeeId, int year);
 
+    @Query("""
+    SELECT lr
+    FROM LeaveRequest lr
+    WHERE lr.employee.employeeId = :employeeId
+      AND lr.year = :year
+      AND lr.status IN ('APPROVED', 'PENDING')
+    """)
+    List<LeaveRequest> findByEmployeeIdAndYearAndApprovedOrPending(
+            @Param("employeeId") String employeeId,
+            @Param("year") int year
+    );
+
     @Query("SELECT lr FROM LeaveRequest lr " +
             "WHERE lr.status != 'CANCELLED' " +
             "AND ((lr.startDate BETWEEN :startDate AND :endDate) " +

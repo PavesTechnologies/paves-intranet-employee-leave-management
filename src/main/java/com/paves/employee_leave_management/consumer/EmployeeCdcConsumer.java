@@ -112,6 +112,7 @@ public class EmployeeCdcConsumer {
         employee.setStatus(resolveStatus(event.getEmploymentStatus()));
         employee.setSalary(BigDecimal.ZERO);
 
+
         // only set password on new employees, never overwrite existing
         if (employee.getPassword() == null || employee.getPassword().isBlank()) {
             employee.setPassword("SYNC_" + UUID.randomUUID()

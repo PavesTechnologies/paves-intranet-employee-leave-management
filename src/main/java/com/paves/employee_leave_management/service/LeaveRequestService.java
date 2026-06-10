@@ -611,6 +611,32 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     @Override
+    public List<LeaveRequestResponseDTO> getLeaveRequestsByEmployeeAndByYearForPatterns(String employeeId, int year) {
+        List<LeaveRequest> leaveRequests = leaveRequestRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
+        return
+                leaveRequests.stream()
+                        .map(leave -> LeaveRequestResponseDTO.builder()
+                                .employeeId(leave.getEmployeeId())
+                                .employeeFullName(leave.getEmployee().getFullName())
+                                .daysRequested(leave.getDaysRequested())
+                                .startDate(leave.getStartDate())
+                                .endDate(leave.getEndDate())
+                                .startSession(leave.getStartSession())
+                                .endSession(leave.getEndSession())
+                                .leaveId(leave.getLeaveId())
+                                .leaveTypeId(getResolvedLeaveTypeId(leave))
+                                .reason(leave.getReason())
+                                .driveLink(leave.getDriveLink())
+                                .approvedBy(getApprovedBy(leave))
+                                .managerComment(leave.getManagerComment())
+                                .status(leave.getStatus())
+                                .leaveName(resolveLeaveLabel(leave.getResolvedLeaveName()))
+                                .year(leave.getYear())
+                                .build())
+                        .collect(Collectors.toList());
+    }
+
+    @Override
     public LeaveRequest getLeaveRequestById(String leaveId) {
         return leaveRequestRepo.findById(leaveId)
                 .orElseThrow(() -> new RuntimeException("Leave request not found with ID: " + leaveId));

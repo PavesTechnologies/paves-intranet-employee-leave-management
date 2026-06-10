@@ -202,6 +202,21 @@ public class LeaveRequestController {
         }
     }
 
+    @GetMapping("/patterns/employee/{employeeId}/{year}")
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
+    public ResponseEntity<ApiResponse<List<LeaveRequestResponseDTO>>> getEmployeeLeaveRequestsOfEmployeeByYearForPatterns(@PathVariable String employeeId, @PathVariable int year) {
+        try {
+            List<LeaveRequestResponseDTO> leaveRequests = leaveRequestService.getLeaveRequestsByEmployeeAndByYearForPatterns(employeeId, year);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Leave requests retrieved successfully", leaveRequests));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Error retrieving leave requests: " + e.getMessage(), null));
+        }
+    }
+
+
+
+
     // without year
     @GetMapping("/employee/pending/{employeeId}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
@@ -534,7 +549,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/getAllLeaves/{year}/{month}")
-    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'REPORTING_MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('GENERAL', 'HR', 'ADMIN')")
     public ResponseEntity<?> getAllLeavesForMonthYear(
             @PathVariable(value = "year", required = false) Integer year,
             @PathVariable(value = "month", required = false) Integer month) {
@@ -569,7 +584,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/approved/{year}")
-    @PreAuthorize("hasRole('RESOURCE_MANAGER')")
+    @PreAuthorize("hasRole('SYSTEM')")
     public ResponseEntity<ApiResponse<List<EmployeeApprovedLeavesDTO>>> getAllApprovedLeavesByYear(
             @PathVariable Integer year) {
         try {
@@ -584,7 +599,7 @@ public class LeaveRequestController {
     }
 
     @GetMapping("/approved/{employeeId}/{year}")
-    @PreAuthorize("hasRole('RESOURCE_MANAGER')")
+    @PreAuthorize("hasRole('SYSTEM')")
     public ResponseEntity<ApiResponse<EmployeeApprovedLeavesDTO>> getApprovedLeavesByEmployeeAndYear(
             @PathVariable String employeeId,
             @PathVariable Integer year) {
