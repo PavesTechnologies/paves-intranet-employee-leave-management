@@ -12,4 +12,5 @@ public class LeaveDetail {
     private String leaveTypeId;
     private String leaveTypeName;
     private double remainingLeaves;
+    private double totalLeaves;
 }

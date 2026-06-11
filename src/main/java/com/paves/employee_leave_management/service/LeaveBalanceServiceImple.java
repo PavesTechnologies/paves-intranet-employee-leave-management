@@ -82,7 +82,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     private static final int MID_MONTH_THRESHOLD = 15;
 
     @Override
-    @Async
     public void createLeaveBalanceForNewEmployee(String empId) {
         Employee emp = employeeRepo.findById(empId)
                 .orElseThrow(() -> new EmployeeExceptionHandler("Employee not found: " + empId));
@@ -286,7 +285,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         return totalCarried;
     }
 
-    @Async
+
     public void createGenderBasedLeaveBalance(Employee emp, int year) {
         List<GenderBasedLeave> leaveTypes = genderBasedRepo.findAll();
 
@@ -1606,6 +1605,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
             detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
             detail.setRemainingLeaves(lb.getRemainingLeaves());
+            detail.setTotalLeaves(lb.getTotalLeaves());
             employeeMap.get(empId).getLeaves().add(detail);
         }
 
@@ -1624,6 +1624,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
             detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
             detail.setRemainingLeaves(lb.getRemainingDays());
+            detail.setTotalLeaves(lb.getTotalEntitledDays());
             employeeMap.get(empId).getLeaves().add(detail);
         }
 
