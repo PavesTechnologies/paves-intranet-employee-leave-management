@@ -1,5 +1,6 @@
 package com.paves.employee_leave_management.service;
 
+import com.paves.employee_leave_management.dto.AdminMaker;
 import com.paves.employee_leave_management.dto.AllLeaveTypesListResponseDTO;
 import com.paves.employee_leave_management.dto.ApiResponse;
 import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
@@ -196,9 +197,17 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         return saved.getJobId();
     }
 
-    @Transactional
+
     @Override
-    public ResponseEntity<ApiResponse<Object>> createDirectly(LeaveType leaveType, Employee maker) {
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+            }
+    )
+    public ResponseEntity<ApiResponse<Object>> createDirectly(LeaveType leaveType, AdminMaker maker) {
         log.info("Super admin {} creating leave type directly: {}",
                 maker.getEmployeeId(), leaveType.getLeaveName());
 
