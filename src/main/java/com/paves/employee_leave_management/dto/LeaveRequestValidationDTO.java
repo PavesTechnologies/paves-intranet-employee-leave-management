@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.time.LocalDate;
 
 @Data
@@ -17,6 +18,12 @@ public class LeaveRequestValidationDTO {
     private LocalDate startDate;
     private LocalDate endDate;
     private double daysRequested;
+    private String startSession;
+    private String endSession;
     private String reason;
     private String driveLink;
+    private LocalDate requestDate;
+    private int year;
+    private String appliedBy;
+    private String leaveName;
 }

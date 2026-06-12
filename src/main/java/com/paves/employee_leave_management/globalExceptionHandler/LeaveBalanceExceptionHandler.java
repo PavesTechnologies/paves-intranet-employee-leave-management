@@ -7,6 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class LeaveBalanceExceptionHandler extends RuntimeException{
+public class LeaveBalanceExceptionHandler extends RuntimeException {
     private String exMsg;
 }

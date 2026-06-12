@@ -1,10 +1,10 @@
 package com.paves.employee_leave_management.repo;
 
-import aj.org.objectweb.asm.commons.Remapper;
 import com.paves.employee_leave_management.dto.ManagerQueryDTO;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
-import com.paves.employee_leave_management.entities.LeaveStatus;
+import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.enums.LeaveStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,10 +15,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
+public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.leaveId = :leaveId")
     Optional<LeaveRequest> findById(@Param("leaveId") String leaveId);
+
+    Optional<LeaveRequest> findByLeaveId(String id);
 
     List<LeaveRequest> findByEmployee(Employee employee);
 
@@ -32,7 +34,33 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     List<LeaveRequest> findOverlappingLeaves(@Param("employeeId") String employeeId,
                                              @Param("startDate") LocalDate startDate,
                                              @Param("endDate") LocalDate endDate);
+
+    // ✅ For regular leave types
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'PENDING'")
+    int countPendingLeavesByType(@Param("employeeId") String employeeId,
+                                 @Param("leaveTypeId") String leaveTypeId);
+
+    // ✅ For gender-based leave types
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.genderBasedLeaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'PENDING'")
+    int countPendingGenderBasedLeavesByType(@Param("employeeId") String employeeId,
+                                            @Param("leaveTypeId") String leaveTypeId);
+
+    // ✅ For approved gender-based leaves
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.genderBasedLeaveType.leaveTypeId = :leaveTypeId " +
+            "AND lr.status = 'APPROVED'")
+    List<LeaveRequest> findApprovedGenderBasedLeavesByType(@Param("employeeId") String employeeId,
+                                                           @Param("leaveTypeId") String leaveTypeId);
+
     List<LeaveRequest> findByEmployee_Manager_EmployeeId(String managerId);
+
     List<LeaveRequest> findByStatusAndEmployee_Manager_EmployeeId(LeaveStatus status, String managerId);
 
     Optional<LeaveRequest> findByLeaveIdAndEmployee_Manager_EmployeeId(String leaveId, String managerId);
@@ -40,6 +68,16 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
 
     List<LeaveRequest> findByEmployee_EmployeeId(String employeeId);
+
+    List<LeaveRequest> findByEmployee_EmployeeIdAndYear(String employeeId, int year);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.status != 'CANCELLED' " +
+            "AND ((lr.startDate BETWEEN :startDate AND :endDate) " +
+            "OR (lr.endDate BETWEEN :startDate AND :endDate) " +
+            "OR (lr.startDate <= :startDate AND lr.endDate >= :endDate))")
+    List<LeaveRequest> findAllActiveNonCancelledLeavesForMonth(@Param("startDate") LocalDate startDate,
+                                                             @Param("endDate") LocalDate endDate);
 
     @Query("SELECT lr FROM LeaveRequest lr " +
             "WHERE lr.employee.employeeId = :employeeId " +
@@ -49,38 +87,160 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String>{
     List<LeaveRequest> findApprovedLeavesByType(@Param("employeeId") String employeeId,
                                                 @Param("leaveTypeId") String leaveTypeId);
 
-    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
-            "WHERE lr.employee.employeeId = :employeeId " +
-            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
-            "AND lr.status = 'PENDING'")
-    int countPendingLeavesByType(@Param("employeeId") String employeeId,
-                                 @Param("leaveTypeId") String leaveTypeId);
+//    @Query("SELECT COUNT(lr) FROM LeaveRequest lr " +
+//            "WHERE lr.employee.employeeId = :employeeId " +
+//            "AND lr.leaveType.leaveTypeId = :leaveTypeId " +
+//            "AND lr.status = 'PENDING'")
+//    int countPendingLeavesByType(@Param("employeeId") String employeeId,
+//                                 @Param("leaveTypeId") String leaveTypeId);
 
+    //Optional<LeaveRequest> findByLeaveIdAndEmployee_EmployeeId(String leaveId, String employeeId);
 
     @Query("SELECT lr FROM LeaveRequest lr " +
             "JOIN FETCH lr.employee " +
             "JOIN FETCH lr.leaveType " +
             "WHERE lr.leaveId = :leaveId AND lr.employee.employeeId = :employeeId")
-    Optional<LeaveRequest> findByLeaveIdAndEmployeeIdWithDetails(@Param("leaveId") String leaveId, 
+    Optional<LeaveRequest> findByLeaveIdAndEmployeeIdWithDetails(@Param("leaveId") String leaveId,
                                                                  @Param("employeeId") String employeeId);
 
-    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} " +
-            "AND (:#{#queryDTO.status} IS NULL AND lr.status = 'PENDING' OR lr.status = :#{#queryDTO.status}) " +
-            "AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId}) " +
-            "AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId}) " +
-            "AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})")
+    @Query("""
+        SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId}
+    AND (
+        (:#{#queryDTO.status} IS NULL AND lr.status = 'PENDING')
+        OR
+        (:#{#queryDTO.status} IS NOT NULL AND lr.status = :#{#queryDTO.status})
+        )
+    AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId})
+    AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId})
+    AND (
+        :#{#queryDTO.fromDate} IS NULL OR :#{#queryDTO.toDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})
+    """)
     List<LeaveRequest> findManagerRequestsByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
 
-    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} " +
-            "AND (:#{#queryDTO.status} IS NULL AND lr.status IN ('APPROVED', 'REJECTED', 'CANCELLED' , 'PENDING') OR lr.status = :#{#queryDTO.status}) " +
-            "AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId}) " +
-            "AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId}) " +
-            "AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})")
+
+    @Query("""
+            SELECT lr 
+            FROM LeaveRequest lr 
+            WHERE lr.employee.manager.employeeId = :#{#queryDTO.managerId} 
+              AND (
+                   (:#{#queryDTO.status} IS NULL 
+                        AND lr.status IN ('APPROVED', 'REJECTED', 'CANCELLED', 'PENDING')
+                   ) 
+                   OR lr.status = :#{#queryDTO.status}
+              )
+              AND (:#{#queryDTO.employeeId} IS NULL OR lr.employee.employeeId = :#{#queryDTO.employeeId})
+              AND (:#{#queryDTO.leaveTypeId} IS NULL OR lr.leaveType.leaveTypeId = :#{#queryDTO.leaveTypeId})
+              AND (:#{#queryDTO.fromDate} IS NULL OR lr.startDate BETWEEN :#{#queryDTO.fromDate} AND :#{#queryDTO.toDate})
+              AND (:#{#queryDTO.year} IS NULL OR FUNCTION('YEAR', lr.startDate) = :#{#queryDTO.year})
+              AND (
+                   :#{#queryDTO.month} IS NULL 
+                   OR (
+                        FUNCTION('MONTH', lr.startDate) = :#{#queryDTO.month}
+                        AND (:#{#queryDTO.year} IS NULL OR FUNCTION('YEAR', lr.startDate) = :#{#queryDTO.year})
+                      )
+              )""")
     List<LeaveRequest> findManagerHistoryByCriteria(@Param("queryDTO") ManagerQueryDTO queryDTO);
+
+    @Query("""
+                SELECT COUNT(lr)
+                FROM LeaveRequest lr
+                WHERE lr.employee.manager.employeeId = :managerId
+                  AND lr.status = 'PENDING'
+                  AND FUNCTION('YEAR', lr.startDate) = FUNCTION('YEAR', CURRENT_DATE)
+            """)
+    long countPendingLeavesByManager(@Param("managerId") String managerId);
 
 
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.employeeId = :empId AND lr.startDate BETWEEN :startDate AND :endDate")
     List<LeaveRequest> findLeaveHistory(@Param("empId") String empId,
                                         @Param("startDate") LocalDate startDate,
                                         @Param("endDate") LocalDate endDate);
+
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE (:employeeId IS NULL OR lr.employee.employeeId = :employeeId) " +
+            "AND lr.status IN ('PENDING', 'APPROVED')")
+    List<LeaveRequest> findPendingOrApprovedByEmployee(@Param("employeeId") String employeeId);
+
+    List<LeaveRequest> findByEmployee_EmployeeIdAndLeaveType_LeaveNameAndYear(String employeeId, String leaveName, Integer year);
+
+    long countByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus status);
+
+    void deleteByLeaveTypeAndStatus(LeaveType leaveType, LeaveStatus status);
+
+    List<LeaveRequest> findByEmployee_EmployeeIdAndStatus(String employeeId, LeaveStatus leaveStatus);
+    List<LeaveRequest> findByEmployee_EmployeeIdAndStatusAndYear(String employeeId, LeaveStatus leaveStatus, int year);
+
+    @Query("""
+     SELECT lr
+     FROM LeaveRequest lr
+     WHERE lr.employee.employeeId = :employeeId
+       AND lr.status IN ('PENDING', 'APPROVED')
+       AND lr.startDate <= :monthEnd
+       AND lr.endDate >= :monthStart
+     """)
+    List<LeaveRequest> findActiveNonCancelledLeavesForMonth(
+            @Param("employeeId") String employeeId,
+            @Param("monthStart") LocalDate monthStart,
+            @Param("monthEnd") LocalDate monthEnd
+    );
+
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.status = 'APPROVED' " +
+            "AND lr.startDate <= CURRENT_DATE " +
+            "AND lr.endDate >= CURRENT_DATE")
+    List<LeaveRequest> findTodayApproved();
+
+    List<LeaveRequest> findByStatus(LeaveStatus status);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.status = 'APPROVED' " +
+            "AND lr.year = :year " +
+            "ORDER BY lr.employee.employeeId ASC, lr.startDate ASC")
+    List<LeaveRequest> findAllApprovedLeavesByYear(@Param("year") Integer year);
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.status = 'APPROVED' " +
+            "AND lr.year = :year " +
+            "ORDER BY lr.startDate ASC")
+    List<LeaveRequest> findApprovedLeavesByEmployeeAndYear(@Param("employeeId") String employeeId, @Param("year") Integer year);
+
+    // ✅ Handles BOTH regular and gender-based leave types in one query
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.year = :year " +
+            "AND (lr.status = 'APPROVED' OR lr.status = 'PENDING') " +
+            "AND lr.leaveName = :leaveName")
+    List<LeaveRequest> findApprovedOrPendingByEmployeeAndLeaveNameAndYear(
+            @Param("employeeId") String employeeId,
+            @Param("leaveName") String leaveName,
+            @Param("year") Integer year
+    );
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.employeeId = :employeeId " +
+            "AND lr.year = :year ")
+    List<LeaveRequest> findByEmployeeAndLeaveNameAndYear(
+            @Param("employeeId") String employeeId,
+            @Param("leaveName") String leaveName,
+            @Param("year") Integer year
+    );
+
+    @Query("SELECT l FROM LeaveRequest l WHERE l.status = 'APPROVED' " +
+            "AND l.startDate <= :date AND l.endDate >= :date")
+    List<LeaveRequest> findApprovedLeavesOnDate(@Param("date") LocalDate date);
+
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = 'PENDING' AND lr.startDate < :cutoffDate")
+    List<LeaveRequest> findOverdueRequests(@Param("cutoffDate") LocalDate cutoffDate);
+
+
+    // in LeaveRequestRepo
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status = :status AND lr.leaveType.leaveTypeId = :leaveTypeId")
+    List<LeaveRequest> findByStatusAndLeaveTypeId(
+            @Param("status") LeaveStatus status,
+            @Param("leaveTypeId") String leaveTypeId
+    );
+
 }

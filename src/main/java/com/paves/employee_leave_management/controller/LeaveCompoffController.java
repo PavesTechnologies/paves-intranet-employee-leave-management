@@ -1,14 +1,16 @@
 package com.paves.employee_leave_management.controller;
 
-
-import com.paves.employee_leave_management.dto.LeaveCompoffRequestDTO;
-import com.paves.employee_leave_management.dto.LeaveCompoffUpdateStatusDTO;
+import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.LeaveCompoff;
-import com.paves.employee_leave_management.entities.LeaveStatusCompoff;
-import com.paves.employee_leave_management.service.LeaveCompoffServiceImpl;
+import com.paves.employee_leave_management.enums.WsEventType;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,27 +23,112 @@ public class LeaveCompoffController {
     @Autowired
     LeaveCompoffSerivceInterface compoffService;
 
+    private final SimpMessagingTemplate template;
+
     @PostMapping("/request")
-    public String requestCompoff(@RequestBody LeaveCompoffRequestDTO dto) {
-        compoffService.requestCompoff(dto);
-        return "Compoff requested successfully.";
+    @PreAuthorize("@permissionService.isOwner(authentication, #dto.employeeId)")
+    public ResponseEntity<ApiResponse<String>> requestCompoff(@Valid @RequestBody LeaveCompoffRequestDTO dto) {
+        try {
+            LeaveCompoff request =  compoffService.requestCompoff(dto);
+
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.COMPOFF_REQUESTED.name(),
+                    request.getIdleaveCompoff(),
+                    dto.getEmployeeId(),
+                    dto.getManagerId()
+            );
+
+            template.convertAndSend( "/topic/manager/comp-off-balance", event);
+
+            return ResponseEntity.ok(new ApiResponse<>(true, "Compoff requested successfully.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, " " + e.getMessage(), null));
+        }
     }
 
-    @PutMapping("/update-status")
-    public String updateCompoffStatus(@RequestBody LeaveCompoffUpdateStatusDTO dto) {
-        compoffService.updateCompoffStatus(dto);
-        return "Compoff status updated successfully.";
+    @PutMapping("/approve")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isManagerOfCompoffRequest(authentication, #dto.compoffId)")
+    public ResponseEntity<ApiResponse<String>> approveCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
+        try {
+            LeaveCompoff request = compoffService.approveCompoff(dto.getCompoffId());
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.COMPOFF_APPROVED.name(),
+                    dto.getCompoffId(),
+                    request.getEmployeeId(),
+                    dto.getManagerId()
+            );
+            template.convertAndSendToUser(request.getEmployeeId(), "/queue/comp-off-balance", event);
+
+            return ResponseEntity.ok(new ApiResponse<>(true, "Compoff approved successfully.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, "Approval failed: " + e.getMessage(), null));
+        }
+    }
+
+    @PutMapping("/reject")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isManagerOfCompoffRequest(authentication, #dto.compoffId)")
+    public ResponseEntity<ApiResponse<String>> rejectCompoff(@RequestBody ApproveRejectCompoffDTO dto) {
+        try {
+            LeaveCompoff request =  compoffService.rejectCompoff(dto.getCompoffId());
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.COMPOFF_REJECTED.name(),
+                    dto.getCompoffId(),
+                    request.getEmployeeId(),
+                    dto.getManagerId()
+            );
+            template.convertAndSendToUser(request.getEmployeeId(), "/queue/comp-off-balance", event);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Compoff rejected successfully.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, "Rejection failed: " + e.getMessage(), null));
+        }
     }
 
     @GetMapping("/employee/{employeeId}")
-    public List<LeaveCompoff> getByEmployee(@PathVariable String employeeId) {
-        return compoffService.getCompoffsByEmployee(employeeId);
+    @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
+    public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByEmployee(@PathVariable String employeeId) {
+        List<LeaveCompoff> compoffs = compoffService.getCompoffsByEmployee(employeeId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Compoff list fetched", compoffs));
     }
 
-    @GetMapping("/manager/{managerId}/status/{status}")
-    public List<LeaveCompoff> getByManagerAndStatus(@PathVariable String managerId,
-                                                    @PathVariable LeaveStatusCompoff status) {
-        return compoffService.getCompoffsByManagerAndStatus(managerId, status);
+    @PostMapping("/manager/status")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isOwner(authentication, #dto.managerId)")
+    public ResponseEntity<ApiResponse<List<LeaveCompoff>>> getByManagerAndStatus(@RequestBody ManagerCompoffStatusDTO dto) {
+        List<LeaveCompoff> compoffs = compoffService.getCompoffsByManagerAndStatus(dto.getManagerId(), dto.getStatus());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Filtered Compoff list", compoffs));
+    }
+
+    @PostMapping("/pending")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isOwner(authentication, #managerDTO.managerId)")
+    public ResponseEntity<ApiResponse<List<PendingCompoffResponseDTO>>> getPendingCompoffs(
+            @RequestBody ManagerPendingCompoffDTO managerDTO) {
+
+        String managerId = managerDTO.getManagerId();
+        List<PendingCompoffResponseDTO> pendingCompoffs = compoffService.getPendingCompoffsForManager(managerId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Pending Compoffs fetched", pendingCompoffs));
+    }
+
+    @PutMapping("/employee/cancel/{compOffId}")
+    @PreAuthorize("@permissionService.isOwnerOfCompoffRequest(authentication, #compOffId)")
+    public ResponseEntity<ApiResponse<String>> cancelPendingCompOffByEmployee(@PathVariable Long compOffId) {
+        try {
+            LeaveCompoff request =  compoffService.cancelPendingCompOffByEmployee(compOffId);
+
+            LeaveWebSocketEvent event = new LeaveWebSocketEvent(
+                    WsEventType.COMPOFF_CANCELLED.name(),
+                    compOffId,
+                    request.getEmployeeId(),
+                    request.getManagerId()
+            );
+            template.convertAndSend("/topic/manager/comp-off-balance", event);
+
+            return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(false, "Cancellation failed: " + e.getMessage(), null));
+        }
     }
 
 }

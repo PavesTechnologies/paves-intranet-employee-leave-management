@@ -1,11 +1,8 @@
 package com.paves.employee_leave_management.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import jakarta.validation.constraints.NotBlank;
+import lombok.*;
+
 import java.time.LocalDate;
 
 /**
@@ -15,18 +12,28 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 public class ManagerUpdateRequestDTO {
-    
+
     @NotBlank(message = "Manager ID is required")
     private String managerId;
-    
+
     @NotBlank(message = "Leave ID is required")
     private String leaveId;
-    
+
     // Optional fields for update
+    private String employeeId;
+    private String managerComment;
     private String leaveTypeId;
     private LocalDate startDate;
+    private String startSession;
+    private String endSession;
     private LocalDate endDate;
-    private String comment;
-    private double daysRequested;
+    private Double daysRequested;
+    private LocalDate requestDate;
+    private String reason;
+    private String driveLink;
+    private int year;
+    private String leaveName;
 }

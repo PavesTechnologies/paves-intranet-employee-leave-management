@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Leave Revocation Notification</title>
+</head>
+
+<body style="margin:0; padding:0; background:#f3f5f9; font-family:Arial, Helvetica, sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0; background:#f3f5f9;">
+    <tr>
+        <td align="center">
+
+            <!-- MAIN CARD -->
+            <table width="640" cellpadding="0" cellspacing="0"
+                   style="background:#ffffff; border-radius:10px; border:1px solid #e0e4ec;">
+
+                <!-- OUTLOOK-SAFE GRADIENT BAR -->
+                <tr>
+                    <td style="height:8px; padding:0; margin:0; line-height:8px;">
+
+                        <!--[if gte mso 9]>
+                        <v:rect xmlns:v="urn:schemas-microsoft-com:vml"
+                                fill="true" stroke="false"
+                                style="width:640px;height:8px;">
+                            <v:fill type="gradient" angle="90"
+                                    color="#0A1A44"
+                                    color2="#1A4DFF" />
+                        </v:rect>
+                        <![endif]-->
+
+                        <div style="background:linear-gradient(90deg, #0A1A44, #3B0E57, #1A4DFF);
+                                    height:8px; width:100%;">
+                        </div>
+
+                    </td>
+                </tr>
+
+                <!-- HEADER -->
+                <tr>
+                    <td style="padding:32px 40px 20px;">
+                        <h2 style="margin:0; font-size:22px; color:#0A1A44; font-weight:700;">
+                            Leave Revocation Notification
+                        </h2>
+
+                        <p style="margin:8px 0 0; font-size:14px; color:#666;">
+                            Important update from Paves Leave Management System
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- BODY -->
+                <tr>
+                    <td style="padding:10px 40px 30px; font-size:15px;
+                               color:#444; line-height:1.7;">
+
+                        <!-- Greeting -->
+                        <p style="margin:0 0 18px;"
+                           th:text="'Dear ' + ${employeeName} + ','">
+                            Dear User,
+                        </p>
+
+                        <!-- Main message -->
+                        <p style="margin:0 0 25px;">
+                            We would like to inform you that your previously approved leave has been <strong>revoked</strong> by the management.
+                        </p>
+
+                        <!-- Leave Details Section -->
+                        <div style="margin:0 0 25px;">
+                            <div style="font-size:15px; font-weight:700; color:#0A1A44;
+                                        border-left:4px solid #dc3545; padding-left:10px;">
+                                Revoked Leave Details
+                            </div>
+                        </div>
+
+                        <!-- Details Box -->
+                        <table width="100%" cellpadding="0" cellspacing="0"
+                               style="background:#fafbff; border:1px solid #e2e6ef;
+                                      border-radius:8px; margin-bottom:25px;">
+                            <tr>
+                                <td style="padding:20px 25px;">
+                                    <table width="100%" cellpadding="0" cellspacing="0"
+                                           style="font-size:14px; color:#333;">
+                                        <tr>
+                                            <td style="padding:8px 0; width:150px; font-weight:bold;">
+                                                Leave Type
+                                            </td>
+                                            <td style="padding:8px 0;"
+                                                th:text="${leaveType}">
+                                                Annual Leave
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:8px 0; width:150px; font-weight:bold;">
+                                                Start Date
+                                            </td>
+                                            <td style="padding:8px 0;"
+                                                th:text="${startDate}">
+                                                2024-01-15
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:8px 0; width:150px; font-weight:bold;">
+                                                End Date
+                                            </td>
+                                            <td style="padding:8px 0;"
+                                                th:text="${endDate}">
+                                                2024-01-17
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${revocationReason != null}">
+                                            <td style="padding:8px 0; width:150px; font-weight:bold;">
+                                                Revocation Reason
+                                            </td>
+                                            <td style="padding:8px 0;"
+                                                th:text="${revocationReason}">
+                                                Business requirements
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Important Notice -->
+                        <div style="background:#fff3cd; border:1px solid #ffeaa7; border-radius:6px; padding:15px; margin:25px 0;">
+                            <p style="margin:0; color:#856404; font-size:14px; line-height:1.6;">
+                                <strong>Important:</strong> Your leave balance has been updated accordingly. Please contact your manager or HR department if you have any questions regarding this revocation.
+                            </p>
+                        </div>
+
+                        <!-- Closing message -->
+                        <p style="margin:25px 0 10px; color:#555;">
+                            We apologize for any inconvenience this may cause. Please log in to the system for more details.
+                        </p>
+
+                        <!-- CTA BUTTON -->
+                        <div style="text-align:center; margin:32px 0;">
+                            <a href="http://13.202.204.204/"
+                               style="
+           background:#0A1A44;
+           padding:12px 32px;
+           color:#ffffff !important;
+           font-weight:600;
+           font-size:15px;
+           border-radius:6px;
+           text-decoration:none;
+           display:inline-block;
+           border:1px solid #1A4DFF;
+           font-family:Arial, Helvetica, sans-serif;
+       ">
+                                View in Leave Management System
+                            </a>
+                        </div>
+
+                    </td>
+                </tr>
+
+                <!-- FOOTER -->
+                <tr>
+                    <td style="background:#f6f7fb; text-align:center;
+                               padding:14px; font-size:12px; color:#888;">
+                        © 2024 Paves Global Infotech Private Limited. All rights reserved.
+                    </td>
+                </tr>
+
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
