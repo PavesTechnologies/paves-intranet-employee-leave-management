@@ -13,6 +13,7 @@ import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceJobRepository;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceJobServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,6 +54,12 @@ public class LeaveTypeController {
 
     @Autowired
     private LeaveBalanceJobServiceInterface leaveBalanceJobService;
+
+    @Autowired
+    private GenderBasedLeaveServiceInterface genderBaseLeaveService;
+
+    @Autowired
+    private LeaveTypeServiceInterface leaveTypeService;
 
     // This is a placeholder for getting the user from the JWT token
     private Object getAuthenticatedUser() {
@@ -210,9 +217,13 @@ public class LeaveTypeController {
     @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> updateLeave(@PathVariable String leaveTypeId, @RequestBody UpdateLeaveRequest request, Authentication authentication) {
-        Employee maker = (Employee)getAuthenticatedUser();
-//        String makerRole = maker.getJobTitle();
         String makerRole = getMakerRole(authentication);
+        Employee maker = null;
+        if(!("ADMIN".equalsIgnoreCase(makerRole) || "SUPER_ADMIN".equalsIgnoreCase(makerRole))){
+            maker = (Employee)getAuthenticatedUser();
+        }
+
+//        String makerRole = maker.getJobTitle();
 
         LeaveType leaveType = null;
         GenderBasedLeave genderBasedLeave = null ;
@@ -226,12 +237,20 @@ public class LeaveTypeController {
             // handle gender based leave update
         }
 
+
+
         if(genderBasedLeave != null){
             if (
                     LeaveTypesEnum.MATERNITY_LEAVE.name().equalsIgnoreCase(genderBasedLeave.getLeaveName()) ||
                             LeaveTypesEnum.PATERNITY_LEAVE.name().equalsIgnoreCase(genderBasedLeave.getLeaveName())
             ){
+
+
                 GenderBasedLeave toUpdate = genderBasedRepo.findByLeaveNameIgnoreCase(genderBasedLeave.getLeaveName()).orElseThrow(() -> new RuntimeException("GenderBasedLeave not found"));
+                if(maker == null){
+                    genderBaseLeaveService.updateGenderBaseLeave(genderBasedLeave, toUpdate.getLeaveTypeId());
+                    return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type by " + makerRole + " has been submitted for approval.", null));
+                }
                 MCApprovalRequestDto dto = new MCApprovalRequestDto();
                 dto.setActionType(ActionType.UPDATE_GENDER_BASED_LEAVE);
                 dto.setEntityId(leaveTypeId);
@@ -248,6 +267,11 @@ public class LeaveTypeController {
         }
 
         LeaveType oldLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(() -> new RuntimeException("LeaveType not found"));
+
+        if(maker == null){
+            leaveTypeService.updateLeaveType(leaveType, leaveTypeId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type by " + makerRole + " has been submitted for approval.", null));
+        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.UPDATE_LEAVE_TYPE);

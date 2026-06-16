@@ -826,8 +826,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     public List<LeaveBalanceForDashboard> getLeaveBalancesForDashboard(String employeeId, int year) {
         List<LeaveBalance> leaveBalances= leaveBalanceRepo.findByEmployeeEmployeeIdAndYear(employeeId, year);
-        if (leaveBalances.isEmpty()){
-            return null;
+        if (leaveBalances == null || leaveBalances.isEmpty()) {
+            return Collections.emptyList();
         }
         List<LeaveBalanceForDashboard> leaveBalanceForDashboard = new ArrayList<>();
         for(LeaveBalance leaveBalance: leaveBalances){
