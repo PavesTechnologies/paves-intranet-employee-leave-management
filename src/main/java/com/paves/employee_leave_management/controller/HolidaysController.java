@@ -98,7 +98,6 @@ public class HolidaysController {
     public ResponseEntity<ApiResponse<Object>> addHoliday(@RequestBody List<Holidays> holidays, Authentication authentication) {
 
         String makerRole = getMakerRole(authentication);
-        System.out.println(makerRole);
         Employee maker = null;
         if(!("SUPER_ADMIN".equalsIgnoreCase(makerRole) || "ADMIN".equalsIgnoreCase(makerRole))){
             maker = getAuthenticatedUser();
