@@ -13,6 +13,7 @@ import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceJobRepository;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceJobServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,8 +55,14 @@ public class LeaveTypeController {
     @Autowired
     private LeaveBalanceJobServiceInterface leaveBalanceJobService;
 
+    @Autowired
+    private GenderBasedLeaveServiceInterface genderBaseLeaveService;
+
+    @Autowired
+    private LeaveTypeServiceInterface leaveTypeService;
+
     // This is a placeholder for getting the user from the JWT token
-    private Employee getAuthenticatedUser() {
+    private Object getAuthenticatedUser() {
         // In a real application, you would extract the user details from the Spring Security Context.
         // For now, we'll fetch a hardcoded user to simulate this.
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -65,17 +72,24 @@ public class LeaveTypeController {
         }
 
         Object principal = authentication.getPrincipal();
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        Long employeeId = jwt.getClaim("user_id");
 
-        if (principal instanceof Jwt jwt) {
-            // You can fetch using email or user_id depending on your DB
-            //String email = jwt.getClaim("email");  // "employee1@example.com"
-            Long userId = jwt.getClaim("user_id"); // If needed
+        Optional<Employee> employee =
+                employeeRepo.findByEmployeeId(String.valueOf(employeeId));
 
-            return employeeRepo.findByEmployeeId(String.valueOf(userId))
-                    .orElseThrow(() -> new RuntimeException("Employee not found for id: " + userId));
+        if (employee.isPresent()) {
+            return employee.get();
         }
 
-        throw new RuntimeException("Invalid authentication principal");
+        List<String> roles = jwt.getClaim("roles");
+
+        return new AdminMaker(
+                employeeId.toString(),
+                roles.contains("Super_Admin")
+                        ? "Super_Admin"
+                        : "Admin"
+        );
     }
 
 
@@ -107,7 +121,7 @@ public class LeaveTypeController {
     @PostMapping("/add-leave-type")
     @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> addLeaveType(@Valid @RequestBody LeaveType leaveType, Authentication authentication) {
-        Employee maker = getAuthenticatedUser();
+        Object maker = getAuthenticatedUser();
         // Assuming the role is stored in the jobTitle field for now
         // String makerRole = maker.getJobTitle();
 
@@ -152,22 +166,23 @@ public class LeaveTypeController {
             }
         }
 
-        if("SUPER_ADMIN".equalsIgnoreCase(makerRole)){
-            return service.createDirectly(leaveType, maker);
+
+        if (maker instanceof AdminMaker adminMaker) {
+            return service.createDirectly(leaveType, adminMaker);
+        } else if (maker instanceof Employee employee) {
+            MCApprovalRequestDto dto = new MCApprovalRequestDto();
+            dto.setActionType(ActionType.CREATE_LEAVE_TYPE);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("newData", leaveType);
+            dto.setPayload(payload);
+
+            approvalService.submitForApproval(dto, employee, makerRole);
         }
-
-        MCApprovalRequestDto dto = new MCApprovalRequestDto();
-        dto.setActionType(ActionType.CREATE_LEAVE_TYPE);
-
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("newData", leaveType);
-        dto.setPayload(payload);
-
-        approvalService.submitForApproval(dto, maker, makerRole);
-
-
         return ResponseEntity.ok(new ApiResponse<>(true, "Request to add leave type has been submitted for approval.", null));
     }
+
+
 
 
     @GetMapping("/leave-balance-job/{jobId}")
@@ -202,9 +217,13 @@ public class LeaveTypeController {
     @PatchMapping("/update-leave-type/{leaveTypeId}")
     @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Object>> updateLeave(@PathVariable String leaveTypeId, @RequestBody UpdateLeaveRequest request, Authentication authentication) {
-        Employee maker = getAuthenticatedUser();
-//        String makerRole = maker.getJobTitle();
         String makerRole = getMakerRole(authentication);
+        Employee maker = null;
+        if(!("ADMIN".equalsIgnoreCase(makerRole) || "SUPER_ADMIN".equalsIgnoreCase(makerRole))){
+            maker = (Employee)getAuthenticatedUser();
+        }
+
+//        String makerRole = maker.getJobTitle();
 
         LeaveType leaveType = null;
         GenderBasedLeave genderBasedLeave = null ;
@@ -218,12 +237,20 @@ public class LeaveTypeController {
             // handle gender based leave update
         }
 
+
+
         if(genderBasedLeave != null){
             if (
                     LeaveTypesEnum.MATERNITY_LEAVE.name().equalsIgnoreCase(genderBasedLeave.getLeaveName()) ||
                             LeaveTypesEnum.PATERNITY_LEAVE.name().equalsIgnoreCase(genderBasedLeave.getLeaveName())
             ){
+
+
                 GenderBasedLeave toUpdate = genderBasedRepo.findByLeaveNameIgnoreCase(genderBasedLeave.getLeaveName()).orElseThrow(() -> new RuntimeException("GenderBasedLeave not found"));
+                if(maker == null){
+                    genderBaseLeaveService.updateGenderBaseLeave(genderBasedLeave, toUpdate.getLeaveTypeId());
+                    return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type by " + makerRole + " has been submitted for approval.", null));
+                }
                 MCApprovalRequestDto dto = new MCApprovalRequestDto();
                 dto.setActionType(ActionType.UPDATE_GENDER_BASED_LEAVE);
                 dto.setEntityId(leaveTypeId);
@@ -240,6 +267,11 @@ public class LeaveTypeController {
         }
 
         LeaveType oldLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(() -> new RuntimeException("LeaveType not found"));
+
+        if(maker == null){
+            leaveTypeService.updateLeaveType(leaveType, leaveTypeId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type by " + makerRole + " has been submitted for approval.", null));
+        }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.UPDATE_LEAVE_TYPE);
@@ -262,7 +294,7 @@ public class LeaveTypeController {
             @RequestBody Map<String, String> requestBody,
             Authentication authentication) {
 
-        Employee maker = getAuthenticatedUser();
+        Employee maker =  (Employee)getAuthenticatedUser();
         String makerRole = getMakerRole(authentication);
 
         String effectiveDateStr = requestBody.get("deactivationEffectiveDate");
