@@ -98,10 +98,14 @@ public class HolidaysController {
     public ResponseEntity<ApiResponse<Object>> addHoliday(@RequestBody List<Holidays> holidays, Authentication authentication) {
 
         String makerRole = getMakerRole(authentication);
-        Employee maker = getAuthenticatedUser();
+        System.out.println(makerRole);
+        Employee maker = null;
+        if(!("SUPER_ADMIN".equalsIgnoreCase(makerRole) || "ADMIN".equalsIgnoreCase(makerRole))){
+            maker = getAuthenticatedUser();
+        }
 
 
-        if ("SUPER_ADMIN".equalsIgnoreCase(makerRole)) {
+        if ("SUPER_ADMIN".equalsIgnoreCase(makerRole) || "ADMIN".equalsIgnoreCase(makerRole)) {
             try {
                 ResponseEntity<String> result = holidaysService.addHoliday(holidays);
                 return ResponseEntity.ok(new ApiResponse<>(true,

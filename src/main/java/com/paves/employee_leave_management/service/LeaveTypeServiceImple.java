@@ -1,9 +1,6 @@
 package com.paves.employee_leave_management.service;
 
-import com.paves.employee_leave_management.dto.AdminMaker;
-import com.paves.employee_leave_management.dto.AllLeaveTypesListResponseDTO;
-import com.paves.employee_leave_management.dto.ApiResponse;
-import com.paves.employee_leave_management.dto.LeaveTypeIdDTO;
+import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
@@ -43,6 +40,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     private final EmployeeRepo employeeRepo;
     private final LeaveBalanceJobServiceInterface leaveBalanceJobService;
     private final LeaveBalanceJobRepository jobRepository;
+    private final AsyncNotificationServiceInterface asyncNotificationService;
 
     public LeaveTypeServiceImple(
             LeaveTypeRepo leaveTypeRepo,
@@ -56,7 +54,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             EmailServiceInterface emailService,
             EmployeeRepo employeeRepo,
             LeaveBalanceJobServiceInterface leaveBalanceJobService,
-            LeaveBalanceJobRepository jobRepository
+            LeaveBalanceJobRepository jobRepository,
+            AsyncNotificationServiceInterface asyncNotificationService
     ) {
         this.leaveTypeRepo = leaveTypeRepo;
         this.leaveBalanceRepo = leaveBalanceRepo;
@@ -70,6 +69,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         this.employeeRepo = employeeRepo;
         this.leaveBalanceJobService = leaveBalanceJobService;
         this.jobRepository = jobRepository;
+        this.asyncNotificationService = asyncNotificationService;
     }
 
 
@@ -168,13 +168,11 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         // Notify all employees
-//        List<Employee> employees = employeeRepo.findAll();
-//        for (Employee employee : employees) {
-//            emailService.sendEmailFromTemplate(employee.getEmail(),
-//                    "New Leave Policy: " + savedLeaveType.getLeaveName(),
-//                    "leave-policy-creation-notification.html",
-//                    Map.of("leavePolicyName", savedLeaveType.getLeaveName()));
-//        }
+        notifyAllEmployees(
+                "New Leave Policy: " + savedLeaveType.getLeaveName(),
+                "leave-policy-creation-notification.html",
+                Map.of("leavePolicyName", savedLeaveType.getLeaveName())
+        );
 
         return new ApiResponse<>(true,
                 savedLeaveType.getActive()
@@ -293,6 +291,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
         // Save updated LeaveType
         updatedLeaveType.setLastUpdatedAt(LocalDateTime.now());
+        updatedLeaveType.setCreateAt(existingOpt.get().getCreateAt());
         LeaveType savedLeaveType = leaveTypeRepo.save(updatedLeaveType);
 
         // Get remaining months in the year (excluding current month)
@@ -311,20 +310,18 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             balance.setTotalLeaves(recalculatedTotal);
 
             // Optional: update availableLeaves if needed
-            // double usedLeaves = balance.getUsedLeaves();
-            // balance.setAvailableLeaves(recalculatedTotal - usedLeaves);
+             double usedLeaves = balance.getUsedLeaves();
+             balance.setRemainingLeaves((balance.getCarriedForward() + recalculatedTotal) - usedLeaves);
         }
 
         leaveBalanceRepo.saveAll(affectedBalances);
 
         // Notify all employees
-        List<Employee> employees = employeeRepo.findAll();
-//        for (Employee employee : employees) {
-//            emailService.sendEmailFromTemplate(employee.getEmail(),
-//                    "Leave Policy Updated: " + savedLeaveType.getLeaveName(),
-//                    "leave-policy-update-notification.html",
-//                    Map.of("leavePolicyName", savedLeaveType.getLeaveName()));
-//        }
+        notifyAllEmployees(
+                "Leave Policy Updated: " + savedLeaveType.getLeaveName(),
+                "leave-policy-update-notification.html",
+                Map.of("leavePolicyName", savedLeaveType.getLeaveName())
+        );
 
         return new ApiResponse<>(true,
                 "Leave type updated successfully.",
@@ -355,13 +352,11 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         leaveTypeRepo.delete(leaveType);
 
         // Notify all employees
-        List<Employee> employees = employeeRepo.findAll();
-        for (Employee employee : employees) {
-            emailService.sendEmailFromTemplate(employee.getEmail(),
-                    "Leave Policy Deleted: " + leaveType.getLeaveName(),
-                    "leave-policy-deletion-notification.html",
-                    Map.of("leavePolicyName", leaveType.getLeaveName()));
-        }
+        notifyAllEmployees(
+                "Leave Policy Deleted: " + leaveType.getLeaveName(),
+                "leave-policy-deletion-notification.html",
+                Map.of("leavePolicyName", leaveType.getLeaveName())
+        );
 
         return new ResponseEntity<>("Leave type deleted successfully", HttpStatus.OK);
     }
@@ -489,6 +484,25 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         return leaveTypeDTOs;
+    }
+
+
+    private void notifyAllEmployees(String subject, String template, Map<String, Object> templateModel) {
+        List<Employee> employees = employeeRepo.findAll();
+        for (Employee employee : employees) {
+            if (employee.getEmail() == null || employee.getEmail().isBlank()) {
+                log.warn("Employee {} has no email — skipping notification", employee.getEmployeeId());
+                continue;
+            }
+            EmailDTO emailDTO = new EmailDTO(
+                    employee.getEmail(),
+                    subject,
+                    template,
+                    true
+            );
+            emailDTO.setTemplateModel(templateModel);
+            asyncNotificationService.queueEmail(emailDTO);
+        }
     }
 
 }
