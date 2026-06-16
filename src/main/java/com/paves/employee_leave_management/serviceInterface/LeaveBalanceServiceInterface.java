@@ -22,7 +22,10 @@ public interface LeaveBalanceServiceInterface {
 
     void createLeaveBalanceForNewEmployee(String EmpId);
 
-    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(Integer year, int page, int size, String employeeId, boolean isAdmin);
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(Integer year, int page, int size, String employeeId, boolean isAdminOrSuperAdmin);
+
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYearWithOutHrId(Integer year, int page, int size, String employeeId, boolean isAdminOrSuperAdmin);
+
 
     void processAccrualForLeaveType();
 
