@@ -26,7 +26,7 @@ public class CacheEvictionOnStartup {
                 log.info("Redis cache cleared successfully on startup.");
                 return;
             } catch (Exception e) {
-                log.warn("Attempt {}/{} failed: {}", attempt, maxRetries, e.getMessage());
+                log.warn("Attempt {}/{} failed", attempt, maxRetries, e);
                 if (attempt < maxRetries) {
                     try { Thread.sleep(delayMs); } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
