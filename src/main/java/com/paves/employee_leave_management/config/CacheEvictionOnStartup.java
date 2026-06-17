@@ -16,12 +16,27 @@ public class CacheEvictionOnStartup {
 
     @EventListener(ApplicationReadyEvent.class)
     public void evictAllCachesOnStartup() {
-        try {
-            log.info("Clearing all Redis caches on startup...");
-            redisConnectionFactory.getConnection().serverCommands().flushDb();
-            log.info("Redis cache cleared successfully on startup.");
-        } catch (Exception e) {
-            log.error("Failed to clear Redis cache on startup: {}", e.getMessage());
+        int maxRetries = 5;
+        int delayMs = 1000;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                log.info("Clearing all Redis caches on startup... (attempt {}/{})", attempt, maxRetries);
+                redisConnectionFactory.getConnection().serverCommands().flushDb();
+                log.info("Redis cache cleared successfully on startup.");
+                return;
+            } catch (Exception e) {
+                log.warn("Attempt {}/{} failed: {}", attempt, maxRetries, e.getMessage());
+                if (attempt < maxRetries) {
+                    try { Thread.sleep(delayMs); } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    delayMs *= 2; // exponential backoff
+                } else {
+                    log.error("Failed to clear Redis cache after {} attempts", maxRetries);
+                }
+            }
         }
     }
 }
