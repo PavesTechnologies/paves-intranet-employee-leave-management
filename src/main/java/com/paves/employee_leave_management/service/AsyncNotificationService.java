@@ -17,7 +17,6 @@ public class AsyncNotificationService implements AsyncNotificationServiceInterfa
 
     private final BlockingQueue<EmailDTO> emailQueue = new LinkedBlockingQueue<>();
 
-    @Async
     @Override
     public void queueEmail(EmailDTO emailDTO) {
         try {
