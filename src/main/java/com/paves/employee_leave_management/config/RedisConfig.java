@@ -41,10 +41,28 @@ public class RedisConfig {
     @Value("${spring.data.redis.port:6379}")
     private int redisPort;
 
+    @Value("${spring.data.redis.password:}")
+    private String redisPassword;
+
+    @Value("${spring.data.redis.username:}")
+    private String redisUsername;
+
+    @Value("${spring.data.redis.database:0}")
+    private int redisDatabase;
+
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration serverConfig =
                 new RedisStandaloneConfiguration(redisHost, redisPort);
+
+        // Add these two lines
+        if (redisPassword != null && !redisPassword.isEmpty()) {
+            serverConfig.setPassword(redisPassword);
+        }
+        if (redisUsername != null && !redisUsername.isEmpty()) {
+            serverConfig.setUsername(redisUsername);
+        }
+        serverConfig.setDatabase(redisDatabase);
 
         SocketOptions socketOptions = SocketOptions.builder()
                 .connectTimeout(Duration.ofSeconds(2))
@@ -52,6 +70,7 @@ public class RedisConfig {
 
         ClientOptions clientOptions = ClientOptions.builder()
                 .socketOptions(socketOptions)
+                .protocolVersion(io.lettuce.core.protocol.ProtocolVersion.RESP2) // Add this
                 .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
                 .autoReconnect(true)
                 .build();
