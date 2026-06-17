@@ -141,10 +141,12 @@ public class LeaveBalanceController {
             @AuthenticationPrincipal Jwt jwt) {
 
         String employeeId = jwt.getClaimAsString("user_id");
-        boolean isAdmin = jwt.getClaimAsStringList("roles") != null
-                && jwt.getClaimAsStringList("roles").contains("ADMIN");
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        boolean isAdminOrSuperAdmin = roles != null
+                && (roles.contains("Admin") || roles.contains("Super_Admin"));
 
-        return leaveBalanceService.getAllLeaveBalanceByYear(year, page, size, employeeId, isAdmin);
+
+        return leaveBalanceService.getAllLeaveBalanceByYearWithOutHrId(year, page, size, employeeId, isAdminOrSuperAdmin);
     }
 
 
