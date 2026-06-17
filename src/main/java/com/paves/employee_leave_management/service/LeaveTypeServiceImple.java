@@ -255,10 +255,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         return leaveTypeDTO;
     }
 
-//    @Override
-//    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId) {
-//        return null;
-//    }
 
 
     @Transactional
@@ -292,6 +288,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         // Save updated LeaveType
         updatedLeaveType.setLastUpdatedAt(LocalDateTime.now());
         updatedLeaveType.setCreateAt(existingOpt.get().getCreateAt());
+        updatedLeaveType.setLeaveTypeId(leaveTypeId);
+        updatedLeaveType.setActive(existingOpt.get().getActive());
         LeaveType savedLeaveType = leaveTypeRepo.save(updatedLeaveType);
 
         // Get remaining months in the year (excluding current month)

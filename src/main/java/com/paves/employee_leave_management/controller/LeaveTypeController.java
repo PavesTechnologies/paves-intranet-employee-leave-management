@@ -28,6 +28,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -294,10 +295,16 @@ public class LeaveTypeController {
             @RequestBody Map<String, String> requestBody,
             Authentication authentication) {
 
-        Employee maker =  (Employee)getAuthenticatedUser();
         String makerRole = getMakerRole(authentication);
+        Employee maker =  null;
+        if ("ADMIN".equalsIgnoreCase(makerRole) || "SUPER_ADMIN".equalsIgnoreCase(makerRole)){
+            maker = (Employee) getAuthenticatedUser();
+        }
+
 
         String effectiveDateStr = requestBody.get("deactivationEffectiveDate");
+        LocalDate effectiveDate = LocalDate.parse(
+                requestBody.get("deactivationEffectiveDate"));
 
 
         // Optional: validate input
@@ -312,6 +319,10 @@ public class LeaveTypeController {
         }
 
         if(genderBasedLeave.isPresent() && genderBasedLeave.get().getLeaveTypeId().equals(leaveTypeId)){
+            if(maker == null){
+                genderBaseLeaveService.deActiveGenderBaseLeaveType(leaveTypeId, effectiveDate);
+                return ResponseEntity.ok(new ApiResponse<>(true, "Request to deactivate leave type by " + makerRole + " has been submitted for approval.", null));
+            }
             MCApprovalRequestDto dto = new MCApprovalRequestDto();
             dto.setActionType(ActionType.DEACTIVATE_GENDER_BASED_LEAVE_TYPE);
             dto.setEntityId(leaveTypeId);
@@ -331,6 +342,10 @@ public class LeaveTypeController {
             );
         }
 
+        if(maker == null){
+            leaveTypeService.deActiveLeaveType(leaveTypeId, effectiveDate);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Request to deactivate leave type by " + makerRole + " has been submitted for approval.", null));
+        }
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.DEACTIVATE_LEAVE_TYPE);
         dto.setEntityId(leaveTypeId);

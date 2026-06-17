@@ -16,7 +16,9 @@ import jakarta.transaction.Transactional;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -69,6 +71,11 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     }
 
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "holidaysByYear", allEntries = true)
+            }
+    )
     public ResponseEntity<String> addHoliday(List<Holidays> holidays) {
         for (Holidays holiday : holidays) {
             boolean exists = holidayRepo.existsByHolidayDateAndStateAndYear(
@@ -116,6 +123,11 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
 
 
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "holidaysByYear", allEntries = true)
+            }
+    )
     public ResponseEntity<String> updateHoliday(Holidays holidays) {
         Holidays existingHoliday = holidayRepo.findById(holidays.getHolidayId())
                 .orElseThrow(() -> new HolidayExceptionHandler("No holiday found for this id"));
@@ -150,6 +162,11 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
     }
 
     @Override
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "holidaysByYear", allEntries = true)
+            }
+    )
     public ResponseEntity<String> deleteHoliday(Long id) {
         Holidays holiday = holidayRepo.findById(id).orElseThrow(() -> new HolidayExceptionHandler("No holiday found for this id"));
         holidayRepo.deleteById(id);

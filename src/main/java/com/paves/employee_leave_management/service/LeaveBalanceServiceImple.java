@@ -1564,15 +1564,16 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
 
 
+    // use when need to pull employee data basing the HR associated
     public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYear(
-            Integer year, int page, int size, String employeeId, boolean isAdmin) {
+            Integer year, int page, int size, String employeeId, boolean isAdminOrSuperAdmin) {
 
-        System.out.println("employee Id and admin: "+employeeId+" "+isAdmin);
+        System.out.println("employee Id and admin: "+employeeId+" "+isAdminOrSuperAdmin);
 
         List<LeaveBalance> regularLeaveBalances;
         List<GenderBasedLeaveBalance> genderBasedLeaveBalances;
 
-        if (isAdmin) {
+        if (isAdminOrSuperAdmin) {
             regularLeaveBalances = leaveBalanceRepo
                     .findAllByYearAndNotDeleted(year);
             genderBasedLeaveBalances = genderBasedLeaveBalancesRepo
@@ -1584,8 +1585,90 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     .findAllByYearAndHrId(year, employeeId);
         }
 
-        System.out.println("regularLeaveBalances: " + regularLeaveBalances);
-        System.out.println("genderBasedLeaveBalances: " + genderBasedLeaveBalances);
+//        System.out.println("regularLeaveBalances: " + regularLeaveBalances);
+//        System.out.println("genderBasedLeaveBalances: " + genderBasedLeaveBalances);
+
+        // rest of your existing code stays exactly the same
+        Map<String, EmployeeLeaveBalanceDTO> employeeMap = new LinkedHashMap<>();
+
+        for (LeaveBalance lb : regularLeaveBalances) {
+            String empId = lb.getEmployee().getEmployeeId();
+            employeeMap.computeIfAbsent(empId, k -> {
+                EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
+                dto.setEmployeeId(empId);
+                dto.setEmployeeName(lb.getEmployee().getFirstName() + " " + lb.getEmployee().getLastName());
+                dto.setGender(lb.getEmployee().getGender());
+                dto.setYear(lb.getYear());
+                dto.setLeaves(new ArrayList<>());
+                return dto;
+            });
+            LeaveDetail detail = new LeaveDetail();
+            detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
+            detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
+            detail.setRemainingLeaves(lb.getRemainingLeaves());
+            detail.setTotalLeaves(lb.getTotalLeaves());
+            employeeMap.get(empId).getLeaves().add(detail);
+        }
+
+        for (GenderBasedLeaveBalance lb : genderBasedLeaveBalances) {
+            String empId = lb.getEmployeeId();
+            employeeMap.computeIfAbsent(empId, k -> {
+                EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
+                dto.setEmployeeId(empId);
+                dto.setEmployeeName("");
+                dto.setGender(lb.getLeaveType().getGender());
+                dto.setYear(lb.getYear());
+                dto.setLeaves(new ArrayList<>());
+                return dto;
+            });
+            LeaveDetail detail = new LeaveDetail();
+            detail.setLeaveTypeId(lb.getLeaveType().getLeaveTypeId());
+            detail.setLeaveTypeName(lb.getLeaveType().getLeaveName());
+            detail.setRemainingLeaves(lb.getRemainingDays());
+            detail.setTotalLeaves(lb.getTotalEntitledDays());
+            employeeMap.get(empId).getLeaves().add(detail);
+        }
+
+        List<EmployeeLeaveBalanceDTO> allEmployees = new ArrayList<>(employeeMap.values());
+        int totalItems = allEmployees.size();
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, totalItems);
+        List<EmployeeLeaveBalanceDTO> pageData = (fromIndex >= totalItems)
+                ? new ArrayList<>()
+                : allEmployees.subList(fromIndex, toIndex);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", pageData);
+        response.put("currentPage", page);
+        response.put("totalItems", totalItems);
+        response.put("totalPages", (int) Math.ceil((double) totalItems / size));
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    // every hr will all the data
+    public ResponseEntity<Map<String, Object>> getAllLeaveBalanceByYearWithOutHrId(
+            Integer year, int page, int size, String employeeId, boolean isAdminOrSuperAdmin) {
+
+        System.out.println("employee Id and admin: "+employeeId+" "+isAdminOrSuperAdmin);
+
+        List<LeaveBalance> regularLeaveBalances;
+        List<GenderBasedLeaveBalance> genderBasedLeaveBalances;
+
+        if (isAdminOrSuperAdmin) {
+            regularLeaveBalances = leaveBalanceRepo
+                    .findAllByYearAndNotDeleted(year);
+            genderBasedLeaveBalances = genderBasedLeaveBalancesRepo
+                    .findAllByYearAndNotDeleted(year);
+        } else {
+            regularLeaveBalances = leaveBalanceRepo
+                    .findAllByYearAndNotDeleted(year);
+            genderBasedLeaveBalances = genderBasedLeaveBalancesRepo
+                    .findAllByYearAndNotDeleted(year);
+        }
+
+//        System.out.println("regularLeaveBalances: " + regularLeaveBalances);
+//        System.out.println("genderBasedLeaveBalances: " + genderBasedLeaveBalances);
 
         // rest of your existing code stays exactly the same
         Map<String, EmployeeLeaveBalanceDTO> employeeMap = new LinkedHashMap<>();
