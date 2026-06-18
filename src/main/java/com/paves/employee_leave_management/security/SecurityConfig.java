@@ -41,7 +41,7 @@ public class SecurityConfig {
                         ).permitAll()
                         // BUG FIX 1: Removed the space in the path, changed to permitAll
                         // so SockJS info/handshake requests go through without being blocked
-                        .requestMatchers("/lms/ws/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
