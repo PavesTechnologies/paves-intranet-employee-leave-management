@@ -451,7 +451,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Caching(
             evict = {
                     @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#request.getEmployeeId() + '-' + #request.getYear()"),
-                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '-' + #request.getYear()")
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '-' + #request.getYear()"),
+                    @CacheEvict(value = "leaveRequestsByEmployee",
+                            key = "#request.getEmployeeId()"),
             }
     )
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
@@ -813,6 +815,14 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             @CacheEvict(
                     value = "leaveRequestsByEmployeeAndYear",
                     key = "#result.employee.employeeId + '-' + #approvalRequest.year"
+            ),
+            @CacheEvict(
+                    value = "employeeLeaveBalance",
+                    key = "#result.employee.employeeId + '-' + #approvalRequest.year"
+            ),
+            @CacheEvict(
+                    value = "leaveRequestsByEmployee",
+                    key = "#result.employee.employeeId"
             )
     })
     public LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest) {
@@ -964,7 +974,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             @CacheEvict(
                     value = "leaveRequestsByEmployeeAndYear",
                     key = "#result.employee.employeeId + '-' + #rejectionRequest.year"
-            )
+            ),
+            @CacheEvict(value = "employeeLeaveBalance",
+                    key = "#result.employee.employeeId + '-' + #result.requestDate.year"
+            ),
+            @CacheEvict(value = "leaveRequestsByEmployee",
+                    key = "#result.employee.employeeId"),
     })
     public LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest) {
         LeaveRequest request = leaveRequestRepo
