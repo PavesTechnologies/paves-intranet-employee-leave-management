@@ -37,7 +37,9 @@ public class SecurityConfig {
                                 "/public/**",
                                 "/api/**",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+                                "/ws/**",
+                                "/lms/ws/**"
                         ).permitAll()
                         // BUG FIX 1: Removed the space in the path, changed to permitAll
                         // so SockJS info/handshake requests go through without being blocked
