@@ -86,7 +86,7 @@ public class LeaveRevokeController {
                 revoke.getEmployeeId()
         );
 
-        template.convertAndSendToUser(revoke.getEmployeeId(), "/topic/leave-updated", event);
+        template.convertAndSendToUser(revoke.getEmployeeId(), "/queue/data-updated", event);
         return new ApiResponse<>(true, "Leave revoke request rejected successfully", null);
     }
 }

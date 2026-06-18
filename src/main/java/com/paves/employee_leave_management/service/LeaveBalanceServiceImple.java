@@ -23,8 +23,10 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
@@ -78,6 +80,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Autowired
     private GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
+
+    @Autowired
+    private CacheManager cacheManager;
 
     private static final int MID_MONTH_THRESHOLD = 15;
 
@@ -996,6 +1001,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Transactional
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "employeeLeaveBalance",
+                    key = "#employeeId + '_' + #year")
+    })
     public void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays, int year) {
         if (approvedDays <= 0) {
             throw new LeaveBalanceExceptionHandler("Approved days must be greater than 0");
@@ -1041,10 +1050,12 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Override
     @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '_' +#request.getYear()")
     public ResponseEntity<String> updateLeaveBalancesFromHr(LeaveBalanceUpdateRequest request) {
-        System.out.println("=== Updating balances for employee: " + request.getEmployeeId());
+//        System.out.println("=== Updating balances for employee: " + request.getEmployeeId());
+        log.info("Updating balances for employee: {}", request.getEmployeeId());
 
         for (LeaveBalanceUpdateRequest.BalanceUpdate update : request.getBalances()) {
-            System.out.println("=== Processing leaveTypeId: " + update.getLeaveTypeId() + ", year: " + update.getYear());
+//            System.out.println("=== Processing leaveTypeId: " + update.getLeaveTypeId() + ", year: " + update.getYear());
+            log.debug("Processing leaveTypeId: {}, year: {}", update.getLeaveTypeId(), update.getYear());
 
             if (update.getLeaveTypeId().equals("L-ML") || update.getLeaveTypeId().equals("L-PL")) {
                 GenderBasedLeaveBalance balance = genderBasedLeaveBalancesRepo
@@ -1057,8 +1068,8 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                                 "Gender leave balance not found for employeeId: " + request.getEmployeeId()
                         ));
 
-                System.out.println("=== Found gender balance ID: " + balance.getBalanceId());
-                System.out.println("=== Before — remainingDays: " + balance.getRemainingDays());
+//                System.out.println("=== Found gender balance ID: " + balance.getBalanceId());
+//                System.out.println("=== Before — remainingDays: " + balance.getRemainingDays());
                 balance.setRemainingDays(update.getRemainingLeaves().intValue());
                 if (update.getUsedLeaves() != null) balance.setUsedDays(update.getUsedLeaves().intValue());
 
@@ -1094,7 +1105,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
             }
         }
 
-        System.out.println("=== All balances updated successfully");
+        log.info("All balances updated successfully for employee: {}", request.getEmployeeId());
         return ResponseEntity.ok("Leave balances updated successfully.");
     }
 
@@ -1251,6 +1262,24 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
         if (!newBalances.isEmpty()) {
             leaveBalanceRepo.saveAll(newBalances);
+            log.info("Created {} balances for leave type: {}", newBalances.size(), leaveType.getLeaveName());
+        }
+        // Evict after DB writes are complete — cannot use @CacheEvict on @Async
+        evictEmployeesLeaveBalancesCache(year);
+    }
+
+    // Helper used by createLeaveBalanceForAllEmployees to evict the year-level
+    // cache programmatically after async DB writes complete.
+    private void evictEmployeesLeaveBalancesCache(int year) {
+        try {
+            var cache = cacheManager.getCache("employeesLeaveBalances");
+            if (cache != null) {
+                cache.evict(year);
+                log.debug("Evicted employeesLeaveBalances cache for year: {}", year);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to evict employeesLeaveBalances cache for year: {} — cache may be stale. Error: {}",
+                    year, e.getMessage());
         }
     }
 
@@ -1373,7 +1402,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
-//    @Cacheable(value = "employeeLeaveBalance", key = "#employeeId + '-' + #year")
+    @Cacheable(value = "employeeLeaveBalance", key = "#employeeId + '-' + #year")
     public EmployeeLeaveBalance findByEmployeeIdAndYearPerEmployee(String employeeId, Integer year){
                 List<LeaveBalance> regular = leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
                 List<GenderBasedLeaveBalance> genderBasedLeaveBalances = genderBasedLeaveBalancesRepo.findByEmployeeIdAndYear(employeeId, year);
@@ -1388,7 +1417,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Cacheable(value = "employeeLeaveBalance", key = "#employeeId + '_' + #year")
     public EmployeeLeaveBalanceForDropdown getLeaveBalanceForDropdown(String employeeId, Integer year) {
 
-        System.out.println("🔥 DB HIT - Leave Balance");
+        log.debug("DB hit — getLeaveBalanceForDropdown for employee: {} year: {}", employeeId, year);
 
         List<LeaveBalance> regular =
                 leaveBalanceRepo.findByEmployee_EmployeeIdAndYear(employeeId, year);
@@ -1475,7 +1504,10 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @Transactional
     @Override
-    @CacheEvict(value = "employeeLeaveBalance", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+            @CacheEvict(value = "employeesLeaveBalances", key = "#year")
+    })
     public void processCarryForward(int year) {
 
         List<LeaveType> leaveTypes = leaveTypeRepo.findAll();
