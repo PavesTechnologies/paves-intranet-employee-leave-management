@@ -297,7 +297,7 @@ public class LeaveTypeController {
 
         String makerRole = getMakerRole(authentication);
         Employee maker =  null;
-        if ("ADMIN".equalsIgnoreCase(makerRole) || "SUPER_ADMIN".equalsIgnoreCase(makerRole)){
+        if (!("ADMIN".equalsIgnoreCase(makerRole) || "SUPER_ADMIN".equalsIgnoreCase(makerRole))){
             maker = (Employee) getAuthenticatedUser();
         }
 

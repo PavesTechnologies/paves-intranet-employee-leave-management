@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -33,7 +35,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     private final GenderBasedRepo genderBasedRepo;
     private final LeaveBalanceServiceInterface leaveBalanceService;
     private final GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface;
-    private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
     private final LeaveRequestRepo leaveRequestRepo;
     private final LeaveCompoffRepo leaveCompoffRepo;
     private final EmailServiceInterface emailService;
@@ -42,13 +43,15 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     private final LeaveBalanceJobRepository jobRepository;
     private final AsyncNotificationServiceInterface asyncNotificationService;
 
+    @Autowired @Lazy
+    private LeaveTypeServiceInterface self;
+
     public LeaveTypeServiceImple(
             LeaveTypeRepo leaveTypeRepo,
             LeaveBalanceRepo leaveBalanceRepo,
             GenderBasedRepo genderBasedRepo,
             LeaveBalanceServiceInterface leaveBalanceService,
             GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface,
-            LeaveBalanceServiceInterface leaveBalanceServiceInterface,
             LeaveRequestRepo leaveRequestRepo,
             LeaveCompoffRepo leaveCompoffRepo,
             EmailServiceInterface emailService,
@@ -62,7 +65,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         this.genderBasedRepo = genderBasedRepo;
         this.leaveBalanceService = leaveBalanceService;
         this.genderBasedLeaveServiceInterface = genderBasedLeaveServiceInterface;
-        this.leaveBalanceServiceInterface = leaveBalanceServiceInterface;
         this.leaveRequestRepo = leaveRequestRepo;
         this.leaveCompoffRepo = leaveCompoffRepo;
         this.emailService = emailService;
@@ -78,7 +80,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     @Transactional
     @Caching(
             evict = {
-                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", allEntries = true),
                     @CacheEvict(value = "all-leave-types", allEntries = true),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
                     @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
@@ -199,7 +201,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     @Override
     @Caching(
             evict = {
-                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", allEntries = true),
                     @CacheEvict(value = "all-leave-types", allEntries = true),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
                     @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
@@ -210,7 +212,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 maker.getEmployeeId(), leaveType.getLeaveName());
 
         // delegate entirely to existing business logic
-        ApiResponse<LeaveType> result = addLeaveType(leaveType);
+        ApiResponse<LeaveType> result = self.addLeaveType(leaveType);
 
         if (!result.isSuccess()) {
             return ResponseEntity
@@ -264,7 +266,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                     @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
                     @CacheEvict(value = "all-leave-types", allEntries = true),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
-                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", allEntries = true)
             }
     )
     public ApiResponse<LeaveType> updateLeaveType(LeaveType updatedLeaveType, String leaveTypeId) {
@@ -340,7 +343,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                     @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
                     @CacheEvict(value = "all-leave-types", allEntries = true),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
-                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", allEntries = true)
             }
     )
     public ResponseEntity<String> deleteLeaveType(String leaveTypeId) {
@@ -360,12 +364,14 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     }
 
     @Transactional
+    @Override
     @Caching(
             evict = {
                     @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
                     @CacheEvict(value = "all-leave-types", allEntries = true),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
-                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", allEntries = true)
             }
     )
     public ResponseEntity<String> deActiveLeaveType(String leaveTypeId, LocalDate effectiveDate) {
