@@ -27,7 +27,9 @@ public class ValidationAndExecutionService implements ValidationAndExecution {
 
     private final GenderBasedRepo genderBasedRepo;
     private GenderBasedLeaveBalanceServiceInterface leaveBalanceService;
-     private final GenderBasedLeaveServiceInterface genderBasedLeaveService;
+
+    @Autowired
+    private GenderBasedLeaveServiceInterface genderBasedLeaveService;
     private GenderBasedLeaveBalancesRepo leaveBalanceRepo;
     private ApprovalServiceInterface approvalRequestService;
 
@@ -36,7 +38,6 @@ public class ValidationAndExecutionService implements ValidationAndExecution {
                                          GenderBasedLeaveBalanceServiceInterface leaveBalanceService,
                                          GenderBasedLeaveBalancesRepo leaveBalanceRepo,
                                          ApprovalServiceInterface approvalRequestService) {
-        this.genderBasedLeaveService = genderBasedLeaveService;
         this.genderBasedRepo = genderBasedRepo;
         this.leaveBalanceService = leaveBalanceService;
         this.leaveBalanceRepo = leaveBalanceRepo;

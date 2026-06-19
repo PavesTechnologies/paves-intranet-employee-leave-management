@@ -119,14 +119,9 @@ public class HolidaysController {
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
         dto.setActionType(ActionType.ADD_HOLIDAY);
 
-
-
-
         Map<String, Object> payload = new HashMap<>();
         payload.put("newData", holidays);
         dto.setPayload(payload);
-
-
 
         approvalService.submitForApproval(dto, maker, makerRole);
 //        return holidaysService.addHoliday(holidays);
