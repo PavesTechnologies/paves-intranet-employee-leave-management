@@ -195,7 +195,8 @@ public class RedisConfig {
                 "leaveRequestsByEmployeeAndYear",
                 "pendingLeaveRequestsByEmployeeAndYear",
                 "holidaysByYear",
-                "employeesLeaveBalances"
+                "employeesLeaveBalances",
+                "employeeLeaveBalanceForDropdown"
         );
     }
 
