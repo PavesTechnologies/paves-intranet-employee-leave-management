@@ -48,7 +48,8 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
                     @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
                     @CacheEvict(value = "all-leave-types", allEntries = true),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
-                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", allEntries = true)
             }
     )
     public ApiResponse<Object> createGenderBaseLeave(GenderBasedLeave genderBaseLeave) {
@@ -82,6 +83,17 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
     }
 
     @Transactional
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
+                    @CacheEvict(value = "all-leave-types", allEntries = true),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "leaveBalanceByEmployeeAndLeaveType", allEntries = true),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", allEntries = true)
+
+            }
+    )
     public ResponseEntity<ApiResponse<Object>> createGenderBasedDirectly(
             GenderBasedLeave genderBaseLeave, Employee maker) {
 

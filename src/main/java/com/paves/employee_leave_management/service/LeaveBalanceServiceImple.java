@@ -1002,8 +1002,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     @Transactional
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "employeeLeaveBalance",
-                    key = "#employeeId + '_' + #year")
+            @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#employeeId + '-' + #year")
     })
     public void updateLeaveBalanceAfterApproval(String employeeId, String leaveTypeId, double approvedDays, int year) {
         if (approvedDays <= 0) {
@@ -1414,7 +1413,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
     }
 
     @Override
-    @Cacheable(value = "employeeLeaveBalance", key = "#employeeId + '_' + #year")
+    @Cacheable(value = "employeeLeaveBalanceForDropdown", key = "#employeeId + '-' + #year")
     public EmployeeLeaveBalanceForDropdown getLeaveBalanceForDropdown(String employeeId, Integer year) {
 
         log.debug("DB hit — getLeaveBalanceForDropdown for employee: {} year: {}", employeeId, year);

@@ -11,6 +11,7 @@ import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceJobServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -28,14 +29,17 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
     private final LeaveTypeRepo leaveTypeRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final LeaveBalanceServiceInterface leaveBalanceService;
+    private final CacheManager cacheManager;
 
     public LeaveBalanceJobServiceImplementation(LeaveBalanceJobRepository jobRepository, EmployeeRepo employeeRepository,
-                                                LeaveTypeRepo leaveTypeRepo, LeaveBalanceRepo leaveBalanceRepo, LeaveBalanceServiceInterface leaveBalanceService){
+                                                LeaveTypeRepo leaveTypeRepo, LeaveBalanceRepo leaveBalanceRepo, LeaveBalanceServiceInterface leaveBalanceService,
+                                                CacheManager cacheManager){
         this.jobRepository = jobRepository;
         this.employeeRepository = employeeRepository;
         this.leaveTypeRepo = leaveTypeRepo;
         this.leaveBalanceRepo = leaveBalanceRepo;
         this.leaveBalanceService = leaveBalanceService;
+        this.cacheManager = cacheManager;
     }
 
 
@@ -80,6 +84,11 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
             // all done — mark complete
             markCompleted(jobId, processed);
             log.info("Job {} completed successfully. {} balances created.", jobId, processed);
+
+            // evict caches after all balances created
+            cacheManager.getCache("employeeLeaveBalance").clear();
+            cacheManager.getCache("employeesLeaveBalances").clear();
+            log.info("Cache evicted after job {} completion.", jobId);
 
         } catch (Exception e) {
             log.error("Job {} failed at employee {}/{}: {}", jobId, processed, total, e.getMessage());
