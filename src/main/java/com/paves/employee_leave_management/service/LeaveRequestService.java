@@ -454,6 +454,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#request.getEmployeeId() + '-' + #request.getYear()"),
                     @CacheEvict(value = "leaveRequestsByEmployee",
                             key = "#request.getEmployeeId()"),
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '-' + #request.getYear()")
             }
     )
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
