@@ -21,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -91,6 +93,16 @@ public class LeaveCompoffServiceImpl implements LeaveCompoffSerivceInterface {
 
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(
+                    value = "employeeLeaveBalanceForDropdown",
+                    key = "#result.employeeId + '-' + T(java.time.LocalDate).now().getYear()"
+            ),
+            @CacheEvict(
+                    value = "employeeLeaveBalance",
+                    key = "#result.employeeId + '-' + T(java.time.LocalDate).now().getYear()"
+            )
+    })
     public LeaveCompoff approveCompoff(Long compoffId) {
 
         LeaveCompoff compoff = leaveCompoffRepo.findById(compoffId)
