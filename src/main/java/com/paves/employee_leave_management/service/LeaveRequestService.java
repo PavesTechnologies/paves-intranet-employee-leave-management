@@ -9,8 +9,8 @@ import com.paves.employee_leave_management.helper.LeaveRequestSpecification;
 import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.*;
 import jakarta.persistence.Transient;
-import org.hibernate.annotations.Cache;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -65,7 +65,27 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Autowired
     private GenderBasedLeaveBalanceServiceInterface genderBasedLeaveBalanceServiceInterface;
 
+    private CacheManager cacheManager;
+
     private static final List<String> GENDER_BASED_IDS = List.of("L-ML", "L-PL");
+
+    private void evictLeaveCaches(LeaveRequest request) {
+        String employeeId = request.getEmployee().getEmployeeId();
+        int requestYear = request.getRequestDate().getYear();
+
+        evict("pendingLeaveRequestsByEmployeeAndYear", employeeId + "-" + requestYear);
+        evict("leaveRequestsByEmployeeAndYear", employeeId + "-" + requestYear);
+        evict("employeeLeaveBalanceForDropdown", employeeId + "-" + requestYear);
+        evict("leaveRequestsByEmployee", employeeId);
+        evict("employeeLeaveBalance", employeeId + "-" + requestYear);
+    }
+
+    private void evict(String cacheName, Object key) {
+        org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+        if (cache != null) {
+            cache.evict(key);
+        }
+    }
 
     // ==================== VALIDATION METHODS ====================
 
@@ -452,8 +472,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             evict = {
                     @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#request.getEmployeeId() + '-' + #request.getYear()"),
                     @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#request.getEmployeeId() + '-' + #request.getYear()"),
-                    @CacheEvict(value = "leaveRequestsByEmployee",
-                            key = "#request.getEmployeeId()"),
+                    @CacheEvict(value = "leaveRequestsByEmployeeAndYear",
+                            key = "#request.getEmployeeId() + '-' + #request.getYear()"),
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '-' + #request.getYear()")
             }
     )
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
@@ -664,6 +685,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             @CacheEvict(
                     value = "employeeLeaveBalanceForDropdown",
                     key = "#employeeId + '-' + #result.requestDate.year"
+            ),
+            @CacheEvict(value = "employeeLeaveBalance",
+                    key = "#employeeId + '-' + #result.requestDate.year"
             )
     })
     public LeaveRequest cancelLeaveRequest(String leaveId, String employeeId) {
@@ -823,6 +847,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             @CacheEvict(
                     value = "leaveRequestsByEmployee",
                     key = "#result.employee.employeeId"
+            ),
+            @CacheEvict(
+                    value = "employeeLeaveBalance",
+                    key = "#result.employee.employeeId + '-' + #approvalRequest.year"
             )
     })
     public LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest) {
@@ -905,6 +933,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             request.setApprovedBy(manager);
             request.setResponseDate(LocalDate.now());
             approvedRequests.add(request);
+
+            evictLeaveCaches(request);
         }
         return leaveRequestRepo.saveAll(approvedRequests);
     }
@@ -925,6 +955,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             request.setApprovedBy(manager);
             request.setResponseDate(LocalDate.now());
             rejectedRequests.add(request);
+
+            evictLeaveCaches(request);
+
+
 
             if(request.getLeaveType() != null){
             leaveBalanceService.updateLeaveBalanceAfterRejected(
@@ -980,6 +1014,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             ),
             @CacheEvict(value = "leaveRequestsByEmployee",
                     key = "#result.employee.employeeId"),
+            @CacheEvict(value = "employeeLeaveBalance",
+                    key = "#result.employee.employeeId + '-' + #result.requestDate.year")
     })
     public LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest) {
         LeaveRequest request = leaveRequestRepo
@@ -1043,7 +1079,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Caching(
             evict = {
                     @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#result.employee.employeeId + '-' + #updateRequest.year"),
-                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#result.employee.employeeId + '-' + #updateRequest.year")
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#result.employee.employeeId + '-' + #updateRequest.year"),
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#updateRequest.getEmployeeId() + '-' + #updateRequest.year")
             }
     )
     public LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest) {
@@ -1320,7 +1357,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Caching(
             evict = {
                     @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#request.employeeId + '-' + #request.year"),
-                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#request.employeeId +'-' + #request.year")
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#request.employeeId +'-' + #request.year"),
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.employeeId + '-' + #request.year")
             }
     )
     public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest, LeaveRequestValidationDTO request) {

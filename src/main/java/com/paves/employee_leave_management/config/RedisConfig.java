@@ -6,12 +6,14 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -123,7 +125,7 @@ public class RedisConfig {
     private GenericJackson2JsonRedisSerializer buildSerializer() {
         PolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator
                 .builder()
-                .allowIfBaseType("com.paves.employee_leave_management")
+                .allowIfSubType("com.paves.employee_leave_management")
                 .allowIfSubType("java.util")
                 .allowIfSubType("java.lang")
                 .allowIfSubType("java.time")
@@ -186,9 +188,27 @@ public class RedisConfig {
                 .build();
     }
 
+
+    //bug
+//    @Bean("fallbackCacheManager")
+//    public CacheManager fallbackCacheManager() {
+//        return new ConcurrentMapCacheManager(
+//                "employeeLeaveBalance",
+//                "leaveRequestsByEmployee",
+//                "all-leave-types",
+//                "leaveRequestsByEmployeeAndYear",
+//                "pendingLeaveRequestsByEmployeeAndYear",
+//                "holidaysByYear",
+//                "employeesLeaveBalances",
+//                "employeeLeaveBalanceForDropdown"
+//        );
+//    }
+
+
+    //resolved
     @Bean("fallbackCacheManager")
     public CacheManager fallbackCacheManager() {
-        return new ConcurrentMapCacheManager(
+        CaffeineCacheManager manager = new CaffeineCacheManager(
                 "employeeLeaveBalance",
                 "leaveRequestsByEmployee",
                 "all-leave-types",
@@ -198,7 +218,18 @@ public class RedisConfig {
                 "employeesLeaveBalances",
                 "employeeLeaveBalanceForDropdown"
         );
+        // Short TTL — this cache exists only to survive brief Redis outages.
+        // It must never outlive an outage window, or a stale entry can sit here
+        // indefinitely the way the old no-TTL ConcurrentMapCacheManager did.
+        manager.setCaffeine(Caffeine.newBuilder()
+                .expireAfterWrite(Duration.ofMinutes(2))
+                .maximumSize(5_000)
+                .recordStats()
+        );
+        return manager;
     }
+
+
 
     @Bean
     public RedisTemplate<String, Object> redisTemplate(

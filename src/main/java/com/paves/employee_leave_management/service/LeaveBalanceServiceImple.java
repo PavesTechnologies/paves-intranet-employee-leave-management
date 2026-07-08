@@ -11,6 +11,7 @@ import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.EmployeeExceptionHandler;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
+import com.paves.employee_leave_management.globalExceptionHandler.UploadValidationException;
 import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
@@ -40,6 +41,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 
@@ -559,7 +561,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     @Override
-    @Async
     public UploadResponse handleAccruedUpload(MultipartFile file, String username) throws IOException {
         List<RowError> errors = new ArrayList<>();
         int processedCount = 0;
@@ -568,14 +569,11 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
              Workbook workbook = new XSSFWorkbook(is)) {
 
             Sheet sheet = workbook.getSheetAt(0);
-//            int year = LocalDate.now().getYear(); // Or get from a cell/param
 
             for (Row row : sheet) {
-                // Skip Header
                 if (row.getRowNum() == 0) continue;
 
                 try {
-                    // 1. Extract Data (Assuming: Col 0: EmpID, Col 1: LeaveTypeID, Col 2: Accrued, Col 3: Remaining)
                     String empId = getCellValueAsString(row.getCell(0));
                     String typeId = getCellValueAsString(row.getCell(1));
                     double accrued = row.getCell(2).getNumericCellValue();
@@ -585,28 +583,22 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     double carryForward = row.getCell(6).getNumericCellValue();
                     int year = (int) row.getCell(7).getNumericCellValue();
 
-                    // 2. Validate Employee & LeaveType
                     Employee employee = employeeRepo.findById(empId)
                             .orElseThrow(() -> new RuntimeException("Employee not found: " + empId));
 
                     LeaveType leaveType = leaveTypeRepo.findById(typeId)
                             .orElseThrow(() -> new RuntimeException("Leave Type not found: " + typeId));
 
-                    // 3. Find existing or create new
-                    // 1. Try to find existing record
                     Optional<LeaveBalance> existingBalance = leaveBalanceRepo
-                            .findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(empId, typeId, year); // ✅ fixed
+                            .findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(empId, typeId, year);
 
-                    LeaveBalance balance;
-                    if (existingBalance.isPresent()) {
-                        balance = existingBalance.get(); // has balanceId → JPA will UPDATE
-                    } else {
-                        balance = new LeaveBalance();
-                        balance.setCreateAt(LocalDateTime.now()); // only on new records
-                    }
+                    LeaveBalance balance = existingBalance.orElseGet(() -> {
+                        LeaveBalance b = new LeaveBalance();
+                        b.setCreateAt(LocalDateTime.now());
+                        return b;
+                    });
 
                     balance.setEmployee(employee);
-// balance.setEmployeeId(empId); ← REMOVED
                     balance.setLeaveType(leaveType);
                     balance.setAccruedLeaves(accrued);
                     balance.setRemainingLeaves(remaining);
@@ -625,9 +617,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 }
             }
 
-            // If there are ANY errors, we throw an exception to trigger @Transactional rollback
+            // Throw typed exception — carries the error list AND triggers rollback
             if (!errors.isEmpty()) {
-                throw new RuntimeException("Validation failed in one or more rows. Transaction rolled back.");
+                throw new UploadValidationException(errors);  // ✅ errors no longer lost
             }
         }
 
@@ -637,7 +629,6 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                 .errors(new ArrayList<>())
                 .build();
     }
-
     public byte[] generateTemplate() throws IOException {
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {

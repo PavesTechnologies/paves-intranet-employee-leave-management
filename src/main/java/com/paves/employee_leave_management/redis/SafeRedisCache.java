@@ -183,10 +183,16 @@ public class SafeRedisCache implements Cache {
         try {
             redisCache.evict(key);
         } catch (Exception e) {
-            log.warn("Redis EVICT failed for key '{}' — evicting from fallback", key);
-            // Don't call reportFailure() on evict — an evict failure during
-            // a Redis outage is expected and shouldn't reset the cooldown timer.
-            if (fallbackCache != null) fallbackCache.evict(key);
+            log.warn("Redis EVICT failed for key '{}'", key, e);
+            redisHealthTracker.reportFailure();
+        } finally {
+            // Always evict fallback too — not just on Redis failure.
+            // An approve/reject/save must invalidate whichever store
+            // most recently served a read for this key, and we can't
+            // know which store that was, so evict both, always.
+            if (fallbackCache != null) {
+                fallbackCache.evict(key);
+            }
         }
     }
 
@@ -195,8 +201,12 @@ public class SafeRedisCache implements Cache {
         try {
             redisCache.clear();
         } catch (Exception e) {
-            log.warn("Redis CLEAR failed for cache '{}' — clearing fallback", getName());
-            if (fallbackCache != null) fallbackCache.clear();
+            log.warn("Redis CLEAR failed for cache '{}'", getName(), e);
+            redisHealthTracker.reportFailure();
+        } finally {
+            if (fallbackCache != null) {
+                fallbackCache.clear();
+            }
         }
     }
 

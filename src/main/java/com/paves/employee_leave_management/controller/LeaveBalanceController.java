@@ -8,6 +8,7 @@ import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
+import com.paves.employee_leave_management.globalExceptionHandler.UploadValidationException;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.security.SecurityConfig;
@@ -37,6 +38,8 @@ import java.time.Year;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 /**
  * @author paves
@@ -154,17 +157,23 @@ public class LeaveBalanceController {
     @PostMapping("/upload-accruals")
     public ResponseEntity<UploadResponse> uploadAccruals(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("username") String username) {
+            @RequestParam("username") String username) throws IOException {
         try {
             UploadResponse response = leaveBalanceService.handleAccruedUpload(file, username);
             return ResponseEntity.ok(response);
-        }catch (Exception e) {
-            // We need to handle the specific case where the exception
-            // might be a wrapper around our actual error list.
+
+        } catch (UploadValidationException e) {
+            // ✅ Error list is fully recovered here
             return ResponseEntity.badRequest().body(UploadResponse.builder()
                     .message("Upload failed: " + e.getMessage())
                     .processedCount(0)
-                    // .errors(???) <--- The error list is currently lost here
+                    .errors(e.getErrors())
+                    .build());
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(UploadResponse.builder()
+                    .message("Unexpected error: " + e.getMessage())
+                    .processedCount(0)
                     .build());
         }
     }

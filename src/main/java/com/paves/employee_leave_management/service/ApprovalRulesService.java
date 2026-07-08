@@ -19,13 +19,30 @@ public class ApprovalRulesService implements ApprovalRulesServiceInterface {
     public ApprovalRulesService(ApprovalRuleRepo approvalRuleRepo) {
         this.approvalRuleRepo = approvalRuleRepo;
     }
+
     @Override
     public void createApprovalRules(ApprovalRule approvalRules) {
-        approvalRuleRepo.findByActionType(approvalRules.getActionType()).ifPresent(rule -> {
-            throw new RuntimeException("Approval rule already exists for action type: " + approvalRules.getActionType());
-        });
+        approvalRuleRepo.findByActionType(approvalRules.getActionType())
+                .ifPresent(rule -> {
+                throw new RuntimeException("Approval rule already exists for action type: " + approvalRules.getActionType());
+                });
         approvalRuleRepo.save(approvalRules);
     }
+//    @Override
+//    public void createApprovalRules(ApprovalRule approvalRules) {
+//        approvalRuleRepo.findByActionType(approvalRules.getActionType())
+//                .ifPresent(rule -> {
+//                    if (rule.getApprovalLevel() == approvalRules.getApprovalLevel()) {
+//                        throw new RuntimeException(
+//                                "Approval rule already exists for action type: "
+//                                        + approvalRules.getActionType()
+//                                        + " and approval level: "
+//                                        + approvalRules.getApprovalLevel());
+//                    }
+//                });
+//
+//        approvalRuleRepo.save(approvalRules);
+//    }
 
     @Override
     public List<ApprovalRule> getAllApprovalRules() {
