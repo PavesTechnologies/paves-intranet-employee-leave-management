@@ -77,6 +77,8 @@ public class SmartCacheManager implements CacheManager {
 
     @Override
     public Cache getCache(String name) {
+        boolean up = redisHealthTracker.isRedisUp();
+        log.info("getCache('{}') -> redisUp={}", name, up);
         if (redisHealthTracker.isRedisUp()) {
             Cache redisCache = redisCacheManager.getCache(name);
             if (redisCache != null) {
