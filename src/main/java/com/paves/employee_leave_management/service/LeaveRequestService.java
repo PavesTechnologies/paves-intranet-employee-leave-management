@@ -6,10 +6,14 @@ import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.helper.LeaveRequestSpecification;
+import com.paves.employee_leave_management.redis.SmartCacheManager;
 import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.*;
 import jakarta.persistence.Transient;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -31,6 +35,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@Slf4j
 public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     private static final Pattern GOOGLE_DRIVE_URL_PATTERN = Pattern.compile(
@@ -65,6 +70,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Autowired
     private GenderBasedLeaveBalanceServiceInterface genderBasedLeaveBalanceServiceInterface;
 
+    @Autowired
     private CacheManager cacheManager;
 
     private static final List<String> GENDER_BASED_IDS = List.of("L-ML", "L-PL");
@@ -81,9 +87,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     private void evict(String cacheName, Object key) {
-        org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+        Cache cache = cacheManager.getCache(cacheName);
         if (cache != null) {
             cache.evict(key);
+        } else {
+            log.warn("Cache '{}' not found!", cacheName);
         }
     }
 
