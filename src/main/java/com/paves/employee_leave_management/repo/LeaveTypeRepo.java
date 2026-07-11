@@ -26,4 +26,6 @@ public interface LeaveTypeRepo extends JpaRepository<LeaveType, String> {
 
     List<LeaveType> findByActiveTrueAndDeactivationEffectiveDateLessThanEqual(LocalDate date);
 
+    List<LeaveType> findByActiveFalseAndEffectiveStartDateAfter(LocalDate date);
+
 }

@@ -11,12 +11,28 @@ import java.util.concurrent.Executor;
 @EnableAsync
 public class AsyncConfig {
 
+    // Used by the scheduled accrual jobs (processAccrualForLeaveType, runMonthlyAccrual,
+    // runYearlyAccrual, processYearEndCarryForward) — small, background, low-concurrency work.
     @Bean(name = "taskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(5);
         executor.setQueueCapacity(10);
+        executor.setThreadNamePrefix("accrual-job-");
+        executor.initialize();
+        return executor;
+    }
+
+    // Used by on-demand leave-balance generation (new leave type creation, reactivation,
+    // scheduler-triggered activation) — kept separate from taskExecutor so a burst of leave-type
+    // activity can't starve/reject the nightly accrual batch, or vice versa.
+    @Bean(name = "leaveBalanceExecutor")
+    public Executor leaveBalanceExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(3);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("leave-balance-job-");
         executor.initialize();
         return executor;

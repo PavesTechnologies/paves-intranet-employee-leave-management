@@ -104,4 +104,8 @@ public interface LeaveBalanceRepo extends JpaRepository<LeaveBalance, String> {
     List<LeaveBalance> findAllByYearAndLeaveTypeLeaveTypeId(int year, String leaveTypeId);
 
     Optional<LeaveBalance> findByEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(String empId, String leaveTypeId, Integer year);
+
+    @Query("SELECT lb FROM LeaveBalance lb WHERE lb.leaveType = :leaveType AND lb.year = :year " +
+            "AND (lb.isDeleted = false OR lb.isDeleted IS NULL)")
+    List<LeaveBalance> findByLeaveTypeAndYearNotDeleted(@Param("leaveType") LeaveType leaveType, @Param("year") Integer year);
 }

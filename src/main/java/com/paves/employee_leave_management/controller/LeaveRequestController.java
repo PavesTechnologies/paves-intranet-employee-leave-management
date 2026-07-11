@@ -193,7 +193,7 @@ public class LeaveRequestController {
                         leaveRequest.getEmployee().getEmployeeId(),
                         leaveRequest.getEmployee().getManager().getEmployeeId()
                 );
-                sendToTopic("/topic/manager/leave-requests", event);
+                sendToUser(leaveRequest.getEmployee().getManager().getEmployeeId(), "/queue/leave-requests", event);
                 return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
             } else {
                 String errorMessage = String.join("; ", result.getErrors());
@@ -575,7 +575,13 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest cancelledRequest = leaveRequestService.rejectRequest(rejectionRequest);
-            sendToTopic("/topic/data-updated", "updated");
+            LeaveWebSocketEvent cancelEvent = new LeaveWebSocketEvent(
+                    WsEventType.LEAVE_CANCELLED.name(),
+                    cancelledRequest.getLeaveId(),
+                    cancelledRequest.getEmployee().getEmployeeId(),
+                    cancelledRequest.getEmployee().getManager().getEmployeeId()
+            );
+            sendToUser(cancelledRequest.getEmployee().getEmployeeId(), "/queue/data-updated", cancelEvent);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request cancelled successfully", cancelledRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

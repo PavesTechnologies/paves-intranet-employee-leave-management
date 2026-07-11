@@ -5,15 +5,21 @@ import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBlock;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.entities.GenderBasedLeave;
+import com.paves.employee_leave_management.entities.ScheduledLeaveTypeUpdate;
 import com.paves.employee_leave_management.enums.BlockStatus;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
+import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveBlockRepo;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
+import com.paves.employee_leave_management.repo.ScheduledLeaveTypeUpdateRepo;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +44,10 @@ public class LeaveBlockScheduler {
     private final LeaveRequestRepo leaveRequestRepo;
     private final EmailServiceInterface emailService;
     private final EmployeeRepo employeeRepo;
+    private final ScheduledLeaveTypeUpdateRepo scheduledLeaveTypeUpdateRepo;
+    private final LeaveTypeServiceInterface leaveTypeService;
+    private final GenderBasedRepo genderBasedRepo;
+    private final GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
 
     @Transactional
     public void processLeaveBlock() {
@@ -100,6 +110,20 @@ public class LeaveBlockScheduler {
         }
     }
 
+    public void applyScheduledLeaveTypeUpdates() {
+        LocalDate today = LocalDate.now();
+        List<ScheduledLeaveTypeUpdate> due = scheduledLeaveTypeUpdateRepo
+                .findByStatusAndEffectiveDateLessThanEqual(ScheduledLeaveTypeUpdate.Status.PENDING, today);
+
+        if (due.isEmpty()) return;
+
+        log.info("Applying {} scheduled leave type update(s)...", due.size());
+
+        for (ScheduledLeaveTypeUpdate scheduled : due) {
+            leaveTypeService.applyScheduledUpdate(scheduled);
+        }
+    }
+
     @Transactional
     public void deactivateDueLeaveTypes() {
         LocalDate today = LocalDate.now();
@@ -121,6 +145,26 @@ public class LeaveBlockScheduler {
             log.info("Deactivated leave type: {} (effective until {})",
                     leaveType.getLeaveName(),
                     leaveType.getDeactivationEffectiveDate());
+        }
+    }
+
+    @Transactional
+    public void deactivateDueGenderBasedLeaveTypes() {
+        LocalDate today = LocalDate.now();
+
+        List<GenderBasedLeave> toDeactivate =
+                genderBasedRepo.findByActiveTrueAndEffectiveEndDateLessThanEqual(today);
+        if (toDeactivate.isEmpty()) return;
+
+        log.info("Deactivating {} gender-based leave type(s) effective today or earlier...", toDeactivate.size());
+
+        for (GenderBasedLeave leaveType : toDeactivate) {
+            leaveType.setActive(false);
+            leaveType.setEffectiveEndDate(null);
+            genderBasedRepo.save(leaveType);
+            genderBasedLeaveBalancesRepo.deleteByLeaveType_LeaveTypeId(leaveType.getLeaveTypeId());
+
+            log.info("Deactivated gender-based leave type: {}", leaveType.getLeaveName());
         }
     }
 

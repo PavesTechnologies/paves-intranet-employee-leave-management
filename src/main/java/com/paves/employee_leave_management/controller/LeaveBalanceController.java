@@ -207,16 +207,14 @@ public class LeaveBalanceController {
     @GetMapping("/employee/{employeeId}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasRole('HR')")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalancesByEmployeeId(@PathVariable String employeeId) {
-        template.convertAndSend("/topic/data-updated", "updated");
         return leaveBalanceService.findByEmployeeId(employeeId);
     }
     
     @GetMapping("/employee/{employeeId}/{year}")
     @PreAuthorize("@permissionService.isOwner(authentication, #employeeId) or @permissionService.isManager(authentication, #employeeId) or hasAnyRole('HR','MANAGER','GENERAL')")
     public ApiResponse<EmployeeLeaveBalance> getLeaveBalancesByEmployeeIdAndYear(
-            @PathVariable String employeeId, 
+            @PathVariable String employeeId,
             @PathVariable Integer year) {
-        template.convertAndSend("/topic/data-updated", "updated");
         EmployeeLeaveBalance balance = leaveBalanceService.findByEmployeeIdAndYearPerEmployee(employeeId, year);
         return new ApiResponse<>(true, "leave balance for "+employeeId+" "+year+" ", balance);
     }
@@ -226,7 +224,6 @@ public class LeaveBalanceController {
     public ApiResponse<EmployeeLeaveBalanceForDropdown> getLeaveBalancesByEmployeeIdAndYearForDropDown(
             @PathVariable String employeeId,
             @PathVariable Integer year) {
-        template.convertAndSend("/topic/data-updated", "updated");
         EmployeeLeaveBalanceForDropdown balance = leaveBalanceService.getLeaveBalanceForDropdown(employeeId, year);
         return new ApiResponse<>(true, "leave balance for "+employeeId+" "+year+" ", balance);
     }

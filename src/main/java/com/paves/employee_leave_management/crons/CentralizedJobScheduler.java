@@ -52,8 +52,14 @@ public class CentralizedJobScheduler {
         runJob("ACTIVATE-PENDING-LEAVE-TYPES", () ->
                 leaveBlockScheduler.activatePendingLeaveTypes());
 
+        runJob("APPLY-SCHEDULED-LEAVE-TYPE-UPDATES", () ->
+                leaveBlockScheduler.applyScheduledLeaveTypeUpdates());
+
         runJob("DEACTIVATE-DUE-LEAVE-TYPES", () ->
                 leaveBlockScheduler.deactivateDueLeaveTypes());
+
+        runJob("DEACTIVATE-DUE-GENDER-BASED-LEAVE-TYPES", () ->
+                leaveBlockScheduler.deactivateDueGenderBasedLeaveTypes());
 
         runJob("EXPIRE-UNUSED-COMPOFFS", () ->
                 leaveCompoffService.expireUnusedCompoffs());
