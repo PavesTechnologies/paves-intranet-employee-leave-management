@@ -43,7 +43,7 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
     }
 
 
-    @Async("taskExecutor")
+    @Async("leaveBalanceExecutor")
     @Override
     public void processLeaveBalancesAsync(String jobId, String leaveTypeId) {
         LeaveBalanceJob job = jobRepository.findById(jobId)
@@ -54,6 +54,7 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
 
         List<Employee> employees = employeeRepository.findAll();
         int total = employees.size();
+        int year = java.time.LocalDate.now().getYear();
 
         // update job to RUNNING
         updateJobStatus(jobId, LeaveBalanceJob.JobStatus.RUNNING, total, 0);
@@ -70,6 +71,13 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
                 if (balance != null) {
                     createdBalanceIds.add(balance.getBalanceId());
                 }
+
+                // Evict this employee's cached balance/dropdown entries immediately, rather than
+                // waiting for the whole job to finish — otherwise a read for this employee that
+                // lands between "job started" and "job completed" caches a stale/empty result
+                // that the job's own end-of-run eviction never clears (it only clears the two
+                // coarser caches below, not employeeLeaveBalanceForDropdown).
+                evictEmployeeBalanceCaches(employee.getEmployeeId(), year);
 
                 processed++;
 
@@ -116,8 +124,12 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
 
             // reuse your existing balance creation logic
             leaveBalanceService.createLeaveBalanceForNewEmployee(employee.getEmployeeId());
-            return null; // return the saved balance if needed
-
+            return leaveBalanceRepo
+                    .findByEmployeeEmployeeIdAndLeaveTypeLeaveTypeIdAndYear(
+                            employee.getEmployeeId(),
+                            leaveType.getLeaveTypeId(),
+                            java.time.LocalDate.now().getYear()
+                    ).orElse(null);
         } catch (Exception e) {
             log.warn("Failed to create balance for employee {}: {}",
                     employee.getEmployeeId(), e.getMessage());
@@ -191,5 +203,18 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
     public LeaveBalanceJob getJobStatus(String jobId) {
         return jobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+    }
+
+    private void evictEmployeeBalanceCaches(String employeeId, int year) {
+        String key = employeeId + "-" + year;
+        try {
+            var balanceCache = cacheManager.getCache("employeeLeaveBalance");
+            if (balanceCache != null) balanceCache.evict(key);
+
+            var dropdownCache = cacheManager.getCache("employeeLeaveBalanceForDropdown");
+            if (dropdownCache != null) dropdownCache.evict(key);
+        } catch (Exception e) {
+            log.warn("Failed to evict balance caches for employee {}: {}", employeeId, e.getMessage());
+        }
     }
 }

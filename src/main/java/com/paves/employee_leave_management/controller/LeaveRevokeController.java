@@ -55,8 +55,7 @@ public class LeaveRevokeController {
                 revokeRequest.getManagerId()   // manager needs to see it
         );
 
-        // ✅ Broadcast to manager's topic — their pending list should refresh
-        sendToUser(managerId, "/queue/data-updated", event);
+        sendToUser(managerId, "/queue/leave-requests", event);
 
         if(response != null ){
             return new ApiResponse<>(true, "Leave revoke request submitted successfully", null);

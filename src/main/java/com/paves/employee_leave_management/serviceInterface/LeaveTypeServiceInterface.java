@@ -3,6 +3,7 @@ package com.paves.employee_leave_management.serviceInterface;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.entities.ScheduledLeaveTypeUpdate;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 
@@ -24,6 +25,24 @@ public interface LeaveTypeServiceInterface {
     //    public ResponseEntity<ApiResponse<LeaveType>> updateLeaveType(String leaveTypeId);
     @Transactional
     ApiResponse<LeaveType> updateLeaveType(LeaveType updatedLeaveType, String leaveTypeId);
+
+    // Applies one due ScheduledLeaveTypeUpdate row — called by the nightly scheduler,
+    // one independent transaction per row so one bad row doesn't block the rest of the batch.
+    void applyScheduledUpdate(ScheduledLeaveTypeUpdate scheduled);
+
+    ApiResponse<Object> cancelScheduledUpdate(String scheduleId);
+
+    ScheduledLeaveTypeUpdate getScheduledUpdateForLeaveType(String leaveTypeId);
+
+    List<ScheduledLeaveTypeUpdate> getAllScheduledUpdates(String statusFilter);
+
+    // scheduler for the update leave type
+
+    // Leave types created with a future effectiveStartDate: inserted immediately, active=false,
+    // picked up later by LeaveBlockScheduler.activatePendingLeaveTypes().
+    List<LeaveType> getPendingActivationLeaveTypes();
+
+    ApiResponse<Object> cancelPendingActivation(String leaveTypeId);
 
     ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId);
 

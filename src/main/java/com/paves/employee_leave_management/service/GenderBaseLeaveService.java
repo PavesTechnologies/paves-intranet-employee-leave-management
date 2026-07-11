@@ -162,8 +162,9 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
         GenderBasedLeave existing = genderBasedRepo.findById(leaveTypeId).orElseThrow(()->new RuntimeException("Leave type not found"));
         if(effectiveDate.isAfter(LocalDate.now())){
             existing.setEffectiveEndDate(effectiveDate);
+            genderBasedRepo.save(existing);
             return new ApiResponse<>(true,
-                    "Leave type deactivated successfully",
+                    "Leave type scheduled for deactivation on " + effectiveDate,
                     existing);
 
         }else{

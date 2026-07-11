@@ -5,9 +5,11 @@ import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.GenderBasedLeave;
 import com.paves.employee_leave_management.entities.LeaveBalanceJob;
 import com.paves.employee_leave_management.entities.LeaveType;
+import com.paves.employee_leave_management.entities.ScheduledLeaveTypeUpdate;
 import com.paves.employee_leave_management.enums.AccrualFrequency;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
+import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceJobRepository;
@@ -205,6 +207,51 @@ public class LeaveTypeController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Job status", progress));
     }
 
+    @GetMapping("/scheduled-update/leave-type/{leaveTypeId}")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> getScheduledUpdateForLeaveType(@PathVariable String leaveTypeId) {
+        ScheduledLeaveTypeUpdate scheduled = leaveTypeService.getScheduledUpdateForLeaveType(leaveTypeId);
+        if (scheduled == null) {
+            return ResponseEntity.ok(new ApiResponse<>(true, "No scheduled update pending for this leave type.", null));
+        }
+        return ResponseEntity.ok(new ApiResponse<>(true, "Scheduled update found.", scheduled));
+    }
+
+    @DeleteMapping("/scheduled-update/{scheduleId}")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> cancelScheduledUpdate(@PathVariable String scheduleId) {
+        ApiResponse<Object> result = leaveTypeService.cancelScheduledUpdate(scheduleId);
+        if (!result.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/scheduled-update")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> getAllScheduledUpdates(
+            @RequestParam(required = false) String status) {
+        List<ScheduledLeaveTypeUpdate> updates = leaveTypeService.getAllScheduledUpdates(status);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Scheduled updates.", updates));
+    }
+
+    @GetMapping("/pending-activation")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> getPendingActivationLeaveTypes() {
+        List<LeaveType> pending = leaveTypeService.getPendingActivationLeaveTypes();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Leave types awaiting future activation.", pending));
+    }
+
+    @DeleteMapping("/pending-activation/{leaveTypeId}")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> cancelPendingActivation(@PathVariable String leaveTypeId) {
+        ApiResponse<Object> result = leaveTypeService.cancelPendingActivation(leaveTypeId);
+        if (!result.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+        }
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/get-all-leave-types")
     @PreAuthorize("hasAnyRole('HR','MANAGER','GENERAL', 'SUPER_ADMIN')")
     public ResponseEntity<AllLeaveTypesListResponseDTO> getAllLeaveTypes() {
@@ -221,7 +268,14 @@ public class LeaveTypeController {
         String makerRole = getMakerRole(authentication);
         Employee maker = null;
         if(!("ADMIN".equalsIgnoreCase(makerRole) || "SUPER_ADMIN".equalsIgnoreCase(makerRole))){
-            maker = (Employee)getAuthenticatedUser();
+            Object authenticatedUser = getAuthenticatedUser();
+            if (!(authenticatedUser instanceof Employee employee)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>(false,
+                                "Authenticated principal for role '" + makerRole + "' has no matching employee record.",
+                                null));
+            }
+            maker = employee;
         }
 
 //        String makerRole = maker.getJobTitle();
@@ -230,12 +284,30 @@ public class LeaveTypeController {
         GenderBasedLeave genderBasedLeave = null ;
         if ("REGULAR".equalsIgnoreCase(request.getUpdateType())) {
             leaveType = request.getLeaveType();
+            if (leaveType.getEffectiveStartDate() == null) {
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(new ApiResponse<>(
+                                false,
+                                "Leave type effective start date is required",
+                                null
+                        ));
+            }
             // handle regular leave update
         }
 
         if ("GENDER_BASED".equalsIgnoreCase(request.getUpdateType())) {
             genderBasedLeave = request.getGenderBasedLeave();
             // handle gender based leave update
+            if (genderBasedLeave.getEffectiveStartDate() == null) {
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(new ApiResponse<>(
+                                false,
+                                "Leave type effective start date is required",
+                                null
+                        ));
+            }
         }
 
 
@@ -247,7 +319,7 @@ public class LeaveTypeController {
             ){
 
 
-                GenderBasedLeave toUpdate = genderBasedRepo.findByLeaveNameIgnoreCase(genderBasedLeave.getLeaveName()).orElseThrow(() -> new RuntimeException("GenderBasedLeave not found"));
+                GenderBasedLeave toUpdate = genderBasedRepo.findByLeaveNameIgnoreCase(genderBasedLeave.getLeaveName()).orElseThrow(() -> new LeaveTypeException("GenderBasedLeave not found"));
                 if(maker == null){
                     genderBaseLeaveService.updateGenderBaseLeave(genderBasedLeave, toUpdate.getLeaveTypeId());
                     return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type by " + makerRole + " has been submitted for approval.", null));
@@ -267,11 +339,15 @@ public class LeaveTypeController {
             }
         }
 
-        LeaveType oldLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(() -> new RuntimeException("LeaveType not found"));
+        LeaveType oldLeaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId).orElseThrow(() -> new LeaveTypeException("LeaveType not found"));
 
         if(maker == null){
-            leaveTypeService.updateLeaveType(leaveType, leaveTypeId);
-            return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type by " + makerRole + " has been submitted for approval.", null));
+            ApiResponse<LeaveType> result = leaveTypeService.updateLeaveType(leaveType, leaveTypeId);
+            if (!result.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiResponse<>(false, result.getMessage(), null));
+            }
+            return ResponseEntity.ok(new ApiResponse<>(true, result.getMessage(), result.getData()));
         }
 
         MCApprovalRequestDto dto = new MCApprovalRequestDto();
@@ -298,7 +374,14 @@ public class LeaveTypeController {
         String makerRole = getMakerRole(authentication);
         Employee maker =  null;
         if (!("ADMIN".equalsIgnoreCase(makerRole) || "SUPER_ADMIN".equalsIgnoreCase(makerRole))){
-            maker = (Employee) getAuthenticatedUser();
+            Object authenticatedUser = getAuthenticatedUser();
+            if (!(authenticatedUser instanceof Employee employee)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>(false,
+                                "Authenticated principal for role '" + makerRole + "' has no matching employee record.",
+                                null));
+            }
+            maker = employee;
         }
 
 
