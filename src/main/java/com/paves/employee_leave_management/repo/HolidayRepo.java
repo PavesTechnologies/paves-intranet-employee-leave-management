@@ -22,4 +22,6 @@ public interface HolidayRepo extends JpaRepository<Holidays, Long> {
 
     @Query("SELECT h FROM Holidays h WHERE FUNCTION('MONTH', h.holidayDate) = :month")
     List<Holidays> findByMonth(@Param("month") int month);
+
+    List<Holidays> findByHolidayDateBetween(LocalDate startDate, LocalDate endDate);
 }
