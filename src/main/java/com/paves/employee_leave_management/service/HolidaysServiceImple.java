@@ -13,6 +13,7 @@ import com.paves.employee_leave_management.serviceInterface.AsyncNotificationSer
 import com.paves.employee_leave_management.serviceInterface.HolidaysServiceInterface;
 import jakarta.persistence.Id;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -454,5 +455,16 @@ public class HolidaysServiceImple implements HolidaysServiceInterface {
         return holidayRepo.findByMonth(month);
     }
 
+    @Override
+    public Set<LocalDate> getHolidayDates(int year) {
+
+                LocalDate startDate = LocalDate.of(year, 1, 1);
+                LocalDate endDate = LocalDate.of(year, 12, 31);
+
+                return holidayRepo.findByHolidayDateBetween(startDate, endDate)
+                        .stream()
+                        .map(Holidays::getHolidayDate)
+                        .collect(Collectors.toSet());
+    }
 
 }

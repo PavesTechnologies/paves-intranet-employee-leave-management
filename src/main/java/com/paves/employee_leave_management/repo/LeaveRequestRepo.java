@@ -69,6 +69,8 @@ public interface LeaveRequestRepo extends JpaRepository<LeaveRequest, String> {
 
     List<LeaveRequest> findByEmployee_EmployeeId(String employeeId);
 
+
+
     List<LeaveRequest> findByEmployee_EmployeeIdAndYear(String employeeId, int year);
 
     @Query("""

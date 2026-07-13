@@ -705,4 +705,16 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<List<TodayOnLeaveEmpDetails>>> dashboardTodayOnLeave() {
         return leaveRequestService.getTodayOnLeaveEmpDetails();
     }
+
+    @GetMapping("/employee/{employeeId}/leave-dates")
+    public ApiResponse<List<LocalDate>> getEmployeeLeaveDates(
+            @PathVariable String employeeId,
+            @RequestParam int year,
+            @RequestParam int month) {
+
+        List<LocalDate> leaveDates = leaveRequestService
+                .getLeaveRequestByEmployeeAndYearPendingAndApproved(employeeId, year, month);
+
+        return new ApiResponse<>(true, "all leave request dates for the month "+month, leaveDates );
+    }
 }
