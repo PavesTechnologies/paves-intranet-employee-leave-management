@@ -175,6 +175,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
                     .usedLeaves(usedLeaves)
                     .remainingLeaves(remainingLeaves)
                     .totalLeaves(totalLeaves)
+                    .employeeId(emp.getEmployeeId())
                     .isDeleted(false)
                     .build();
 
@@ -1218,7 +1219,7 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
 
     @Transactional
-    @Async
+    @Async("leaveBalanceExecutor")
     public void createLeaveBalanceForAllEmployees(LeaveType leaveType) {
         int year = LocalDate.now().getYear();
         LocalDate createdDate = LocalDate.now();
@@ -1291,8 +1292,9 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
 
                 totalLeaves = lt.getAccrualRate() * calculateRemainingMonths(startDate);
 
-                // Credit current month only if before mid-month
-                accruedLeaves = (referenceDate.getDayOfMonth() < MID_MONTH_THRESHOLD)
+                // Credit current month only if the employee has actually started
+                // (hireDate not in the future) and it's before mid-month
+                accruedLeaves = (!hireDate.isAfter(referenceDate) && referenceDate.getDayOfMonth() < MID_MONTH_THRESHOLD)
                         ? lt.getAccrualRate()
                         : 0;
 

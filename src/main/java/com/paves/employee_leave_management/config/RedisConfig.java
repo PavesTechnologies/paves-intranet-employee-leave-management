@@ -173,6 +173,8 @@ public class RedisConfig {
                 cacheConfiguration().entryTtl(Duration.ofHours(10)));
         cacheConfigs.put("employeesLeaveBalances",
                 cacheConfiguration().entryTtl(Duration.ofMinutes(30)));
+        cacheConfigs.put("leaveRequestByEmployeeAndYearPendingAndApproved",
+                cacheConfiguration().entryTtl(Duration.ofMinutes(30)));
 
         // lockingRedisCacheWriter prevents concurrent threads racing on the
         // same cache key (e.g. approve + cancel hitting the same entry).
@@ -216,7 +218,8 @@ public class RedisConfig {
                 "pendingLeaveRequestsByEmployeeAndYear",
                 "holidaysByYear",
                 "employeesLeaveBalances",
-                "employeeLeaveBalanceForDropdown"
+                "employeeLeaveBalanceForDropdown",
+                "leaveRequestByEmployeeAndYearPendingAndApproved"
         );
         // Short TTL — this cache exists only to survive brief Redis outages.
         // It must never outlive an outage window, or a stale entry can sit here

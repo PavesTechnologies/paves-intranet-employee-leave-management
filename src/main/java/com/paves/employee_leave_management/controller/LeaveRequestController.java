@@ -92,8 +92,9 @@ public class LeaveRequestController {
                     savedLeaveRequest.getEmployee().getManager().getEmployeeId()
             );
 
+            // apply
             String managerId = savedLeaveRequest.getEmployee().getManager().getEmployeeId();
-            sendToTopic("/topic/manager/leave-requests", event);
+            sendToUser(managerId, "/queue/leave-requests", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully", savedLeaveRequest));
 
         } catch (Exception e) {
@@ -146,7 +147,9 @@ public class LeaveRequestController {
                         leaveRequest.getEmployee().getManager().getEmployeeId()
                 );
 
-                sendToTopic("/topic/manager/leave-requests", event);
+                // updateLeaveRequest — both branches
+                String managerId = employee.getManager().getEmployeeId();
+                sendToUser(managerId, "/queue/leave-requests", event);
                 return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
             } else {
                 String errorMessage = String.join("; ", result.getErrors());
@@ -190,7 +193,7 @@ public class LeaveRequestController {
                         leaveRequest.getEmployee().getEmployeeId(),
                         leaveRequest.getEmployee().getManager().getEmployeeId()
                 );
-                sendToTopic("/topic/manager/leave-requests", event);
+                sendToUser(leaveRequest.getEmployee().getManager().getEmployeeId(), "/queue/leave-requests", event);
                 return ResponseEntity.ok(new ApiResponse<>(true, "Leave request updated successfully", result));
             } else {
                 String errorMessage = String.join("; ", result.getErrors());
@@ -302,8 +305,9 @@ public class LeaveRequestController {
                     employeeId,
                     cancelledRequest.getEmployee().getManager().getEmployeeId()
             );
-
-            sendToTopic("/topic/manager/leave-requests", event);
+            // cancelLeaveRequest
+            String managerId = cancelledRequest.getEmployee().getManager().getEmployeeId();
+            sendToUser(managerId, "/queue/leave-requests", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Cancelled By employee", cancelledRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -453,11 +457,19 @@ public class LeaveRequestController {
      */
 
     @PostMapping("/approve-batch")
-    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR') and @permissionService.isManagerOfLeaveRequest(authentication, #batchApproval.leaveIds)")
+    @PreAuthorize("hasAnyRole('REPORTING_MANAGER', 'SUPER_ADMIN', 'HR')")
     public ResponseEntity<List<LeaveRequest>> approveLeaveBatch(
             @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
         List<LeaveRequest> approved = leaveRequestService.approveMultipleRequests(batchApproval);
-        template.convertAndSend("/topic/data-updated", "updated");
+        for (LeaveRequest req : approved) {
+            String employeeId = req.getEmployee().getEmployeeId();
+            Map<String, Object> event = Map.of(
+                    "type", WsEventType.LEAVE_APPROVED.name(),
+                    "leaveId", req.getLeaveId(),
+                    "status", req.getStatus()
+            );
+            sendToUser(employeeId, "/queue/data-updated", event);
+        }
         return ResponseEntity.ok(approved);
     }
 
@@ -466,7 +478,15 @@ public class LeaveRequestController {
     public ResponseEntity<List<LeaveRequest>> rejectLeaveBatch(
             @Valid @RequestBody BatchApprovalRequestDTO batchApproval) {
         List<LeaveRequest> rejected = leaveRequestService.rejectMultipleRequests(batchApproval);
-        sendToTopic("/topic/data-updated", "updated");
+        for (LeaveRequest req : rejected) {
+            String employeeId = req.getEmployee().getEmployeeId();
+            Map<String, Object> event = Map.of(
+                    "type", WsEventType.LEAVE_REJECTED.name(),
+                    "leaveId", req.getLeaveId(),
+                    "status", req.getStatus()
+            );
+            sendToUser(employeeId, "/queue/data-updated", event);
+        }
         return ResponseEntity.ok(rejected);
     }
 
@@ -555,7 +575,13 @@ public class LeaveRequestController {
     public ResponseEntity<ApiResponse<LeaveRequest>> cancelLeaveRequestByManager(@RequestBody RejectionRequestDTO rejectionRequest) {
         try {
             LeaveRequest cancelledRequest = leaveRequestService.rejectRequest(rejectionRequest);
-            sendToTopic("/topic/data-updated", "updated");
+            LeaveWebSocketEvent cancelEvent = new LeaveWebSocketEvent(
+                    WsEventType.LEAVE_CANCELLED.name(),
+                    cancelledRequest.getLeaveId(),
+                    cancelledRequest.getEmployee().getEmployeeId(),
+                    cancelledRequest.getEmployee().getManager().getEmployeeId()
+            );
+            sendToUser(cancelledRequest.getEmployee().getEmployeeId(), "/queue/data-updated", cancelEvent);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave request cancelled successfully", cancelledRequest));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -666,7 +692,7 @@ public class LeaveRequestController {
             );
 
             String managerId = savedLeaveRequest.getEmployee().getManager().getEmployeeId();
-            sendToTopic("/topic/manager/leave-requests", event);
+            sendToUser(managerId, "/queue/leave-requests", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Leave application submitted successfully", savedLeaveRequest));
 
         } catch (Exception e) {
@@ -678,5 +704,17 @@ public class LeaveRequestController {
     @GetMapping("/dashboard/today-on-leave")
     public ResponseEntity<ApiResponse<List<TodayOnLeaveEmpDetails>>> dashboardTodayOnLeave() {
         return leaveRequestService.getTodayOnLeaveEmpDetails();
+    }
+
+    @GetMapping("/employee/{employeeId}/leave-dates")
+    public ApiResponse<List<LocalDate>> getEmployeeLeaveDates(
+            @PathVariable String employeeId,
+            @RequestParam int year,
+            @RequestParam int month) {
+
+        List<LocalDate> leaveDates = leaveRequestService
+                .getLeaveRequestByEmployeeAndYearPendingAndApproved(employeeId, year, month);
+
+        return new ApiResponse<>(true, "all leave request dates for the month "+month, leaveDates );
     }
 }

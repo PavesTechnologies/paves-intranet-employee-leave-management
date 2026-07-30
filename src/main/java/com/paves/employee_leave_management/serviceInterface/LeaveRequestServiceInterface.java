@@ -25,6 +25,8 @@ public interface LeaveRequestServiceInterface {
 
     List<LeaveRequestResponseDTO> getLeaveRequestsByEmployee(String employeeId);
 
+    List<LocalDate> getLeaveRequestByEmployeeAndYearPendingAndApproved(String employeeId, int year, int month);
+
     List<LeaveRequestResponseDTO> getLeaveRequestsByEmployeeAndByYear(String employeeId, int year);
 
     List<LeaveRequestResponseDTO> getLeaveRequestsByEmployeeAndByYearForPatterns(String employeeId, int year);

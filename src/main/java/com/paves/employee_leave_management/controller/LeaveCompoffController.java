@@ -6,6 +6,7 @@ import com.paves.employee_leave_management.enums.WsEventType;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +16,27 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("api/compoff")
 @RequiredArgsConstructor
 public class LeaveCompoffController {
+
+    private void sendToUser(String userId, String dest, Object payload) {
+        try {
+            template.convertAndSendToUser(userId, dest, payload);
+        } catch (Exception ex) {
+            log.warn("WS send to user {} at {} failed: {}", userId, dest, ex.getMessage());
+        }
+    }
+
+    private void sendToTopic(String dest, Object payload) {
+        try {
+            template.convertAndSend(dest, payload);
+        } catch (Exception ex) {
+            log.warn("WS send to topic {} failed: {}", dest, ex.getMessage());
+        }
+    }
 
     @Autowired
     LeaveCompoffSerivceInterface compoffService;
@@ -35,10 +53,10 @@ public class LeaveCompoffController {
                     WsEventType.COMPOFF_REQUESTED.name(),
                     request.getIdleaveCompoff(),
                     dto.getEmployeeId(),
-                    dto.getManagerId()
+                    request.getManagerId()
             );
 
-            template.convertAndSend( "/topic/manager/comp-off-balance", event);
+            sendToUser(request.getManagerId(), "/queue/comp-off-balance", event);
 
             return ResponseEntity.ok(new ApiResponse<>(true, "Compoff requested successfully.", null));
         } catch (Exception e) {
@@ -58,7 +76,7 @@ public class LeaveCompoffController {
                     request.getEmployeeId(),
                     dto.getManagerId()
             );
-            template.convertAndSendToUser(request.getEmployeeId(), "/queue/comp-off-balance", event);
+            sendToUser(request.getEmployeeId(), "/queue/comp-off-balance-updates", event);
 
             return ResponseEntity.ok(new ApiResponse<>(true, "Compoff approved successfully.", null));
         } catch (Exception e) {
@@ -78,7 +96,7 @@ public class LeaveCompoffController {
                     request.getEmployeeId(),
                     dto.getManagerId()
             );
-            template.convertAndSendToUser(request.getEmployeeId(), "/queue/comp-off-balance", event);
+            sendToUser(request.getEmployeeId(), "/queue/comp-off-balance-updates", event);
             return ResponseEntity.ok(new ApiResponse<>(true, "Compoff rejected successfully.", null));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -122,7 +140,7 @@ public class LeaveCompoffController {
                     request.getEmployeeId(),
                     request.getManagerId()
             );
-            template.convertAndSend("/topic/manager/comp-off-balance", event);
+            sendToUser(request.getManagerId(), "/queue/comp-off-balance", event);
 
             return ResponseEntity.ok(new ApiResponse<>(true, "Pending CompOff request cancelled", null));
         } catch (Exception e) {

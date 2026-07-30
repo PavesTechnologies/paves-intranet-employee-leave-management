@@ -6,10 +6,14 @@ import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
 import com.paves.employee_leave_management.helper.LeaveRequestSpecification;
+import com.paves.employee_leave_management.redis.SmartCacheManager;
 import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.*;
 import jakarta.persistence.Transient;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -31,6 +35,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@Slf4j
 public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     private static final Pattern GOOGLE_DRIVE_URL_PATTERN = Pattern.compile(
@@ -65,7 +70,11 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     @Autowired
     private GenderBasedLeaveBalanceServiceInterface genderBasedLeaveBalanceServiceInterface;
 
+    @Autowired
     private CacheManager cacheManager;
+
+    @Autowired
+    private LeaveRequestCacheMethods leaveRequestCacheMethods;
 
     private static final List<String> GENDER_BASED_IDS = List.of("L-ML", "L-PL");
 
@@ -78,12 +87,15 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         evict("employeeLeaveBalanceForDropdown", employeeId + "-" + requestYear);
         evict("leaveRequestsByEmployee", employeeId);
         evict("employeeLeaveBalance", employeeId + "-" + requestYear);
+        evict("leaveRequestByEmployeeAndYearPendingAndApproved", employeeId + "-" + requestYear);
     }
 
     private void evict(String cacheName, Object key) {
-        org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+        Cache cache = cacheManager.getCache(cacheName);
         if (cache != null) {
             cache.evict(key);
+        } else {
+            log.warn("Cache '{}' not found!", cacheName);
         }
     }
 
@@ -474,7 +486,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#request.getEmployeeId() + '-' + #request.getYear()"),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear",
                             key = "#request.getEmployeeId() + '-' + #request.getYear()"),
-                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '-' + #request.getYear()")
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.getEmployeeId() + '-' + #request.getYear()"),
+                    @CacheEvict(value = "leaveRequestByEmployeeAndYearPendingAndApproved",
+                            key = "#request.getEmployeeId() + '-' + #request.getYear()")
             }
     )
     public LeaveRequest saveLeaveRequest(LeaveRequestValidationDTO request) {
@@ -604,6 +618,36 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                 .collect(Collectors.toList());
     }
 
+
+    @Override
+    public List<LocalDate> getLeaveRequestByEmployeeAndYearPendingAndApproved(
+            String employeeId,
+            int year,
+            int month) {
+
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("Month must be between 1 and 12");
+        }
+
+        List<LeaveRequest> leaveRequests =
+                leaveRequestCacheMethods.getLeaveRequestByEmployeeAndYearPendingAndApproved(employeeId, year);
+
+        Set<LocalDate> companyHolidays = holidaysService.getHolidayDates(year);
+
+        return leaveRequests.stream()
+                .filter(lr -> lr.getStartDate() != null && lr.getEndDate() != null)
+                .flatMap(lr ->
+                        lr.getStartDate()
+                                .datesUntil(lr.getEndDate().plusDays(1)))
+                .filter(date -> date.getMonthValue() == month)
+                .filter(date ->
+                        date.getDayOfWeek() != DayOfWeek.SATURDAY &&
+                                date.getDayOfWeek() != DayOfWeek.SUNDAY)
+                .filter(date -> !companyHolidays.contains(date))
+                .toList();
+    }
+
+
     @Override
     @Cacheable(value = "leaveRequestsByEmployeeAndYear", key = "#employeeId + '-' + #year")
     public List<LeaveRequestResponseDTO> getLeaveRequestsByEmployeeAndByYear(String employeeId, int year) {
@@ -687,6 +731,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     key = "#employeeId + '-' + #result.requestDate.year"
             ),
             @CacheEvict(value = "employeeLeaveBalance",
+                    key = "#employeeId + '-' + #result.requestDate.year"
+            ),
+            @CacheEvict(value = "leaveRequestByEmployeeAndYearPendingAndApproved",
                     key = "#employeeId + '-' + #result.requestDate.year"
             )
     })
@@ -850,6 +897,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             ),
             @CacheEvict(
                     value = "employeeLeaveBalance",
+                    key = "#result.employee.employeeId + '-' + #approvalRequest.year"
+            ),
+            @CacheEvict(
+                    value = "leaveRequestByEmployeeAndYearPendingAndApproved",
                     key = "#result.employee.employeeId + '-' + #approvalRequest.year"
             )
     })
@@ -1015,6 +1066,8 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             @CacheEvict(value = "leaveRequestsByEmployee",
                     key = "#result.employee.employeeId"),
             @CacheEvict(value = "employeeLeaveBalance",
+                    key = "#result.employee.employeeId + '-' + #result.requestDate.year"),
+            @CacheEvict(value = "leaveRequestByEmployeeAndYearPendingAndApproved",
                     key = "#result.employee.employeeId + '-' + #result.requestDate.year")
     })
     public LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest) {
@@ -1080,7 +1133,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             evict = {
                     @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#result.employee.employeeId + '-' + #updateRequest.year"),
                     @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#result.employee.employeeId + '-' + #updateRequest.year"),
-                    @CacheEvict(value = "employeeLeaveBalance", key = "#updateRequest.getEmployeeId() + '-' + #updateRequest.year")
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#updateRequest.getEmployeeId() + '-' + #updateRequest.year"),
+                    @CacheEvict(value = "leaveRequestByEmployeeAndYearPendingAndApproved",
+                            key = "#updateRequest.getEmployeeId() + '-' + #updateRequest.year")
             }
     )
     public LeaveRequest updateLeaveRequestByManager(ManagerUpdateRequestDTO updateRequest) {
@@ -1358,7 +1413,9 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             evict = {
                     @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#request.employeeId + '-' + #request.year"),
                     @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", key = "#request.employeeId +'-' + #request.year"),
-                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.employeeId + '-' + #request.year")
+                    @CacheEvict(value = "employeeLeaveBalance", key = "#request.employeeId + '-' + #request.year"),
+                    @CacheEvict(value = "leaveRequestByEmployeeAndYearPendingAndApproved",
+                            key = "#request.employeeId + '-' + #request.year")
             }
     )
     public ValidationResultDTO updateRequestByEmployee(LeaveRequest leaveRequest, LeaveRequestValidationDTO request) {

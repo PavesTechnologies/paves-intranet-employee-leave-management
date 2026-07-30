@@ -84,6 +84,8 @@ public class LeaveRevokeRequestService implements LeaveRevokeRequest {
             evict = {
                     @CacheEvict(value = "employeeLeaveBalance", key = "#revokeRequestDTO.employeeId + '-' + #revokeRequestDTO.year"),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear", key = "#revokeRequestDTO.employeeId + '-' + #revokeRequestDTO.year"),
+                    @CacheEvict(value = "leaveRequestByEmployeeAndYearPendingAndApproved", key = "#revokeRequestDTO.employeeId + '-' + #revokeRequestDTO.year"),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", key = "#revokeRequestDTO.employeeId + '-' + #revokeRequestDTO.year")
             }
     )
     public void approveRequest(String id, RevokeRequestDTO revokeRequestDTO) {

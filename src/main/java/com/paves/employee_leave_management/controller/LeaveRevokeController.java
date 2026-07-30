@@ -8,6 +8,7 @@ import com.paves.employee_leave_management.entities.LeaveRevoke;
 import com.paves.employee_leave_management.enums.WsEventType;
 import com.paves.employee_leave_management.service.LeaveRevokeRequestService;
 import com.paves.employee_leave_management.serviceInterface.LeaveRevokeRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
+@Slf4j
 @RequestMapping("/api/leave-revoke")
 public class LeaveRevokeController {
 
@@ -30,12 +32,22 @@ public class LeaveRevokeController {
         this.template = template;
     }
 
+
+    private void sendToUser(String userId, String dest, Object payload) {
+        try {
+            template.convertAndSendToUser(userId, dest, payload);
+        } catch (Exception ex) {
+            log.warn("WS send to user {} at {} failed: {}", userId, dest, ex.getMessage());
+        }
+    }
+
     @PostMapping("/revoke")
     @PreAuthorize("hasAnyRole('HR', 'REPORTING_MANAGER', 'GENERAL', 'HR_MANAGER')")
     public ApiResponse<String> newRevokeRequest(@RequestBody LeaveRevoke revokeRequest) {
         LeaveRevoke response = leaveRevokeRequestService.newRevokeRequest(revokeRequest);
 
         // ✅ Notify manager — new revoke request appeared in their queue
+        String managerId = revokeRequest.getManagerId();
         LeaveWebSocketEvent event = new LeaveWebSocketEvent(
                 WsEventType.REVOKE_REQUESTED.name(),
                 revokeRequest.getLeaveRequestId(),
@@ -43,8 +55,7 @@ public class LeaveRevokeController {
                 revokeRequest.getManagerId()   // manager needs to see it
         );
 
-        // ✅ Broadcast to manager's topic — their pending list should refresh
-        template.convertAndSend("/topic/manager/leave-requests", event);
+        sendToUser(managerId, "/queue/leave-requests", event);
 
         if(response != null ){
             return new ApiResponse<>(true, "Leave revoke request submitted successfully", null);

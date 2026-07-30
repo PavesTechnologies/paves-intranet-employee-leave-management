@@ -18,6 +18,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/employee")
 public class EmployeeController {
+
+
+    private void test(){
+        System.out.println("test");
+    }
+
     @Autowired
     EmployeeServiceInterface serviceInterface;
 

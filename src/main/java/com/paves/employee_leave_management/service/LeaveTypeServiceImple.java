@@ -1,11 +1,14 @@
 package com.paves.employee_leave_management.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveStatusCompoff;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.ApprovalBusinessException;
+import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
 import com.paves.employee_leave_management.repo.*;
 import com.paves.employee_leave_management.serviceInterface.*;
 import jakarta.transaction.Transactional;
@@ -42,6 +45,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     private final LeaveBalanceJobServiceInterface leaveBalanceJobService;
     private final LeaveBalanceJobRepository jobRepository;
     private final AsyncNotificationServiceInterface asyncNotificationService;
+    private final ScheduledLeaveTypeUpdateRepo scheduledLeaveTypeUpdateRepo;
+    private final ObjectMapper objectMapper;
 
     @Autowired @Lazy
     private LeaveTypeServiceInterface self;
@@ -58,7 +63,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             EmployeeRepo employeeRepo,
             LeaveBalanceJobServiceInterface leaveBalanceJobService,
             LeaveBalanceJobRepository jobRepository,
-            AsyncNotificationServiceInterface asyncNotificationService
+            AsyncNotificationServiceInterface asyncNotificationService,
+            ScheduledLeaveTypeUpdateRepo scheduledLeaveTypeUpdateRepo,
+            ObjectMapper objectMapper
     ) {
         this.leaveTypeRepo = leaveTypeRepo;
         this.leaveBalanceRepo = leaveBalanceRepo;
@@ -72,6 +79,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         this.leaveBalanceJobService = leaveBalanceJobService;
         this.jobRepository = jobRepository;
         this.asyncNotificationService = asyncNotificationService;
+        this.scheduledLeaveTypeUpdateRepo = scheduledLeaveTypeUpdateRepo;
+        this.objectMapper = objectMapper;
     }
 
 
@@ -156,6 +165,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         }
 
         boolean shouldActivateNow = !leaveType.getEffectiveStartDate().isAfter(LocalDate.now());
+        leaveType.setActive(shouldActivateNow);
         leaveType.setAccrualRate(newAccrualRate);
         leaveType.setCreateAt(LocalDateTime.now());
         LeaveType savedLeaveType = leaveTypeRepo.save(leaveType);
@@ -277,32 +287,86 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                     "Leave type " + leaveTypeId + " not found.",
                     null);
         }
-//        LeaveType existingLeaveType = existingOpt.get();
-        double newAccrualRate = 0;
-        if (updatedLeaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString()) || updatedLeaveType.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
+
+        LocalDate effectiveDate = updatedLeaveType.getEffectiveStartDate();
+        boolean isFutureDated = effectiveDate != null && effectiveDate.isAfter(LocalDate.now());
+
+        if (isFutureDated) {
+            Optional<ScheduledLeaveTypeUpdate> existingPending =
+                    scheduledLeaveTypeUpdateRepo.findByLeaveTypeIdAndStatus(
+                            leaveTypeId, ScheduledLeaveTypeUpdate.Status.PENDING);
+
+            if (existingPending.isPresent()) {
+                ScheduledLeaveTypeUpdate pending = existingPending.get();
+                return new ApiResponse<>(false,
+                        "A scheduled update for this leave type is already pending, effective "
+                                + pending.getEffectiveDate() + " (schedule id: " + pending.getId()
+                                + "). Cancel it before scheduling another update.",
+                        null);
+            }
+
+            String payload;
+            try {
+                payload = objectMapper.writeValueAsString(updatedLeaveType);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Error serializing scheduled leave type update", e);
+            }
+
+            ScheduledLeaveTypeUpdate scheduled = ScheduledLeaveTypeUpdate.builder()
+                    .leaveTypeId(leaveTypeId)
+                    .effectiveDate(effectiveDate)
+                    .payload(payload)
+                    .status(ScheduledLeaveTypeUpdate.Status.PENDING)
+                    .build();
+            scheduledLeaveTypeUpdateRepo.save(scheduled);
+
+            log.info("Scheduled update {} for leave type {} effective {}",
+                    scheduled.getId(), leaveTypeId, effectiveDate);
+
+            return new ApiResponse<>(true,
+                    "Update scheduled to take effect on " + effectiveDate + ".",
+                    null);
+        }
+
+        LeaveType savedLeaveType = applyLeaveTypeUpdate(updatedLeaveType, existingOpt.get());
+
+        return new ApiResponse<>(true,
+                "Leave type updated successfully.",
+                savedLeaveType);
+    }
+
+    // Applies the incoming field values onto the persisted leave type, recomputes accrual rate,
+    // recalculates this year's non-deleted balances, and notifies employees. Shared by the
+    // immediate-update path above and applyScheduledUpdate() below, so there's exactly one
+    // place where "an update happens" — the nightly job doesn't reimplement any of this.
+    private LeaveType applyLeaveTypeUpdate(LeaveType updatedLeaveType, LeaveType existing) {
+        double newAccrualRate;
+        if (updatedLeaveType.getMaxDaysPerYear() == null || updatedLeaveType.getMaxDaysPerYear() == 0) {
+            newAccrualRate = 0;
+        } else {
             newAccrualRate = (double) updatedLeaveType.getMaxDaysPerYear() / 12;
             newAccrualRate = new BigDecimal(newAccrualRate)
                     .setScale(2, RoundingMode.HALF_UP)
                     .doubleValue();
-            updatedLeaveType.setAccrualRate(newAccrualRate);
-        } else {
-            updatedLeaveType.setAccrualRate(newAccrualRate);
         }
-        // Save updated LeaveType
+        updatedLeaveType.setAccrualRate(newAccrualRate);
+
         updatedLeaveType.setLastUpdatedAt(LocalDateTime.now());
-        updatedLeaveType.setCreateAt(existingOpt.get().getCreateAt());
-        updatedLeaveType.setLeaveTypeId(leaveTypeId);
-        updatedLeaveType.setActive(existingOpt.get().getActive());
+        updatedLeaveType.setCreateAt(existing.getCreateAt());
+        updatedLeaveType.setLeaveTypeId(existing.getLeaveTypeId());
+        updatedLeaveType.setActive(existing.getActive());
+        updatedLeaveType.setJobId(existing.getJobId());
         LeaveType savedLeaveType = leaveTypeRepo.save(updatedLeaveType);
 
         // Get remaining months in the year (excluding current month)
         int currentMonth = LocalDate.now().getMonthValue(); // 1 to 12
         int remainingMonths = 12 - currentMonth;
+        int currentYear = LocalDate.now().getYear();
 
-        System.out.println("Remaining months: Swarna here");
-
-        // Get all LeaveBalance entries for this leave type
-        List<LeaveBalance> affectedBalances = leaveBalanceRepo.findByLeaveType(savedLeaveType);
+        // Scoped to this year and non-deleted rows only — a prior version of this recalculated
+        // every year on record for this leave type, corrupting closed-year history.
+        List<LeaveBalance> affectedBalances =
+                leaveBalanceRepo.findByLeaveTypeAndYearNotDeleted(savedLeaveType, currentYear);
 
         for (LeaveBalance balance : affectedBalances) {
             double accruedLeaves = balance.getAccruedLeaves(); // leaves_till_now
@@ -310,9 +374,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
 
             balance.setTotalLeaves(recalculatedTotal);
 
-            // Optional: update availableLeaves if needed
-             double usedLeaves = balance.getUsedLeaves();
-             balance.setRemainingLeaves((balance.getCarriedForward() + recalculatedTotal) - usedLeaves);
+            double usedLeaves = balance.getUsedLeaves();
+            balance.setRemainingLeaves((balance.getCarriedForward() + recalculatedTotal) - usedLeaves);
         }
 
         leaveBalanceRepo.saveAll(affectedBalances);
@@ -324,9 +387,121 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 Map.of("leavePolicyName", savedLeaveType.getLeaveName())
         );
 
+        return savedLeaveType;
+    }
+
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Override
+    public void applyScheduledUpdate(ScheduledLeaveTypeUpdate scheduled) {
+        try {
+            LeaveType incoming = objectMapper.readValue(scheduled.getPayload(), LeaveType.class);
+            LeaveType existing = leaveTypeRepo.findByLeaveTypeId(scheduled.getLeaveTypeId())
+                    .orElseThrow(() -> new LeaveTypeException(
+                            "Leave type not found: " + scheduled.getLeaveTypeId()));
+
+            applyLeaveTypeUpdate(incoming, existing);
+
+            scheduled.setStatus(ScheduledLeaveTypeUpdate.Status.APPLIED);
+            scheduled.setAppliedAt(LocalDateTime.now());
+            scheduledLeaveTypeUpdateRepo.save(scheduled);
+
+            log.info("Applied scheduled update {} for leave type {}",
+                    scheduled.getId(), scheduled.getLeaveTypeId());
+        } catch (Exception e) {
+            log.error("Failed to apply scheduled update {} for leave type {}: {}",
+                    scheduled.getId(), scheduled.getLeaveTypeId(), e.getMessage(), e);
+            scheduled.setStatus(ScheduledLeaveTypeUpdate.Status.FAILED);
+            scheduled.setErrorMessage(e.getMessage());
+            scheduled.setAppliedAt(LocalDateTime.now());
+            scheduledLeaveTypeUpdateRepo.save(scheduled);
+        }
+    }
+
+    @Override
+    public ApiResponse<Object> cancelScheduledUpdate(String scheduleId) {
+        Optional<ScheduledLeaveTypeUpdate> scheduledOpt = scheduledLeaveTypeUpdateRepo.findById(scheduleId);
+        if (scheduledOpt.isEmpty()) {
+            return new ApiResponse<>(false, "Scheduled update " + scheduleId + " not found.", null);
+        }
+
+        ScheduledLeaveTypeUpdate scheduled = scheduledOpt.get();
+        if (scheduled.getStatus() != ScheduledLeaveTypeUpdate.Status.PENDING) {
+            return new ApiResponse<>(false,
+                    "Scheduled update " + scheduleId + " is " + scheduled.getStatus()
+                            + " and can no longer be cancelled.",
+                    null);
+        }
+
+        scheduled.setStatus(ScheduledLeaveTypeUpdate.Status.CANCELLED);
+        scheduledLeaveTypeUpdateRepo.save(scheduled);
+
+        return new ApiResponse<>(true, "Scheduled update cancelled.", null);
+    }
+
+    @Override
+    public ScheduledLeaveTypeUpdate getScheduledUpdateForLeaveType(String leaveTypeId) {
+        return scheduledLeaveTypeUpdateRepo
+                .findByLeaveTypeIdAndStatus(leaveTypeId, ScheduledLeaveTypeUpdate.Status.PENDING)
+                .orElse(null);
+    }
+
+    @Override
+    public List<ScheduledLeaveTypeUpdate> getAllScheduledUpdates(String statusFilter) {
+        if (statusFilter == null || statusFilter.isBlank()) {
+            return scheduledLeaveTypeUpdateRepo.findAllByOrderByCreatedAtDesc();
+        }
+        ScheduledLeaveTypeUpdate.Status status;
+        try {
+            status = ScheduledLeaveTypeUpdate.Status.valueOf(statusFilter.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status '" + statusFilter
+                    + "'. Expected one of PENDING, APPLIED, FAILED, CANCELLED.");
+        }
+        return scheduledLeaveTypeUpdateRepo.findByStatusOrderByCreatedAtDesc(status);
+    }
+
+    @Override
+    public List<LeaveType> getPendingActivationLeaveTypes() {
+        return leaveTypeRepo.findByActiveFalseAndEffectiveStartDateAfter(LocalDate.now());
+    }
+
+    // Cancels a brand-new leave type that's sitting inactive, waiting for a future effective
+    // date. Only safe when no LeaveBalance rows exist yet for it — if any do, the row's
+    // configuration is already in use somewhere and deleting it would orphan that data, so we
+    // refuse instead. This permanently discards whatever is currently stored on the row; it does
+    // not restore an earlier configuration (relevant if this was a reactivation of a previously
+    // deactivated leave type, since addLeaveType overwrites the row's fields immediately even
+    // when the reactivation itself is future-dated).
+    @Transactional
+    @Override
+    public ApiResponse<Object> cancelPendingActivation(String leaveTypeId) {
+        Optional<LeaveType> leaveTypeOpt = leaveTypeRepo.findByLeaveTypeId(leaveTypeId);
+        if (leaveTypeOpt.isEmpty()) {
+            return new ApiResponse<>(false, "Leave type " + leaveTypeId + " not found.", null);
+        }
+
+        LeaveType leaveType = leaveTypeOpt.get();
+        if (Boolean.TRUE.equals(leaveType.getActive())
+                || leaveType.getEffectiveStartDate() == null
+                || !leaveType.getEffectiveStartDate().isAfter(LocalDate.now())) {
+            return new ApiResponse<>(false,
+                    "Leave type " + leaveTypeId + " has no pending future activation to cancel.",
+                    null);
+        }
+
+        List<LeaveBalance> existingBalances = leaveBalanceRepo.findByLeaveType(leaveType);
+        if (!existingBalances.isEmpty()) {
+            return new ApiResponse<>(false,
+                    "Cannot cancel — " + existingBalances.size()
+                            + " leave balance record(s) already exist for this leave type.",
+                    null);
+        }
+
+        leaveTypeRepo.delete(leaveType);
         return new ApiResponse<>(true,
-                "Leave type updated successfully.",
-                savedLeaveType);
+                "Pending activation cancelled; leave type " + leaveTypeId + " removed.",
+                null);
     }
 
 
@@ -349,7 +524,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     )
     public ResponseEntity<String> deleteLeaveType(String leaveTypeId) {
         LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
-                .orElseThrow(() -> new RuntimeException("Leave type not found."));
+                .orElseThrow(() -> new LeaveTypeException("Leave type not found."));
         List<LeaveBalance> leaveBalanceList = leaveBalanceRepo.findByLeaveType(leaveType);
         leaveTypeRepo.delete(leaveType);
 
@@ -377,7 +552,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     public ResponseEntity<String> deActiveLeaveType(String leaveTypeId, LocalDate effectiveDate) {
 
         LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
-                .orElseThrow(() -> new RuntimeException("Leave Type Not Found"));
+                .orElseThrow(() -> new LeaveTypeException("Leave Type Not Found"));
 
         if (effectiveDate.isAfter(LocalDate.now())) {
             leaveType.setDeactivationEffectiveDate(effectiveDate);
