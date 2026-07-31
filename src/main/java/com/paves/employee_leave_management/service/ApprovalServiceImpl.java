@@ -112,7 +112,7 @@ public class ApprovalServiceImpl implements ApprovalServiceInterface {
                             throw new IllegalStateException("Approval Error: Employee " + maker.getFullName() + " does not have a manager assigned.");
                         }
                         return Long.parseLong(manager.getEmployeeId());
-                    case "Hr_Manager":
+                    case "hr_administrator":
                         Employee hrAdmin = maker.getHrAdministrator();
                         if (hrAdmin == null) {
                             throw new IllegalStateException("Approval Error: Employee " + maker.getFullName() + " does not have an HR Administrator assigned.");
