@@ -14,6 +14,8 @@ public interface ApprovalServiceInterface {
 
     List<ApprovalRequestResponseDto> getPendingApprovalsForUser(Employee approver);
 
+    List<ApprovalRequestResponseDto> getPendingApprovalsForHr(Employee maker);
+
     void approveRequest(Long requestId, ApproveRequestDto dto, Employee checker);
 
     void rejectRequest(Long requestId, RejectRequestDto dto, Employee checker);

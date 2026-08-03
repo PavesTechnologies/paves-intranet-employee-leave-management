@@ -8,8 +8,11 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # -------- RUN --------
-FROM gcr.io/distroless/java21-debian12
+FROM amazoncorretto:21-alpine
 WORKDIR /app
+
+# Install fonts required by Apache POI
+RUN apk add --no-cache fontconfig ttf-dejavu
 
 COPY --from=builder /build/target/*.jar app.jar
 

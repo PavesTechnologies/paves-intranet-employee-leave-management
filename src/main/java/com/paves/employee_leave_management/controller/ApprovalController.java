@@ -84,9 +84,19 @@ public class ApprovalController {
     @PreAuthorize("hasAnyRole('HR', 'REPORTING_MANAGER','HR_MANAGER', 'SUPER_ADMIN')") // Roles that can be approvers
     public ResponseEntity<ApiResponse<List<ApprovalRequestResponseDto>>> getPendingRequests() {
         Employee checker = getAuthenticatedUser();
-        System.out.println(checker);
+//        System.out.println(checker);
         List<ApprovalRequestResponseDto> pendingRequests = approvalService.getPendingApprovalsForUser(checker);
-        System.out.println(pendingRequests);
+//        System.out.println(pendingRequests);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Pending Requests", pendingRequests));
+    }
+
+    @GetMapping("/pending/maker")
+    @PreAuthorize("hasAnyRole('HR', 'REPORTING_MANAGER','HR_MANAGER', 'SUPER_ADMIN')") // Roles that can be approvers
+    public ResponseEntity<ApiResponse<List<ApprovalRequestResponseDto>>> getPendingRequestsForHr() {
+        Employee maker = getAuthenticatedUser();
+//        System.out.println(checker);
+        List<ApprovalRequestResponseDto> pendingRequests = approvalService.getPendingApprovalsForHr(maker);
+//        System.out.println(pendingRequests);
         return ResponseEntity.ok(new ApiResponse<>(true, "Pending Requests", pendingRequests));
     }
 }

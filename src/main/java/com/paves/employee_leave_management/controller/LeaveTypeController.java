@@ -321,8 +321,12 @@ public class LeaveTypeController {
 
                 GenderBasedLeave toUpdate = genderBasedRepo.findByLeaveNameIgnoreCase(genderBasedLeave.getLeaveName()).orElseThrow(() -> new LeaveTypeException("GenderBasedLeave not found"));
                 if(maker == null){
-                    genderBaseLeaveService.updateGenderBaseLeave(genderBasedLeave, toUpdate.getLeaveTypeId());
-                    return ResponseEntity.ok(new ApiResponse<>(true, "Request to update leave type by " + makerRole + " has been submitted for approval.", null));
+                    ApiResponse<Object> result = genderBaseLeaveService.updateGenderBaseLeave(genderBasedLeave, toUpdate.getLeaveTypeId());
+                    if (!result.isSuccess()) {
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(new ApiResponse<>(false, result.getMessage(), null));
+                    }
+                    return ResponseEntity.ok(new ApiResponse<>(true, result.getMessage(), result.getData()));
                 }
                 MCApprovalRequestDto dto = new MCApprovalRequestDto();
                 dto.setActionType(ActionType.UPDATE_GENDER_BASED_LEAVE);

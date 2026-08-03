@@ -97,6 +97,9 @@ public class LeaveType {
     @Column(name = "job_id")
     private String jobId;
 
+    @Column(name = "threshold_for_docs")
+    private int thresholdForDocs;
+
     @PrePersist
     public void generateId() {
         if ((leaveTypeId == null || leaveTypeId.isBlank()) && leaveName != null) {
