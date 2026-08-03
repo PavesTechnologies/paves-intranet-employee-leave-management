@@ -18,6 +18,7 @@ import com.paves.employee_leave_management.repo.LeaveRequestRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.repo.ScheduledLeaveTypeUpdateRepo;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.transaction.Transactional;
@@ -48,6 +49,7 @@ public class LeaveBlockScheduler {
     private final LeaveTypeServiceInterface leaveTypeService;
     private final GenderBasedRepo genderBasedRepo;
     private final GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
+    private final GenderBasedLeaveServiceInterface genderBaseLeaveService;
 
     @Transactional
     public void processLeaveBlock() {
@@ -120,7 +122,11 @@ public class LeaveBlockScheduler {
         log.info("Applying {} scheduled leave type update(s)...", due.size());
 
         for (ScheduledLeaveTypeUpdate scheduled : due) {
-            leaveTypeService.applyScheduledUpdate(scheduled);
+            if (scheduled.getLeaveCategory() == ScheduledLeaveTypeUpdate.LeaveCategory.GENDER_BASED) {
+                genderBaseLeaveService.applyScheduledGenderBasedUpdate(scheduled);
+            } else {
+                leaveTypeService.applyScheduledUpdate(scheduled);
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.repo;
 
 import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.enums.EmployeeStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,4 +40,6 @@ public interface EmployeeRepo extends JpaRepository<Employee, String> {
     List<Employee> findByHrIsNullAndHrId(@Param("hrId") String hrId);
 
     Optional<Employee> findByEmployeeUuid(String employeeUuid);
+
+    List<Employee> findByEmployeeIdInAndStatus(List<String> employeeIds, EmployeeStatus status);
 }

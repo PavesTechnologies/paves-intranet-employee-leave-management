@@ -1,13 +1,20 @@
 package com.paves.employee_leave_management.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paves.employee_leave_management.dto.ApiResponse;
+import com.paves.employee_leave_management.dto.EmailDTO;
 import com.paves.employee_leave_management.dto.MCApprovalRequestDto;
 import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.ActionType;
+import com.paves.employee_leave_management.enums.EmployeeStatus;
+import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
 import com.paves.employee_leave_management.repo.GenderBasedRepo;
+import com.paves.employee_leave_management.repo.ScheduledLeaveTypeUpdateRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
 import jakarta.transaction.Transactional;
@@ -22,6 +29,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -41,6 +50,15 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
 
     @Autowired
     private GenderBasedLeaveBalanceService genderBasedLeaveBalanceService;
+
+    @Autowired
+    private ScheduledLeaveTypeUpdateRepo scheduledLeaveTypeUpdateRepo;
+
+    @Autowired
+    private AsyncNotificationServiceInterface asyncNotificationService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     @Caching(
@@ -127,12 +145,15 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
     }
 
     @Override
+    @Transactional
     @Caching(
             evict = {
                     @CacheEvict(value = "employeeLeaveBalance", allEntries = true),
                     @CacheEvict(value = "all-leave-types", allEntries = true),
                     @CacheEvict(value = "leaveRequestsByEmployeeAndYear", allEntries = true),
-                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true)
+                    @CacheEvict(value = "pendingLeaveRequestsByEmployeeAndYear", allEntries = true),
+                    @CacheEvict(value = "leaveBalanceByEmployeeAndLeaveType", allEntries = true),
+                    @CacheEvict(value = "employeeLeaveBalanceForDropdown", allEntries = true)
             }
     )
     public ApiResponse<Object> updateGenderBaseLeave(GenderBasedLeave genderBaseLeave, String leaveTypeId) {
@@ -143,10 +164,191 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
                     null);
         }
 
-        GenderBasedLeave saved = genderBasedRepo.save(genderBaseLeave);
+        GenderBasedLeave existingLeave = existing.get();
+        LocalDate effectiveDate = genderBaseLeave.getEffectiveStartDate();
+        boolean isFutureDated = effectiveDate != null && effectiveDate.isAfter(LocalDate.now());
+
+        if (isFutureDated) {
+            Optional<ScheduledLeaveTypeUpdate> existingPending = scheduledLeaveTypeUpdateRepo
+                    .findByLeaveTypeIdAndLeaveCategoryAndStatus(
+                            leaveTypeId,
+                            ScheduledLeaveTypeUpdate.LeaveCategory.GENDER_BASED,
+                            ScheduledLeaveTypeUpdate.Status.PENDING);
+
+            if (existingPending.isPresent()) {
+                ScheduledLeaveTypeUpdate pending = existingPending.get();
+                return new ApiResponse<>(false,
+                        "A scheduled update for this leave type is already pending, effective "
+                                + pending.getEffectiveDate() + " (schedule id: " + pending.getId()
+                                + "). Cancel it before scheduling another update.",
+                        null);
+            }
+
+            String payload;
+            try {
+                payload = objectMapper.writeValueAsString(genderBaseLeave);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Error serializing scheduled gender-based leave update", e);
+            }
+
+            ScheduledLeaveTypeUpdate scheduled = ScheduledLeaveTypeUpdate.builder()
+                    .leaveTypeId(leaveTypeId)
+                    .effectiveDate(effectiveDate)
+                    .payload(payload)
+                    .status(ScheduledLeaveTypeUpdate.Status.PENDING)
+                    .leaveCategory(ScheduledLeaveTypeUpdate.LeaveCategory.GENDER_BASED)
+                    .build();
+            scheduledLeaveTypeUpdateRepo.save(scheduled);
+
+            log.info("Scheduled gender-based leave update {} for leave type {} effective {}",
+                    scheduled.getId(), leaveTypeId, effectiveDate);
+
+            return new ApiResponse<>(true,
+                    "Update scheduled to take effect on " + effectiveDate + ".",
+                    null);
+        }
+
+        GenderBasedLeave saved = applyGenderBasedLeaveUpdate(genderBaseLeave, existingLeave);
+
         return new ApiResponse<>(true,
-                "Leave type updated successfully",
+                "Leave type updated successfully. Eligible employees' balances have been recalculated.",
                 saved);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void applyScheduledGenderBasedUpdate(ScheduledLeaveTypeUpdate scheduled) {
+        try {
+            GenderBasedLeave incoming = objectMapper.readValue(scheduled.getPayload(), GenderBasedLeave.class);
+            GenderBasedLeave existing = genderBasedRepo.findByLeaveTypeId(scheduled.getLeaveTypeId())
+                    .orElseThrow(() -> new LeaveTypeException(
+                            "Leave type not found: " + scheduled.getLeaveTypeId()));
+
+            applyGenderBasedLeaveUpdate(incoming, existing);
+
+            scheduled.setStatus(ScheduledLeaveTypeUpdate.Status.APPLIED);
+            scheduled.setAppliedAt(LocalDateTime.now());
+            scheduledLeaveTypeUpdateRepo.save(scheduled);
+
+            log.info("Applied scheduled gender-based leave update {} for leave type {}",
+                    scheduled.getId(), scheduled.getLeaveTypeId());
+        } catch (Exception e) {
+            log.error("Failed to apply scheduled gender-based leave update {} for leave type {}: {}",
+                    scheduled.getId(), scheduled.getLeaveTypeId(), e.getMessage(), e);
+            scheduled.setStatus(ScheduledLeaveTypeUpdate.Status.FAILED);
+            scheduled.setErrorMessage(e.getMessage());
+            scheduled.setAppliedAt(LocalDateTime.now());
+            scheduledLeaveTypeUpdateRepo.save(scheduled);
+        }
+    }
+
+    // Persists the incoming policy fields. If ANY field changed, notifies every ACTIVE employee
+    // who currently holds a current-year balance row for this leave type — minLeaveDays and
+    // MaxNoOfTimes are read live off this row at request-validation time (LeaveRequestService),
+    // so they need no balance migration, but employees still deserve to know the policy moved.
+    // Only when maxLeaveDays specifically changed do we also recalculate totalEntitledDays /
+    // remainingDays on those same balance rows. Shared by the immediate-update path above and
+    // applyScheduledGenderBasedUpdate() below, so there's exactly one place where "an update
+    // happens" for gender-based leave, mirroring LeaveTypeServiceImple.applyLeaveTypeUpdate.
+    private GenderBasedLeave applyGenderBasedLeaveUpdate(GenderBasedLeave incoming, GenderBasedLeave existing) {
+        boolean policyChanged = hasPolicyChanged(incoming, existing);
+        int previousMaxLeaveDays = existing.getMaxLeaveDays() == null ? 0 : existing.getMaxLeaveDays();
+
+        incoming.setLeaveTypeId(existing.getLeaveTypeId());
+        incoming.setCreatedAt(existing.getCreatedAt());
+        incoming.setUpdatedAt(LocalDateTime.now());
+        GenderBasedLeave saved = genderBasedRepo.save(incoming);
+
+        if (!policyChanged) {
+            return saved;
+        }
+
+        int newMaxLeaveDays = saved.getMaxLeaveDays() == null ? 0 : saved.getMaxLeaveDays();
+        boolean maxLeaveDaysChanged = newMaxLeaveDays != previousMaxLeaveDays;
+
+        // Scoped to the current year and non-deleted rows only, same reasoning as the regular
+        // leave-type recalculation: touching prior years would corrupt closed-year history.
+        int currentYear = LocalDate.now().getYear();
+        List<GenderBasedLeaveBalance> balances = genderBasedLeaveBalancesRepo
+                .findByLeaveTypeIdAndYearNotDeleted(saved.getLeaveTypeId(), currentYear);
+
+        if (balances.isEmpty()) {
+            return saved;
+        }
+
+        // Only ACTIVE employees are touched/notified — resigned/terminated/inactive employees'
+        // rows are left as historical record.
+        List<String> employeeIds = balances.stream()
+                .map(GenderBasedLeaveBalance::getEmployeeId)
+                .toList();
+        Map<String, Employee> activeEmployeesById = employeeRepo
+                .findByEmployeeIdInAndStatus(employeeIds, EmployeeStatus.ACTIVE)
+                .stream()
+                .collect(Collectors.toMap(Employee::getEmployeeId, Function.identity()));
+
+        List<GenderBasedLeaveBalance> activeBalances = balances.stream()
+                .filter(balance -> activeEmployeesById.containsKey(balance.getEmployeeId()))
+                .toList();
+
+        if (activeBalances.isEmpty()) {
+            return saved;
+        }
+
+        if (maxLeaveDaysChanged) {
+            // No clamping on remainingDays — if maxLeaveDays drops below usedDays, remainingDays
+            // simply goes negative, exactly like the regular-leave recalculation; enforcing
+            // allowNegativeBalance is a request-approval-time concern, not this recalculation's job.
+            for (GenderBasedLeaveBalance balance : activeBalances) {
+                int usedDays = balance.getUsedDays() == null ? 0 : balance.getUsedDays();
+                balance.setTotalEntitledDays(newMaxLeaveDays);
+                balance.setRemainingDays(newMaxLeaveDays - usedDays);
+                balance.setUpdatedAt(LocalDateTime.now());
+            }
+            genderBasedLeaveBalancesRepo.saveAll(activeBalances);
+        }
+
+        notifyAffectedEmployees(saved, activeBalances, activeEmployeesById);
+
+        return saved;
+    }
+
+    private boolean hasPolicyChanged(GenderBasedLeave incoming, GenderBasedLeave existing) {
+        return !Objects.equals(incoming.getLeaveName(), existing.getLeaveName())
+                || !Objects.equals(incoming.getMaxLeaveDays(), existing.getMaxLeaveDays())
+                || !Objects.equals(incoming.getMinLeaveDays(), existing.getMinLeaveDays())
+                || !Objects.equals(incoming.getWaitingPeriodDays(), existing.getWaitingPeriodDays())
+                || !Objects.equals(incoming.getRequiresDocumentation(), existing.getRequiresDocumentation())
+                || !Objects.equals(incoming.getAllowNegativeBalance(), existing.getAllowNegativeBalance())
+                || !Objects.equals(incoming.getGender(), existing.getGender())
+                || !Objects.equals(incoming.getAdvanceNotice(), existing.getAdvanceNotice())
+                || !Objects.equals(incoming.getCoolDownPeriod(), existing.getCoolDownPeriod())
+                || !Objects.equals(incoming.getNoticePeriodRestrictions(), existing.getNoticePeriodRestrictions())
+                || !Objects.equals(incoming.getActive(), existing.getActive())
+                || !Objects.equals(incoming.getEffectiveStartDate(), existing.getEffectiveStartDate())
+                || !Objects.equals(incoming.getEffectiveEndDate(), existing.getEffectiveEndDate())
+                || !Objects.equals(incoming.getWeekendsAndHolidaysAllowed(), existing.getWeekendsAndHolidaysAllowed())
+                || !Objects.equals(incoming.getMaxNoOfTimes(), existing.getMaxNoOfTimes())
+                || !Objects.equals(incoming.getDescription(), existing.getDescription());
+    }
+
+    private void notifyAffectedEmployees(GenderBasedLeave leaveType, List<GenderBasedLeaveBalance> affected,
+                                          Map<String, Employee> activeEmployeesById) {
+        for (GenderBasedLeaveBalance balance : affected) {
+            Employee employee = activeEmployeesById.get(balance.getEmployeeId());
+            if (employee == null || employee.getEmail() == null || employee.getEmail().isBlank()) {
+                continue;
+            }
+
+            EmailDTO emailDTO = new EmailDTO(
+                    employee.getEmail(),
+                    "Leave Policy Updated: " + leaveType.getLeaveName(),
+                    "leave-policy-update-notification.html",
+                    true
+            );
+            emailDTO.setTemplateModel(Map.of("leavePolicyName", leaveType.getLeaveName()));
+            asyncNotificationService.queueEmail(emailDTO);
+        }
     }
 
     @Override

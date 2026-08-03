@@ -13,6 +13,8 @@ public interface ApprovalRequestRepository extends JpaRepository<ApprovalRequest
 
     List<ApprovalRequest> findByApproverIdAndStatus(Long approverId, RequestStatus status);
 
+    List<ApprovalRequest> findByMakerIdAndStatus(Long makerId, RequestStatus status);
+
     // Corrected method to traverse the relationship: find by workflowId and the approvalLevel inside the rule object
     Optional<ApprovalRequest> findByWorkflowIdAndRule_ApprovalLevel(String workflowId, int approvalLevel);
 

@@ -26,4 +26,5 @@ public class LeaveRequestValidationDTO {
     private int year;
     private String appliedBy;
     private String leaveName;
+    private int thresholdForDocs;
 }

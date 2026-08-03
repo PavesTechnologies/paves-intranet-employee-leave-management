@@ -43,14 +43,23 @@ public class ScheduledLeaveTypeUpdate {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "leave_category", nullable = false)
+    private LeaveCategory leaveCategory;
+
     @PrePersist
     public void onCreate() {
         if (id == null) id = UUID.randomUUID().toString();
         if (createdAt == null) createdAt = LocalDateTime.now();
         if (status == null) status = Status.PENDING;
+        if (leaveCategory == null) leaveCategory = LeaveCategory.REGULAR;
     }
 
     public enum Status {
         PENDING, APPLIED, FAILED, CANCELLED
+    }
+
+    public enum LeaveCategory {
+        REGULAR, GENDER_BASED
     }
 }

@@ -30,6 +30,13 @@ public interface GenderBasedLeaveBalancesRepo extends JpaRepository<GenderBasedL
             "AND (gb.isDeleted = false OR gb.isDeleted IS NULL)")
     List<GenderBasedLeaveBalance> findAllByYearAndNotDeleted(@Param("year") Integer year);
 
+    @Query("SELECT gb FROM GenderBasedLeaveBalance gb " +
+            "WHERE gb.leaveType.leaveTypeId = :leaveTypeId " +
+            "AND gb.year = :year " +
+            "AND (gb.isDeleted = false OR gb.isDeleted IS NULL)")
+    List<GenderBasedLeaveBalance> findByLeaveTypeIdAndYearNotDeleted(
+            @Param("leaveTypeId") String leaveTypeId, @Param("year") Integer year);
+
 
 
     // HR

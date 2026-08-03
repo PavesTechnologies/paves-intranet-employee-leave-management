@@ -108,7 +108,7 @@ public class EmployeeCdcConsumer {
         employee.setGender(safe(event.getGender().toUpperCase(), "Other"));
         employee.setPhone(event.getContactNumber());
         employee.setJobTitle(safe(event.getDesignationUuid(), "Employee"));
-        employee.setRole(safe(event.getEmploymentStatus(), "EMPLOYEE"));
+        employee.setRole("EMPLOYEE");
         employee.setStatus(resolveStatus(event.getEmploymentStatus()));
         employee.setSalary(BigDecimal.ZERO);
 

@@ -14,6 +14,9 @@ public interface ScheduledLeaveTypeUpdateRepo extends JpaRepository<ScheduledLea
     Optional<ScheduledLeaveTypeUpdate> findByLeaveTypeIdAndStatus(
             String leaveTypeId, ScheduledLeaveTypeUpdate.Status status);
 
+    Optional<ScheduledLeaveTypeUpdate> findByLeaveTypeIdAndLeaveCategoryAndStatus(
+            String leaveTypeId, ScheduledLeaveTypeUpdate.LeaveCategory leaveCategory, ScheduledLeaveTypeUpdate.Status status);
+
     List<ScheduledLeaveTypeUpdate> findByStatusAndEffectiveDateLessThanEqual(
             ScheduledLeaveTypeUpdate.Status status, LocalDate effectiveDate);
 
