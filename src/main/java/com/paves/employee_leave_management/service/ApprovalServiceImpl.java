@@ -137,7 +137,33 @@ public class ApprovalServiceImpl implements ApprovalServiceInterface {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<ApprovalRequestResponseDto> getPendingApprovalsForHr(Employee maker) {
+        List<ApprovalRequest> requests = approvalRequestRepository.findByMakerIdAndStatus(Long.parseLong(maker.getEmployeeId()), RequestStatus.PENDING);
+
+        return requests.stream()
+                .map(this::mapToDtoForMaker)
+                .collect(Collectors.toList());
+    }
+
     private ApprovalRequestResponseDto mapToDto(ApprovalRequest request) {
+        ApprovalRequestResponseDto dto = new ApprovalRequestResponseDto();
+        dto.setId(request.getId());
+        dto.setActionType(request.getRule().getActionType());
+        dto.setStatus(request.getStatus());
+        dto.setPayload(request.getPayload());
+        dto.setCreatedAt(request.getCreatedAt());
+
+        Employee maker = employeeRepo.findById(String.valueOf(request.getMakerId()))
+                .orElse(null);
+        if (maker != null) {
+            dto.setMakerName(maker.getFullName());
+        }
+
+        return dto;
+    }
+
+    private ApprovalRequestResponseDto mapToDtoForMaker(ApprovalRequest request) {
         ApprovalRequestResponseDto dto = new ApprovalRequestResponseDto();
         dto.setId(request.getId());
         dto.setActionType(request.getRule().getActionType());

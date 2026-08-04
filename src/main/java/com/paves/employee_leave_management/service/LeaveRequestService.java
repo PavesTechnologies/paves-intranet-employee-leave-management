@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.dto.*;
 import com.paves.employee_leave_management.entities.*;
+import com.paves.employee_leave_management.enums.EmployeeStatus;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.enums.LeaveTypesEnum;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveBalanceExceptionHandler;
@@ -325,6 +326,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     private void validateMaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result,
                                              Employee employee, GenderBasedLeave leaveType) {
+
+        if(leaveType.getNoticePeriodRestrictions() && employee.getStatus().equals(EmployeeStatus.NOTICE_PERIOD)){
+            result.addError("You are currently in notice period. You cannot apply for maternity leave.");
+            return;
+        }
+
         // ✅ Use gender-based count query
         int pendingCount = leaveRequestRepo.countPendingGenderBasedLeavesByType(employee.getEmployeeId(), "L-ML");
         if (pendingCount > 0) {
@@ -346,7 +353,7 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         if (request.getDaysRequested() >= leaveType.getMinLeaveDays() &&
                 request.getDaysRequested() != genderBasedRepo.findByLeaveTypeId("L-ML").get().getMaxLeaveDays()) {
             result.addError("Standard maternity leave should be exactly " +
-                    genderBasedRepo.findByLeaveTypeId("L-ML").get().getMaxLeaveDays() + " days.");
+                    leaveType.getMaxLeaveDays() + " days.");
         }
 
         LeaveTypeDTO leaveTypeDTO = new LeaveTypeDTO();
@@ -356,6 +363,13 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
 
     private void validatePaternityLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result,
                                              Employee employee, GenderBasedLeave leaveType) {
+
+
+        if(leaveType.getNoticePeriodRestrictions() && employee.getStatus().equals(EmployeeStatus.NOTICE_PERIOD)){
+            result.addError("You are currently in notice period. You cannot apply for paternity leave.");
+            return;
+        }
+
         // ✅ Use gender-based count query
         int pendingCount = leaveRequestRepo.countPendingGenderBasedLeavesByType(employee.getEmployeeId(), "L-PL");
         if (pendingCount > 0 && request.getLeaveId() == null) {
@@ -372,14 +386,14 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
         }
 
         if (request.getDaysRequested() != genderBasedRepo.findByLeaveTypeId("L-PL").get().getMaxLeaveDays()) {
-            result.addError("Paternity leave must be exactly 5 continuous days.");
+            result.addError("Paternity leave must be exactly " + leaveType.getMaxLeaveDays() + " continuous days.");
         }
 
         if (approvedPL.size() < leaveType.getMaxNoOfTimes()) {
             LeaveRequest previousLeave = approvedPL.get(0);
             long gap = ChronoUnit.DAYS.between(previousLeave.getStartDate(), request.getStartDate());
-            if (gap < 365) {
-                result.addError("There must be a minimum 1-year gap between two paternity leaves.");
+            if (gap < leaveType.getCoolDownPeriod()) {
+                result.addError("There must be a minimum " + leaveType.getCoolDownPeriod() + " gap between two paternity leaves.");
             }
         }
 
@@ -389,6 +403,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     private void validateCompensatoryLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
+        if (leaveType.getWaitingPeriodDays() > 0 || employee.getStatus().equals(EmployeeStatus.PROBATION)) {
+            LocalDate eligibilityDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
+            if (LocalDate.now().isBefore(eligibilityDate)) {
+                result.addError("Earned leave requires to complete the probation days of service before eligibility");
+            }
+        }
         if (leaveType.getRequiresDocumentation() && (request.getReason() == null || request.getReason().trim().isEmpty())) {
             result.addError("Compensatory leave requires documentation/proof of overtime work");
         }
@@ -399,8 +419,14 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     private void validateSickLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        if (leaveType.getRequiresDocumentation() && request.getDaysRequested() > 3 && request.getDriveLink() == null) {
-            result.addError("Sick leave for more than 3 days requires medical certificate");
+        if (leaveType.getWaitingPeriodDays() > 0 || employee.getStatus().equals(EmployeeStatus.PROBATION)) {
+            LocalDate eligibilityDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
+            if (LocalDate.now().isBefore(eligibilityDate)) {
+                result.addError("Earned leave requires to complete the probation days of service before eligibility");
+            }
+        }
+        if (leaveType.getRequiresDocumentation() && request.getDaysRequested() > leaveType.getThresholdForDocs() && request.getDriveLink() == null) {
+            result.addError("Sick leave for more than " + leaveType.getThresholdForDocs() + " days requires medical certificate");
         }
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);
         LeaveTypeDTO leaveTypeDTO = new LeaveTypeDTO();
@@ -409,11 +435,10 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
     }
 
     private void validateEarnedLeaveRules(LeaveRequestValidationDTO request, ValidationResultDTO result, Employee employee, LeaveType leaveType) {
-        if (leaveType.getWaitingPeriodDays() > 0) {
+        if (leaveType.getWaitingPeriodDays() > 0 || employee.getStatus().equals(EmployeeStatus.PROBATION)) {
             LocalDate eligibilityDate = employee.getHireDate().plusDays(leaveType.getWaitingPeriodDays());
             if (LocalDate.now().isBefore(eligibilityDate)) {
-                result.addError(String.format("Earned leave requires %d days of service before eligibility",
-                        leaveType.getWaitingPeriodDays()));
+                result.addError("Earned leave requires to complete probation of service before eligibility");
             }
         }
         validatePastDateRestrictions(request.getStartDate(), LocalDate.now(), leaveType, result);

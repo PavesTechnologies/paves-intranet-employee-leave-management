@@ -95,6 +95,12 @@ public class GenderBasedLeave {
     @Column(name = "max_no_of_times")
     private Integer MaxNoOfTimes;
 
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "threshold_for_docs")
+    private int thresholdForDocs;
+
 //    @JsonIgnore
 //    private String updateType;
     
