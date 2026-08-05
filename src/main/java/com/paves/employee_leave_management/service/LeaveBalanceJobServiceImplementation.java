@@ -235,8 +235,10 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
     private static final long STALE_RUNNING_MINUTES = 10;
 
     @Override
+    @Transactional
     public List<LeaveBalanceJob> claimStuckJobs() {
         LocalDateTime staleCutoff = LocalDateTime.now().minusMinutes(STALE_RUNNING_MINUTES);
+        LocalDateTime now = LocalDateTime.now();
 
         List<LeaveBalanceJob> candidates = new java.util.ArrayList<>(
                 jobRepository.findByStatus(LeaveBalanceJob.JobStatus.PENDING));
@@ -246,14 +248,13 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
         List<LeaveBalanceJob> claimed = new java.util.ArrayList<>();
         for (LeaveBalanceJob job : candidates) {
             LeaveBalanceJob.JobStatus previousStatus = job.getStatus();
-            job.setStatus(LeaveBalanceJob.JobStatus.RUNNING);
-            try {
-                // save() checks the @Version column — if another node/thread already claimed
-                // this job in the meantime, this throws and we skip it instead of double-processing.
-                claimed.add(jobRepository.save(job));
-                log.warn("Claiming stuck leave balance job {} (leaveType={}, previousStatus={}) for resume",
+            int updated = jobRepository.compareAndSetStatus(
+                    job.getJobId(), previousStatus, LeaveBalanceJob.JobStatus.RUNNING, now);
+            if (updated == 1) {
+                log.warn("Claimed stuck leave balance job {} (leaveType={}, previousStatus={}) for resume",
                         job.getJobId(), job.getLeaveTypeId(), previousStatus);
-            } catch (org.springframework.dao.OptimisticLockingFailureException e) {
+                claimed.add(job);
+            } else {
                 log.info("Job {} was already claimed elsewhere, skipping", job.getJobId());
             }
         }
