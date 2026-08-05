@@ -50,12 +50,29 @@ public class LeaveBalanceJob {
     @Column(name = "created_by")
     private String createdBy;
 
+    // Bumped on every save via @PrePersist/@PreUpdate — used to detect a RUNNING job whose
+    // worker thread died mid-run (no progress for N minutes) so it can be safely resumed.
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    // Optimistic lock — lets the startup-recovery listener and the periodic resume sweep both
+    // scan for the same stuck job without risking two threads/nodes processing it concurrently.
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @PrePersist
     public void onCreate() {
         if (jobId == null) jobId = UUID.randomUUID().toString();
         if (processedEmployees == null) processedEmployees = 0;
         if (progressPercentage == null) progressPercentage = 0;
         if (startedAt == null) startedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
     public enum JobStatus {

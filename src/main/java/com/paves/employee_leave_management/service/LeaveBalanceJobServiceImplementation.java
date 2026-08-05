@@ -46,25 +46,37 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
     @Async("leaveBalanceExecutor")
     @Override
     public void processLeaveBalancesAsync(String jobId, String leaveTypeId) {
-        LeaveBalanceJob job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
-
-        LeaveType leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
-                .orElseThrow(() -> new RuntimeException("Leave type not found: " + leaveTypeId));
+        // Lookups + the initial RUNNING transition used to sit outside the try/catch below —
+        // if either threw (job/leave-type missing, DB blip, executor rejection), Spring's
+        // default @Async exception handler just logged it and the job was left stuck at
+        // PENDING forever with no terminal status. Wrapping this here guarantees a terminal
+        // status (FAILED) even when the job never gets off the ground.
+        LeaveBalanceJob job;
+        LeaveType leaveType;
+        try {
+            job = jobRepository.findById(jobId)
+                    .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+            leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
+                    .orElseThrow(() -> new RuntimeException("Leave type not found: " + leaveTypeId));
+        } catch (Exception e) {
+            log.error("Job {} could not start: {}", jobId, e.getMessage());
+            markFailed(jobId, e.getMessage());
+            return;
+        }
 
         List<Employee> employees = employeeRepository.findAll();
         int total = employees.size();
         int year = java.time.LocalDate.now().getYear();
 
-        // update job to RUNNING
-        updateJobStatus(jobId, LeaveBalanceJob.JobStatus.RUNNING, total, 0);
-
-        log.info("Starting leave balance job {} for {} employees", jobId, total);
-
         int processed = 0;
         List<String> createdBalanceIds = new java.util.ArrayList<>();
 
         try {
+            // update job to RUNNING
+            updateJobStatus(jobId, LeaveBalanceJob.JobStatus.RUNNING, total, 0);
+
+            log.info("Starting leave balance job {} for {} employees", jobId, total);
+
             for (Employee employee : employees) {
                 // create balance for one employee
                 LeaveBalance balance = createSingleBalance(employee, leaveType);
@@ -170,6 +182,17 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markFailed(String jobId, String errorMessage) {
+        jobRepository.findById(jobId).ifPresent(job -> {
+            job.setStatus(LeaveBalanceJob.JobStatus.FAILED);
+            job.setErrorMessage(errorMessage);
+            job.setCompletedAt(LocalDateTime.now());
+            jobRepository.save(job);
+        });
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void rollback(String jobId, String leaveTypeId,
                          List<String> createdBalanceIds, String errorMessage) {
         log.warn("Rolling back job {} — deleting {} created balances",
@@ -203,6 +226,38 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
     public LeaveBalanceJob getJobStatus(String jobId) {
         return jobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+    }
+
+    // A RUNNING job with no progress update in this long has almost certainly lost its
+    // worker thread (server restart, thread pool rejection, uncaught exception) — safe to
+    // re-run since processLeaveBalancesAsync/createSingleBalance skip employees that already
+    // have a balance for the year.
+    private static final long STALE_RUNNING_MINUTES = 10;
+
+    @Override
+    public List<LeaveBalanceJob> claimStuckJobs() {
+        LocalDateTime staleCutoff = LocalDateTime.now().minusMinutes(STALE_RUNNING_MINUTES);
+
+        List<LeaveBalanceJob> candidates = new java.util.ArrayList<>(
+                jobRepository.findByStatus(LeaveBalanceJob.JobStatus.PENDING));
+        candidates.addAll(
+                jobRepository.findByStatusAndUpdatedAtBefore(LeaveBalanceJob.JobStatus.RUNNING, staleCutoff));
+
+        List<LeaveBalanceJob> claimed = new java.util.ArrayList<>();
+        for (LeaveBalanceJob job : candidates) {
+            LeaveBalanceJob.JobStatus previousStatus = job.getStatus();
+            job.setStatus(LeaveBalanceJob.JobStatus.RUNNING);
+            try {
+                // save() checks the @Version column — if another node/thread already claimed
+                // this job in the meantime, this throws and we skip it instead of double-processing.
+                claimed.add(jobRepository.save(job));
+                log.warn("Claiming stuck leave balance job {} (leaveType={}, previousStatus={}) for resume",
+                        job.getJobId(), job.getLeaveTypeId(), previousStatus);
+            } catch (org.springframework.dao.OptimisticLockingFailureException e) {
+                log.info("Job {} was already claimed elsewhere, skipping", job.getJobId());
+            }
+        }
+        return claimed;
     }
 
     private void evictEmployeeBalanceCaches(String employeeId, int year) {

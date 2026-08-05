@@ -2,6 +2,7 @@ package com.paves.employee_leave_management.crons;
 
 import com.paves.employee_leave_management.dto.EmailDTO;
 import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.LeaveBalanceJob;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import com.paves.employee_leave_management.enums.LeaveStatus;
 import com.paves.employee_leave_management.repo.LeaveRequestRepo;
@@ -9,6 +10,7 @@ import com.paves.employee_leave_management.service.JobLoggingService;
 import com.paves.employee_leave_management.service.LeaveBlockScheduler;
 import com.paves.employee_leave_management.service.RecordLockServiceImple;
 import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceJobServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveCompoffSerivceInterface;
 import jakarta.transaction.Transactional;
@@ -39,6 +41,7 @@ public class CentralizedJobScheduler {
     private final JobLoggingService jobLoggingService;
     private final LeaveRequestRepo leaveRequestRepository;
     private final AsyncNotificationServiceInterface asyncNotificationService;
+    private final LeaveBalanceJobServiceInterface leaveBalanceJobService;
 
     @Scheduled(cron = "0 0 0 * * ?", zone = "Asia/Kolkata")
     @SchedulerLock(name = "Centralized_Daily_Master_Batch",
@@ -90,6 +93,23 @@ public class CentralizedJobScheduler {
     public void runFrequentJobs() {
         runJob("FREQUENT-5-MIN-JOB", () ->
                 recordLockService.cleanupExpiredLocks());
+    }
+
+    // Resumes leave-balance jobs stuck in PENDING/RUNNING (worker thread died: restart, thread
+    // pool rejection, uncaught exception) without needing a server restart — complements the
+    // ApplicationReadyEvent listener that only fires on startup. Runs on its own schedule (not
+    // inside runFrequentJobs) so an optimistic-lock conflict on one job can't roll back the
+    // other job in that method.
+    @Scheduled(fixedRate = 5 * 60 * 1000)
+    @SchedulerLock(name = "Resume_Stuck_Leave_Balance_Jobs",
+            lockAtLeastFor = "PT1M",
+            lockAtMostFor = "PT5M")
+    public void resumeStuckLeaveBalanceJobs() {
+        runJob("RESUME-STUCK-LEAVE-BALANCE-JOBS", () -> {
+            List<LeaveBalanceJob> resumed = leaveBalanceJobService.claimStuckJobs();
+            resumed.forEach(job ->
+                    leaveBalanceJobService.processLeaveBalancesAsync(job.getJobId(), job.getLeaveTypeId()));
+        });
     }
 
     private void sendPendingApprovalReminders() {
