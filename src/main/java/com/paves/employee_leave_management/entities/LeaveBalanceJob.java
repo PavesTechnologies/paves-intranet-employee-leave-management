@@ -55,12 +55,6 @@ public class LeaveBalanceJob {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Optimistic lock — lets the startup-recovery listener and the periodic resume sweep both
-    // scan for the same stuck job without risking two threads/nodes processing it concurrently.
-    @Version
-    @Column(name = "version")
-    private Long version;
-
     @PrePersist
     public void onCreate() {
         if (jobId == null) jobId = UUID.randomUUID().toString();
