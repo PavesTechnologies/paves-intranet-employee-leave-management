@@ -101,7 +101,7 @@ public class EmployeeCdcConsumer {
         employee.setEmployeeUuid(event.getEmployeeUuid());
         employee.setEmployeeId(event.getEmployeeId() != null ?
                 event.getEmployeeId() : event.getEmployeeUuid());
-        employee.setFirstName(safe(event.getFirstName(), "Unknown"));
+        employee.setFirstName(safe(event.getFirstName(), "Unknown")+" "+safe(event.getMiddleName(), ""));
         employee.setLastName(safe(event.getLastName(), "Unknown"));
         employee.setEmail(safe(event.getWorkEmail(),
                 event.getEmployeeUuid() + "@placeholder.com"));
