@@ -9,14 +9,17 @@ import com.paves.employee_leave_management.entities.*;
 import com.paves.employee_leave_management.enums.ActionType;
 import com.paves.employee_leave_management.enums.EmployeeStatus;
 import com.paves.employee_leave_management.globalExceptionHandler.LeaveTypeException;
+import com.paves.employee_leave_management.entities.LeaveBalanceJob;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
 import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
 import com.paves.employee_leave_management.repo.GenderBasedRepo;
+import com.paves.employee_leave_management.repo.LeaveBalanceJobRepository;
 import com.paves.employee_leave_management.repo.ScheduledLeaveTypeUpdateRepo;
 import com.paves.employee_leave_management.serviceInterface.ApprovalServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.AsyncNotificationServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
+import com.paves.employee_leave_management.serviceInterface.LeaveBalanceJobServiceInterface;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,10 +52,13 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
     private EmailServiceInterface emailService;
 
     @Autowired
-    private GenderBasedLeaveBalanceService genderBasedLeaveBalanceService;
+    private ScheduledLeaveTypeUpdateRepo scheduledLeaveTypeUpdateRepo;
 
     @Autowired
-    private ScheduledLeaveTypeUpdateRepo scheduledLeaveTypeUpdateRepo;
+    private LeaveBalanceJobRepository leaveBalanceJobRepository;
+
+    @Autowired
+    private LeaveBalanceJobServiceInterface leaveBalanceJobService;
 
     @Autowired
     private AsyncNotificationServiceInterface asyncNotificationService;
@@ -81,14 +87,18 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
                     null);
         }
 
-        genderBaseLeave.setActive(Boolean.TRUE);
+        // BUG FIX: active previously was hardcoded true even when future-dated, so a scheduled
+        // gender-based leave type looked live immediately (new hires got a balance for it before
+        // its effective date) while existing employees never got backfilled — nothing ever
+        // revisited it since it never looked "pending". Mirrors the regular LeaveType path.
+        boolean shouldActivateNow = !genderBaseLeave.getEffectiveStartDate().isAfter(LocalDate.now());
+        genderBaseLeave.setActive(shouldActivateNow);
         genderBaseLeave.setCreatedAt(LocalDateTime.now());
         genderBaseLeave.setEffectiveEndDate(null);
         GenderBasedLeave saved = genderBasedRepo.save(genderBaseLeave);
 
-        boolean shouldActivateNow = !saved.getEffectiveStartDate().isAfter(LocalDate.now());
         if (shouldActivateNow) {
-            genderBasedLeaveBalanceService.createLeaveBalanceForAllEmployees(saved);
+            startGenderBasedLeaveBalanceJob(saved, "SYSTEM");
         }
 
         return new ApiResponse<>(
@@ -98,6 +108,21 @@ public class GenderBaseLeaveService implements GenderBasedLeaveServiceInterface 
                         : "Leave type will become active on " + saved.getEffectiveStartDate(),
                 saved
         );
+    }
+
+    @Override
+    public String startGenderBasedLeaveBalanceJob(GenderBasedLeave leaveType, String createdBy) {
+        LeaveBalanceJob job = LeaveBalanceJob.builder()
+                .leaveTypeId(leaveType.getLeaveTypeId())
+                .leaveTypeName(leaveType.getLeaveName())
+                .status(LeaveBalanceJob.JobStatus.PENDING)
+                .leaveCategory(LeaveBalanceJob.LeaveCategory.GENDER_BASED)
+                .createdBy(createdBy)
+                .build();
+
+        LeaveBalanceJob saved = leaveBalanceJobRepository.save(job);
+        leaveBalanceJobService.processLeaveBalancesAsync(saved.getJobId(), leaveType.getLeaveTypeId());
+        return saved.getJobId();
     }
 
     @Transactional

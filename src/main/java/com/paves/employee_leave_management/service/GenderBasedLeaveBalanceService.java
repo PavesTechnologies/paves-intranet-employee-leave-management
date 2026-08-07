@@ -60,15 +60,20 @@ public class GenderBasedLeaveBalanceService implements GenderBasedLeaveBalanceSe
 
         List<GenderBasedLeaveBalance> newBalances = employees.stream()
                 .filter(emp -> {
+                    // BUG FIX: null check on gender before calling equalsIgnoreCase — previously
+                    // threw NullPointerException for employees with no gender set, aborting the
+                    // whole batch after the leave type was already saved as active.
+                    String gender = emp.getGender() != null ? emp.getGender() : "";
+
                     // Skip maternity for males
                     if (leaveType.getLeaveName().equalsIgnoreCase("MATERNITY_LEAVE")
-                            && emp.getGender().equalsIgnoreCase("MALE")) {
+                            && gender.equalsIgnoreCase("MALE")) {
                         return false;
                     }
 
                     // Skip paternity for females
                     if (leaveType.getLeaveName().equalsIgnoreCase("PATERNITY_LEAVE")
-                            && emp.getGender().equalsIgnoreCase("FEMALE")) {
+                            && gender.equalsIgnoreCase("FEMALE")) {
                         return false;
                     }
 

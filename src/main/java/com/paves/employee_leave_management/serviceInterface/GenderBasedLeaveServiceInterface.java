@@ -19,6 +19,11 @@ public interface GenderBasedLeaveServiceInterface {
     List<GenderBasedLeave> getAllLeaveTypes();
     Optional<GenderBasedLeave> getLeaveType(String leaveType);
 
+    // Starts a tracked/resumable LeaveBalanceJob (leaveCategory=GENDER_BASED) instead of the old
+    // untracked, synchronous createLeaveBalanceForAllEmployees call — shared by immediate
+    // creation and LeaveBlockScheduler.activatePendingGenderBasedLeaveTypes().
+    String startGenderBasedLeaveBalanceJob(GenderBasedLeave leaveType, String createdBy);
+
     @Transactional
     public ResponseEntity<ApiResponse<Object>> createGenderBasedDirectly(
             GenderBasedLeave genderBaseLeave, Employee maker);
