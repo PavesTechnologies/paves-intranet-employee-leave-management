@@ -1,10 +1,14 @@
 package com.paves.employee_leave_management.service;
 
 import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.GenderBasedLeave;
+import com.paves.employee_leave_management.entities.GenderBasedLeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceJob;
 import com.paves.employee_leave_management.entities.LeaveType;
 import com.paves.employee_leave_management.repo.EmployeeRepo;
+import com.paves.employee_leave_management.repo.GenderBasedLeaveBalancesRepo;
+import com.paves.employee_leave_management.repo.GenderBasedRepo;
 import com.paves.employee_leave_management.repo.LeaveBalanceJobRepository;
 import com.paves.employee_leave_management.repo.LeaveBalanceRepo;
 import com.paves.employee_leave_management.repo.LeaveTypeRepo;
@@ -29,16 +33,21 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
     private final LeaveTypeRepo leaveTypeRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final LeaveBalanceServiceInterface leaveBalanceService;
+    private final GenderBasedRepo genderBasedRepo;
+    private final GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo;
     private final CacheManager cacheManager;
 
     public LeaveBalanceJobServiceImplementation(LeaveBalanceJobRepository jobRepository, EmployeeRepo employeeRepository,
                                                 LeaveTypeRepo leaveTypeRepo, LeaveBalanceRepo leaveBalanceRepo, LeaveBalanceServiceInterface leaveBalanceService,
+                                                GenderBasedRepo genderBasedRepo, GenderBasedLeaveBalancesRepo genderBasedLeaveBalancesRepo,
                                                 CacheManager cacheManager){
         this.jobRepository = jobRepository;
         this.employeeRepository = employeeRepository;
         this.leaveTypeRepo = leaveTypeRepo;
         this.leaveBalanceRepo = leaveBalanceRepo;
         this.leaveBalanceService = leaveBalanceService;
+        this.genderBasedRepo = genderBasedRepo;
+        this.genderBasedLeaveBalancesRepo = genderBasedLeaveBalancesRepo;
         this.cacheManager = cacheManager;
     }
 
@@ -52,12 +61,18 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
         // PENDING forever with no terminal status. Wrapping this here guarantees a terminal
         // status (FAILED) even when the job never gets off the ground.
         LeaveBalanceJob job;
-        LeaveType leaveType;
+        LeaveType leaveType = null;
+        GenderBasedLeave genderBasedLeaveType = null;
         try {
             job = jobRepository.findById(jobId)
                     .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
-            leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
-                    .orElseThrow(() -> new RuntimeException("Leave type not found: " + leaveTypeId));
+            if (job.getLeaveCategory() == LeaveBalanceJob.LeaveCategory.GENDER_BASED) {
+                genderBasedLeaveType = genderBasedRepo.findByLeaveTypeId(leaveTypeId)
+                        .orElseThrow(() -> new RuntimeException("Gender-based leave type not found: " + leaveTypeId));
+            } else {
+                leaveType = leaveTypeRepo.findByLeaveTypeId(leaveTypeId)
+                        .orElseThrow(() -> new RuntimeException("Leave type not found: " + leaveTypeId));
+            }
         } catch (Exception e) {
             log.error("Job {} could not start: {}", jobId, e.getMessage());
             markFailed(jobId, e.getMessage());
@@ -79,9 +94,16 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
 
             for (Employee employee : employees) {
                 // create balance for one employee
-                LeaveBalance balance = createSingleBalance(employee, leaveType);
-                if (balance != null) {
-                    createdBalanceIds.add(balance.getBalanceId());
+                String createdBalanceId;
+                if (genderBasedLeaveType != null) {
+                    GenderBasedLeaveBalance balance = createSingleGenderBasedBalance(employee, genderBasedLeaveType);
+                    createdBalanceId = balance != null ? balance.getBalanceId() : null;
+                } else {
+                    LeaveBalance balance = createSingleBalance(employee, leaveType);
+                    createdBalanceId = balance != null ? balance.getBalanceId() : null;
+                }
+                if (createdBalanceId != null) {
+                    createdBalanceIds.add(createdBalanceId);
                 }
 
                 // Evict this employee's cached balance/dropdown entries immediately, rather than
@@ -149,6 +171,46 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
         }
     }
 
+    // creates a gender-based balance for one employee in its own transaction — mirrors
+    // createSingleBalance above but against GenderBasedLeave/GenderBasedLeaveBalance
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public GenderBasedLeaveBalance createSingleGenderBasedBalance(Employee employee, GenderBasedLeave leaveType) {
+        try {
+            int year = java.time.LocalDate.now().getYear();
+
+            // BUG FIX: null-safe gender check — a missing gender previously threw an NPE here
+            // and crashed the whole batch (see GenderBasedLeaveBalanceService for the original).
+            String gender = employee.getGender() != null ? employee.getGender() : "";
+            String leaveName = leaveType.getLeaveName();
+            if (leaveName.equalsIgnoreCase("MATERNITY_LEAVE") && gender.equalsIgnoreCase("MALE")) {
+                return null;
+            }
+            if (leaveName.equalsIgnoreCase("PATERNITY_LEAVE") && gender.equalsIgnoreCase("FEMALE")) {
+                return null;
+            }
+
+            boolean exists = genderBasedLeaveBalancesRepo
+                    .findByEmployeeIdAndLeaveType_LeaveTypeIdAndYear(
+                            employee.getEmployeeId(), leaveType.getLeaveTypeId(), year)
+                    .isPresent();
+            if (exists) return null;
+
+            GenderBasedLeaveBalance balance = new GenderBasedLeaveBalance();
+            balance.setEmployeeId(employee.getEmployeeId());
+            balance.setLeaveType(leaveType);
+            balance.setTotalEntitledDays(leaveType.getMaxLeaveDays() != null ? leaveType.getMaxLeaveDays() : 0);
+            balance.setUsedDays(0);
+            balance.setYear(year);
+            balance.setTimesUsed(0);
+            return genderBasedLeaveBalancesRepo.save(balance);
+        } catch (Exception e) {
+            log.warn("Failed to create gender-based balance for employee {}: {}",
+                    employee.getEmployeeId(), e.getMessage());
+            throw e;
+        }
+    }
+
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateJobStatus(String jobId, LeaveBalanceJob.JobStatus status,
@@ -195,26 +257,39 @@ public class LeaveBalanceJobServiceImplementation implements LeaveBalanceJobServ
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void rollback(String jobId, String leaveTypeId,
                          List<String> createdBalanceIds, String errorMessage) {
+        LeaveBalanceJob job = jobRepository.findById(jobId).orElseThrow();
+        boolean isGenderBased = job.getLeaveCategory() == LeaveBalanceJob.LeaveCategory.GENDER_BASED;
+
         log.warn("Rolling back job {} — deleting {} created balances",
                 jobId, createdBalanceIds.size());
 
         // delete all balances created by this job
         createdBalanceIds.forEach(balanceId -> {
             try {
-                leaveBalanceRepo.deleteById(balanceId);
+                if (isGenderBased) {
+                    genderBasedLeaveBalancesRepo.deleteById(balanceId);
+                } else {
+                    leaveBalanceRepo.deleteById(balanceId);
+                }
             } catch (Exception e) {
                 log.error("Failed to rollback balance {}: {}", balanceId, e.getMessage());
             }
         });
 
         // deactivate the leave type since balances couldn't be created
-        leaveTypeRepo.findByLeaveTypeId(leaveTypeId).ifPresent(lt -> {
-            lt.setActive(false);
-            leaveTypeRepo.save(lt);
-        });
+        if (isGenderBased) {
+            genderBasedRepo.findByLeaveTypeId(leaveTypeId).ifPresent(lt -> {
+                lt.setActive(false);
+                genderBasedRepo.save(lt);
+            });
+        } else {
+            leaveTypeRepo.findByLeaveTypeId(leaveTypeId).ifPresent(lt -> {
+                lt.setActive(false);
+                leaveTypeRepo.save(lt);
+            });
+        }
 
         // mark job as rolled back
-        LeaveBalanceJob job = jobRepository.findById(jobId).orElseThrow();
         job.setStatus(LeaveBalanceJob.JobStatus.ROLLED_BACK);
         job.setErrorMessage(errorMessage);
         job.setCompletedAt(LocalDateTime.now());

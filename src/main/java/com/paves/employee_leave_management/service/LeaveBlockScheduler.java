@@ -19,7 +19,6 @@ import com.paves.employee_leave_management.repo.LeaveTypeRepo;
 import com.paves.employee_leave_management.repo.ScheduledLeaveTypeUpdateRepo;
 import com.paves.employee_leave_management.serviceInterface.EmailServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.GenderBasedLeaveServiceInterface;
-import com.paves.employee_leave_management.serviceInterface.LeaveBalanceServiceInterface;
 import com.paves.employee_leave_management.serviceInterface.LeaveTypeServiceInterface;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +40,6 @@ public class LeaveBlockScheduler {
     private final LeaveBlockRepo leaveBlockRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final LeaveTypeRepo leaveTypeRepo;
-    private final LeaveBalanceServiceInterface leaveBalanceServiceInterface;
     private final LeaveRequestRepo leaveRequestRepo;
     private final EmailServiceInterface emailService;
     private final EmployeeRepo employeeRepo;
@@ -104,11 +102,45 @@ public class LeaveBlockScheduler {
 
         for (LeaveType leaveType : pendingTypes) {
             leaveType.setActive(true);
-            leaveTypeRepo.save(leaveType);
-            leaveBalanceServiceInterface.createLeaveBalanceForAllEmployees(leaveType);
-            log.info("Activated leave type: {} (effective from {})",
+            LeaveType saved = leaveTypeRepo.save(leaveType);
+
+            // Tracked/resumable LeaveBalanceJob instead of the old fire-and-forget async call —
+            // once active=true is committed, findPendingEffectiveLeaveTypes() never returns this
+            // leave type again, so if balance creation failed silently here there was previously
+            // no way back to a correct state. See LeaveTypeServiceImple.startLeaveBalanceJob().
+            String jobId = leaveTypeService.startLeaveBalanceJob(saved, "SYSTEM");
+            saved.setJobId(jobId);
+            leaveTypeRepo.save(saved);
+
+            log.info("Activated leave type: {} (effective from {}), balance job {}",
                     leaveType.getLeaveName(),
-                    leaveType.getEffectiveStartDate());
+                    leaveType.getEffectiveStartDate(),
+                    jobId);
+        }
+    }
+
+    // Companion to activatePendingLeaveTypes() above, for GenderBasedLeave — didn't exist before:
+    // createGenderBaseLeave() used to hardcode active=true even for future-dated leave types, so
+    // there was never a "pending" state for this job to pick up. Now that active correctly stays
+    // false until the effective date, this is required or future-dated gender-based leave types
+    // would activate never instead of (incorrectly) immediately.
+    public void activatePendingGenderBasedLeaveTypes() {
+        List<GenderBasedLeave> pendingTypes = genderBasedRepo.findPendingEffectiveGenderBasedLeaveTypes();
+
+        if (pendingTypes.isEmpty()) return;
+
+        log.info("Activating {} gender-based leave types effective today...", pendingTypes.size());
+
+        for (GenderBasedLeave leaveType : pendingTypes) {
+            leaveType.setActive(true);
+            GenderBasedLeave saved = genderBasedRepo.save(leaveType);
+
+            String jobId = genderBaseLeaveService.startGenderBasedLeaveBalanceJob(saved, "SYSTEM");
+
+            log.info("Activated gender-based leave type: {} (effective from {}), balance job {}",
+                    leaveType.getLeaveName(),
+                    leaveType.getEffectiveStartDate(),
+                    jobId);
         }
     }
 

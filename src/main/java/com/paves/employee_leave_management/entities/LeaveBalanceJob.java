@@ -55,12 +55,21 @@ public class LeaveBalanceJob {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // Which entity/table leaveTypeId resolves against — LeaveType+LeaveBalance for REGULAR,
+    // GenderBasedLeave+GenderBasedLeaveBalance for GENDER_BASED. Mirrors
+    // ScheduledLeaveTypeUpdate.LeaveCategory, kept as its own enum since the two entities
+    // aren't otherwise coupled.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "leave_category")
+    private LeaveCategory leaveCategory;
+
     @PrePersist
     public void onCreate() {
         if (jobId == null) jobId = UUID.randomUUID().toString();
         if (processedEmployees == null) processedEmployees = 0;
         if (progressPercentage == null) progressPercentage = 0;
         if (startedAt == null) startedAt = LocalDateTime.now();
+        if (leaveCategory == null) leaveCategory = LeaveCategory.REGULAR;
         updatedAt = LocalDateTime.now();
     }
 
@@ -71,5 +80,9 @@ public class LeaveBalanceJob {
 
     public enum JobStatus {
         PENDING, RUNNING, COMPLETED, FAILED, ROLLED_BACK
+    }
+
+    public enum LeaveCategory {
+        REGULAR, GENDER_BASED
     }
 }

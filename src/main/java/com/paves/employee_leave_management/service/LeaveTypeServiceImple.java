@@ -36,7 +36,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
     private final LeaveTypeRepo leaveTypeRepo;
     private final LeaveBalanceRepo leaveBalanceRepo;
     private final GenderBasedRepo genderBasedRepo;
-    private final LeaveBalanceServiceInterface leaveBalanceService;
     private final GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface;
     private final LeaveRequestRepo leaveRequestRepo;
     private final LeaveCompoffRepo leaveCompoffRepo;
@@ -55,7 +54,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             LeaveTypeRepo leaveTypeRepo,
             LeaveBalanceRepo leaveBalanceRepo,
             GenderBasedRepo genderBasedRepo,
-            LeaveBalanceServiceInterface leaveBalanceService,
             GenderBasedLeaveServiceInterface genderBasedLeaveServiceInterface,
             LeaveRequestRepo leaveRequestRepo,
             LeaveCompoffRepo leaveCompoffRepo,
@@ -70,7 +68,6 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
         this.leaveTypeRepo = leaveTypeRepo;
         this.leaveBalanceRepo = leaveBalanceRepo;
         this.genderBasedRepo = genderBasedRepo;
-        this.leaveBalanceService = leaveBalanceService;
         this.genderBasedLeaveServiceInterface = genderBasedLeaveServiceInterface;
         this.leaveRequestRepo = leaveRequestRepo;
         this.leaveCompoffRepo = leaveCompoffRepo;
@@ -144,7 +141,9 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 LeaveType reactivated = leaveTypeRepo.save(dbLeaveType);
 
                 if (shouldActiveNow) {
-                    leaveBalanceService.createLeaveBalanceForAllEmployees(reactivated);
+                    String jobId = startLeaveBalanceJob(reactivated, "SYSTEM");
+                    reactivated.setJobId(jobId);
+                    reactivated = leaveTypeRepo.save(reactivated);
                 }
                 return new ApiResponse<>(true,
                         dbLeaveType.getActive()
@@ -194,7 +193,8 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
                 savedLeaveType);
     }
 
-    private String startLeaveBalanceJob(LeaveType leaveType, String createdBy) {
+    @Override
+    public String startLeaveBalanceJob(LeaveType leaveType, String createdBy) {
         LeaveBalanceJob job = LeaveBalanceJob.builder()
                 .leaveTypeId(leaveType.getLeaveTypeId())
                 .leaveTypeName(leaveType.getLeaveName())
