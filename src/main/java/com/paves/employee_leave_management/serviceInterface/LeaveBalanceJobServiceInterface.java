@@ -1,6 +1,8 @@
 package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.entities.Employee;
+import com.paves.employee_leave_management.entities.GenderBasedLeave;
+import com.paves.employee_leave_management.entities.GenderBasedLeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalance;
 import com.paves.employee_leave_management.entities.LeaveBalanceJob;
 import com.paves.employee_leave_management.entities.LeaveType;
@@ -10,6 +12,7 @@ import java.util.List;
 public interface LeaveBalanceJobServiceInterface {
     void processLeaveBalancesAsync(String jobId, String leaveTypeId);
     LeaveBalance createSingleBalance(Employee employee, LeaveType leaveType);
+    GenderBasedLeaveBalance createSingleGenderBasedBalance(Employee employee, GenderBasedLeave leaveType);
     void updateJobStatus(String jobId, LeaveBalanceJob.JobStatus status,
                                 int total, int processed);
     void updateProgress(String jobId, int processed, int percentage);

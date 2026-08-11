@@ -17,6 +17,9 @@ public class EmployeeCdcEvent {
     @JsonProperty("first_name")
     private String firstName;
 
+    @JsonProperty("middle_name")
+    private String middleName;
+
     @JsonProperty("last_name")
     private String lastName;
 

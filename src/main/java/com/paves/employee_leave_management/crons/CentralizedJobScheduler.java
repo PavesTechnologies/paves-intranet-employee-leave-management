@@ -55,6 +55,9 @@ public class CentralizedJobScheduler {
         runJob("ACTIVATE-PENDING-LEAVE-TYPES", () ->
                 leaveBlockScheduler.activatePendingLeaveTypes());
 
+        runJob("ACTIVATE-PENDING-GENDER-BASED-LEAVE-TYPES", () ->
+                leaveBlockScheduler.activatePendingGenderBasedLeaveTypes());
+
         runJob("APPLY-SCHEDULED-LEAVE-TYPE-UPDATES", () ->
                 leaveBlockScheduler.applyScheduledLeaveTypeUpdates());
 

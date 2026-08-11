@@ -33,6 +33,9 @@ public class SmtpEmailServiceImpl implements EmailServiceInterface {
     @Value("${email.from.name:Leave Management System}")
     private String fromName;
 
+    @Value("${app.base.url}")
+    private String appBaseUrl;
+
     @Override
     public boolean sendEmail(String to, String subject, String body) {
         try {
@@ -111,7 +114,10 @@ public class SmtpEmailServiceImpl implements EmailServiceInterface {
     @Override
     public boolean sendEmailFromTemplate(String to, String subject, String templateName, Map<String, Object> templateModel) {
         Context context = new Context();
-        context.setVariables(templateModel);
+        if (templateModel != null) {
+            context.setVariables(templateModel);
+        }
+        context.setVariable("appBaseUrl", appBaseUrl);
         String htmlBody = templateEngine.process(templateName, context);
         return sendEmail(to, subject, htmlBody);
     }
@@ -274,7 +280,10 @@ public class SmtpEmailServiceImpl implements EmailServiceInterface {
     @Override
     public boolean sendBulkEmailFromTemplate(String[] recipients, String subject, String templateName, Map<String, Object> templateModel) {
         Context context = new Context();
-        context.setVariables(templateModel);
+        if (templateModel != null) {
+            context.setVariables(templateModel);
+        }
+        context.setVariable("appBaseUrl", appBaseUrl);
         String htmlBody = templateEngine.process(templateName, context);
         return sendBulkEmail(recipients, subject, htmlBody);
     }

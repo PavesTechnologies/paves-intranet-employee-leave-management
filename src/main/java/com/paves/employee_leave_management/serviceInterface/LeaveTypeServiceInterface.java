@@ -42,6 +42,12 @@ public interface LeaveTypeServiceInterface {
     // picked up later by LeaveBlockScheduler.activatePendingLeaveTypes().
     List<LeaveType> getPendingActivationLeaveTypes();
 
+    // Starts the same tracked/resumable LeaveBalanceJob used when a leave type is created with
+    // an immediate effective date — shared by that path, leave type reactivation, and
+    // LeaveBlockScheduler.activatePendingLeaveTypes(), so every "give everyone a balance for
+    // this leave type" trigger gets job tracking + automatic resume on failure, not just one of them.
+    String startLeaveBalanceJob(LeaveType leaveType, String createdBy);
+
     ApiResponse<Object> cancelPendingActivation(String leaveTypeId);
 
     ResponseEntity<LeaveType> getLeaveTypeById(String leaveTypeId);
