@@ -929,7 +929,12 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                     key = "#result.employee.employeeId + '-' + #approvalRequest.year"
             )
     })
-    public LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest) {
+    public LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest, String employeeId) {
+
+
+        if(!employeeId.equals(approvalRequest.getManagerId())){
+            throw new RuntimeException("Unauthorized access");
+        }
 
         LeaveRequest request = leaveRequestRepo
                 .findByLeaveIdAndEmployee_Manager_EmployeeId(

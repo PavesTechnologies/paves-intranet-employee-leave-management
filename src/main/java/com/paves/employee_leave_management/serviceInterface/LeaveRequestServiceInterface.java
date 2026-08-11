@@ -1,6 +1,7 @@
 package com.paves.employee_leave_management.serviceInterface;
 
 import com.paves.employee_leave_management.dto.*;
+import com.paves.employee_leave_management.entities.Employee;
 import com.paves.employee_leave_management.entities.LeaveRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ public interface LeaveRequestServiceInterface {
 
     List<LeaveRequest> getLeaveHistoryForManager(ManagerQueryDTO queryDTO);
 
-    LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest);
+    LeaveRequest approveRequest(ApprovalRequestDTO approvalRequest, String employeeId);
 
     LeaveRequest rejectRequest(RejectionRequestDTO rejectionRequest);
 
