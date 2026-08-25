@@ -1016,6 +1016,34 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
             approvedRequests.add(request);
 
             evictLeaveCaches(request);
+
+            // Email logic — mirrors approveRequest() above; batch has no per-request manager
+            // comment field, so that detail line is simply omitted here.
+            if (request.getEmployee().getEmail() != null) {
+                Map<String, Object> templateModel = new LinkedHashMap<>();
+                templateModel.put("title", "Leave Application Approved");
+                templateModel.put("recipientName", request.getEmployee().getFullName());
+                templateModel.put("messageBody",
+                        "Your leave application for <strong>"
+                                + resolveLeaveLabel(request.getResolvedLeaveName())
+                                + "</strong> has been approved.");
+                templateModel.put("detailsTitle", "Approval Details");
+
+                Map<String, String> details = new LinkedHashMap<>();
+                details.put("Leave Type", resolveLeaveLabel(request.getResolvedLeaveTypeId()));
+                details.put("Start Date", request.getStartDate().toString());
+                details.put("End Date", request.getEndDate().toString());
+                templateModel.put("details", details);
+
+                EmailDTO emailDTO = new EmailDTO(
+                        request.getEmployee().getEmail(),
+                        "Leave Application Approved",
+                        "generic-notification.html",
+                        true
+                );
+                emailDTO.setTemplateModel(templateModel);
+                asyncNotificationService.queueEmail(emailDTO);
+            }
         }
         return leaveRequestRepo.saveAll(approvedRequests);
     }
@@ -1054,6 +1082,28 @@ public class LeaveRequestService implements LeaveRequestServiceInterface {
                         request.getDaysRequested(),
                         request.getRequestDate().getYear()
                 );
+            }
+
+            // Email logic — mirrors rejectRequest() above; batch has no per-request manager
+            // comment field, so the "Rejection Reason" detail line is simply omitted here.
+            if (request.getEmployee().getEmail() != null) {
+                Map<String, Object> templateModel = new LinkedHashMap<>();
+                templateModel.put("title", "Leave Application Rejected");
+                templateModel.put("recipientName", request.getEmployee().getFullName());
+                templateModel.put("messageBody", "Your leave application for <strong>"
+                        + resolveLeaveLabel(request.getResolvedLeaveName()) + "</strong> has been rejected.");
+                templateModel.put("detailsTitle", "Rejection Details");
+
+                Map<String, String> details = new LinkedHashMap<>();
+                details.put("Leave Type", resolveLeaveLabel(request.getResolvedLeaveName()));
+                details.put("Start Date", request.getStartDate().toString());
+                details.put("End Date", request.getEndDate().toString());
+                templateModel.put("details", details);
+
+                EmailDTO emailDTO = new EmailDTO(request.getEmployee().getEmail(),
+                        "Leave Application Rejected", "generic-notification.html", true);
+                emailDTO.setTemplateModel(templateModel);
+                asyncNotificationService.queueEmail(emailDTO);
             }
         }
         return leaveRequestRepo.saveAll(rejectedRequests);
