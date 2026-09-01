@@ -70,8 +70,11 @@ public class CentralizedJobScheduler {
         runJob("EXPIRE-UNUSED-COMPOFFS", () ->
                 leaveCompoffService.expireUnusedCompoffs());
 
+        // triggerMonthlyLeaveAccrual(), not processAccrualForLeaveType() — the latter backs the
+        // /carryforward endpoint and is intentionally left untouched; this is the fixed,
+        // catch-up-aware entry point (see LeaveBalanceServiceImple for why).
         runJob("ACCRUAL-JOB", () ->
-                leaveBalanceService.processAccrualForLeaveType());
+                leaveBalanceService.triggerMonthlyLeaveAccrual());
 
         runJob("DAILY-LEAVE-DIGEST", () ->
                 leaveBlockScheduler.sendDailyLeaveDigest());
