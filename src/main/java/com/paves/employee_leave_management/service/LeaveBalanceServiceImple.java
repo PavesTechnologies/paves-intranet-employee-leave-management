@@ -40,6 +40,7 @@ import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -838,49 +839,176 @@ public class LeaveBalanceServiceImple implements LeaveBalanceServiceInterface {
         return leaveBalanceForDashboard;
     }
 
+    // Real, self-contained accrual entry point — replaces processAccrualForLeaveType() as the
+    // target for the nightly cron and the new startup/manual triggers. processAccrualForLeaveType()
+    // itself is left completely untouched since /carryforward calls it directly and must not
+    // change behavior. This method duplicates the Jan-1 new-year-bootstrap block from that method
+    // rather than extracting a shared helper, for the same reason — zero risk of altering
+    // /carryforward's behavior, at the cost of ~30 duplicated lines.
+    //
+    // The only real behavior change vs. processAccrualForLeaveType() is the MONTHLY case: instead
+    // of a flat "+1 period, only if today is the 1st" (which silently loses accrual forever if the
+    // cron misses that exact day), it credits however many monthly cycles have actually elapsed
+    // since each balance's lastAccrualDate. That makes it safe to call on any day, any number of
+    // times — a same-day rerun computes 0 elapsed months and no-ops, and a call after a missed
+    // cron fire catches up exactly what was missed. DAILY/WEEKLY/FORTNIGHTLY/QUARTERLY/YEARLY/NONE
+    // handling is unchanged from processAccrualForLeaveType() — out of scope for this fix.
     @Override
     public void triggerMonthlyLeaveAccrual() {
-//        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYear(LocalDate.now().getYear());
-//        if (balances.isEmpty()) {
-//            throw new LeaveBalanceExceptionHandler("No Leave Balances found");
-//        }
-//        LocalDate now = LocalDate.now();
-//
-//        if (now.getDayOfMonth() != 1)
-//            throw new LeaveBalanceExceptionHandler("Accrual can only be triggered on the first day of the month");
-//
-//        for (LeaveBalance balance : balances) {
-//            Employee emp = balance.getEmployee();
-//            LeaveType type = balance.getLeaveType();
-//            LocalDate hireDate = emp.getHireDate();
-//            LocalDate accrualDate = balance.getLastAccrualDate();
-//
-//            if (hireDate.isAfter(now.withDayOfMonth(1))) continue;
-//
-//            if (accrualDate != null &&
-//                    accrualDate.getMonth() == now.getMonth() &&
-//                    accrualDate.getYear() == now.getYear()) {
-//                continue;
-//            }
-//
-//            double accrual = 0;
-//
-//            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.SICK_LEAVE.toString())) {
-//                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
-//            }
-//
-//            if (type.getLeaveName().equalsIgnoreCase(LeaveTypesEnum.EARNED_LEAVE.toString())) {
-//                accrual = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
-//                ;
-//            }
-//
-//            if (accrual > 0) {
-//                balance.setAccruedLeaves(balance.getAccruedLeaves() + accrual);
-//                balance.updateRemainingLeaves();
-//                balance.setLastAccrualDate(now);
-//                leaveBalanceDao.save(balance);
-//            }
-//        }
+        List<LeaveType> types = leaveTypeRepo.findAll();
+        LocalDate today = LocalDate.now();
+
+        boolean isNewYearDay = (today.getMonthValue() == 1 && today.getDayOfMonth() == 1);
+        if (isNewYearDay) {
+            for (LeaveType type : types) {
+                if (!Boolean.TRUE.equals(type.getActive())) continue;
+
+                List<LeaveBalance> balances = leaveBalanceRepo
+                        .findAllByYearAndLeaveTypeLeaveTypeId(today.getYear() - 1, type.getLeaveTypeId());
+
+                if (balances.isEmpty()) {
+                    log.warn("No previous year balances found for leave type: {} — skipping new year record creation",
+                            type.getLeaveName());
+                    continue;
+                }
+
+                List<LeaveBalance> nextYearBalances = balances.stream()
+                        .filter(b -> !Boolean.TRUE.equals(b.getIsDeleted()))
+                        .map(b -> {
+                            LeaveBalance nb = new LeaveBalance();
+                            nb.setEmployee(b.getEmployee());
+                            nb.setEmployeeId(b.getEmployee().getEmployeeId());
+                            nb.setLeaveType(type);
+                            nb.setYear(today.getYear());
+
+                            nb.setUsedLeaves(0.0);
+                            nb.setEncashedLeaves(0);
+
+                            double firstAccrual = today.getDayOfMonth() < MID_MONTH_THRESHOLD
+                                    ? (type.getAccrualRate() != null ? type.getAccrualRate() : 0.0)
+                                    : 0.0;
+                            nb.setAccruedLeaves(firstAccrual);
+
+                            nb.setCarriedForward(0.0);
+                            nb.setExpiredLeaves(0.0);
+
+                            nb.setTotalLeaves(type.getMaxDaysPerYear() != null ? type.getMaxDaysPerYear() : 0.0);
+                            nb.setRemainingLeaves(firstAccrual);
+                            nb.setLastAccrualDate(today);
+                            nb.setIsBlocked(b.getIsBlocked());
+                            nb.setBlockId(b.getBlockId());
+                            nb.setIsDeleted(false);
+                            nb.setLastUpdatedAt(null);
+                            nb.setCreateAt(LocalDateTime.now());
+
+                            return nb;
+                        })
+                        .collect(Collectors.toList());
+
+                leaveBalanceRepo.saveAll(nextYearBalances);
+                log.info("New year balance records created for leave type: {} — {} records",
+                        type.getLeaveName(), nextYearBalances.size());
+            }
+            return;
+        }
+
+        for (LeaveType type : types) {
+            if (!Boolean.TRUE.equals(type.getActive())) continue;
+
+            try {
+                AccrualFrequency frequency = AccrualFrequency
+                        .valueOf(type.getAccrualFrequency().toString().toUpperCase());
+
+                switch (frequency) {
+                    case DAILY:
+                        runMonthlyAccrual(type);
+                        break;
+
+                    case WEEKLY:
+                        if (today.getDayOfWeek().getValue() == 1) {
+                            runMonthlyAccrual(type);
+                        }
+                        break;
+
+                    case FORTNIGHTLY:
+                        if (today.getDayOfMonth() == 1 || today.getDayOfMonth() == 15) {
+                            runMonthlyAccrual(type);
+                        }
+                        break;
+
+                    case MONTHLY:
+                        runMonthlyAccrualWithCatchUp(type, today);
+                        break;
+
+                    case QUARTERLY:
+                        if (today.getDayOfMonth() == 1 &&
+                                (today.getMonthValue() == 4 ||
+                                        today.getMonthValue() == 7 ||
+                                        today.getMonthValue() == 10)) {
+                            runMonthlyAccrual(type);
+                        }
+                        break;
+
+                    case YEARLY:
+                    case NONE:
+                        break;
+                }
+            } catch (Exception e) {
+                log.error("Accrual failed for leave type: {} — skipping. Error: {}",
+                        type.getLeaveName(), e.getMessage(), e);
+            }
+        }
+    }
+
+    private void runMonthlyAccrualWithCatchUp(LeaveType type, LocalDate today) {
+        List<LeaveBalance> balances = leaveBalanceRepo.findAllByYearAndLeaveTypeLeaveTypeId(
+                today.getYear(), type.getLeaveTypeId());
+
+        if (balances.isEmpty()) {
+            log.warn("No leave balances found for leave type: {} year: {} — skipping",
+                    type.getLeaveName(), today.getYear());
+            return;
+        }
+
+        double accrualRate = type.getAccrualRate() != null ? type.getAccrualRate() : 0;
+        double maxDaysPerYear = type.getMaxDaysPerYear() != null ? type.getMaxDaysPerYear() : 0;
+
+        List<LeaveBalance> updated = new ArrayList<>();
+        for (LeaveBalance balance : balances) {
+            if (Boolean.TRUE.equals(balance.getIsDeleted())) continue;
+            if (balance.getEmployee().getHireDate().isAfter(today)) continue;
+            if (accrualRate <= 0) continue;
+
+            LocalDate lastAccrual = balance.getLastAccrualDate();
+            if (lastAccrual == null) {
+                // No prior accrual on record — don't guess at an unknown gap, just establish
+                // a baseline; future runs compute correctly from here.
+                balance.setLastAccrualDate(today);
+                updated.add(balance);
+                continue;
+            }
+
+            if (!lastAccrual.isBefore(today)) continue; // already caught up
+
+            int monthsElapsed = (int) ChronoUnit.MONTHS.between(
+                    lastAccrual.withDayOfMonth(1), today.withDayOfMonth(1));
+
+            if (monthsElapsed <= 0) continue;
+
+            double newAccrued = Math.min(balance.getAccruedLeaves() + (monthsElapsed * accrualRate), maxDaysPerYear);
+            if (newAccrued != balance.getAccruedLeaves()) {
+                balance.setAccruedLeaves(newAccrued);
+                balance.updateRemainingLeaves();
+            }
+            balance.setLastAccrualDate(today);
+            updated.add(balance);
+        }
+
+        if (!updated.isEmpty()) {
+            leaveBalanceRepo.saveAll(updated);
+            log.info("Monthly accrual catch-up completed for leave type: {} — {} balances updated",
+                    type.getLeaveName(), updated.size());
+        }
     }
 
     @Override
