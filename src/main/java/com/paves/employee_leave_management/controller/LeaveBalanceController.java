@@ -109,6 +109,17 @@ public class LeaveBalanceController {
         return ResponseEntity.ok("Carry forward process completed.");
     }
 
+    // Separate from /carryforward on purpose — that endpoint is untouched by this change.
+    // This is the manual on-demand trigger for the catch-up-aware monthly accrual job (same
+    // logic the nightly cron and the startup listener use); safe to call on any day, any
+    // number of times.
+    @PostMapping("/accrual/run-catchup")
+    @PreAuthorize("hasAnyRole('HR', 'SUPER_ADMIN')")
+    public ResponseEntity<String> runAccrualCatchUp() {
+        leaveBalanceService.triggerMonthlyLeaveAccrual();
+        return ResponseEntity.ok("Accrual catch-up completed.");
+    }
+
     @GetMapping("/{balanceID}")
     @PreAuthorize("hasAnyRole('MANAGER','HR','GENERAL', 'SUPER_ADMIN')")
     public ResponseEntity<LeaveBalance> getLeaveBalancesByBalanceId(@PathVariable String balanceID) {
