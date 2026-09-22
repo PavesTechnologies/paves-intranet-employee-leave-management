@@ -375,7 +375,7 @@ public class LeaveTypeServiceImple implements LeaveTypeServiceInterface {
             balance.setTotalLeaves(recalculatedTotal);
 
             double usedLeaves = balance.getUsedLeaves();
-            balance.setRemainingLeaves((balance.getCarriedForward() + recalculatedTotal) - usedLeaves);
+            balance.setRemainingLeaves((balance.getCarriedForward() + accruedLeaves) - usedLeaves);
         }
 
         leaveBalanceRepo.saveAll(affectedBalances);
